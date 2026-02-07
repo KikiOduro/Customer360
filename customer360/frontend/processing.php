@@ -7,10 +7,13 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-// Get processing info from session
-$uploadedFile = $_SESSION['uploaded_file'] ?? 'customer_data.csv';
+// Get job info from session (set by mapping API)
+$currentJob = $_SESSION['current_job'] ?? null;
+$jobId = $currentJob['job_id'] ?? 'demo_' . uniqid();
+$uploadedFile = $currentJob['filename'] ?? $_SESSION['uploaded_file'] ?? 'customer_data.csv';
 $batchId = $_SESSION['batch_id'] ?? rand(1000, 9999);
 $recordCount = $_SESSION['record_count'] ?? 1420;
+$isDemoMode = $currentJob['demo_mode'] ?? !isset($_SESSION['auth_token']);
 
 // Store batch ID for this session
 $_SESSION['batch_id'] = $batchId;
@@ -323,7 +326,59 @@ $userName = $_SESSION['user_name'] ?? 'User';
             window.location.href = 'analytics.php';
         }
         
-        // Run the processing simulation
+        // Job ID and demo mode from PHP
+        const jobId = '<?php echo addslashes($jobId); ?>';
+        const isDemoMode = <?php echo $isDemoMode ? 'true' : 'false'; ?>;
+        
+        // Poll API for real job status
+        async function pollJobStatus() {
+            try {
+                const response = await fetch(`api/process.php?action=status&job_id=${jobId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Update progress if provided
+                    if (data.progress !== undefined) {
+                        updateProgress(data.progress);
+                        
+                        // Map progress to steps
+                        const stepProgress = Math.floor(data.progress / 20); // 5 steps, 20% each
+                        for (let i = 0; i < stepProgress && i < steps.length; i++) {
+                            if (document.getElementById(steps[i].id).dataset.status !== 'completed') {
+                                updateStep(i, 'completed');
+                            }
+                        }
+                        if (stepProgress < steps.length) {
+                            updateStep(stepProgress, 'active');
+                        }
+                    }
+                    
+                    if (data.status === 'completed') {
+                        // Mark all steps complete
+                        for (let i = 0; i < steps.length; i++) {
+                            updateStep(i, 'completed');
+                        }
+                        updateProgress(100);
+                        enableResultsButton();
+                        return; // Stop polling
+                    } else if (data.status === 'failed') {
+                        alert('Processing failed: ' + (data.error_message || 'Unknown error'));
+                        return;
+                    }
+                }
+                
+                // Continue polling
+                setTimeout(pollJobStatus, 1000);
+            } catch (error) {
+                console.error('Error polling status:', error);
+                // Continue with demo simulation on error
+                if (!isDemoMode) {
+                    setTimeout(pollJobStatus, 2000);
+                }
+            }
+        }
+        
+        // Run the processing simulation (for demo mode or as visual feedback)
         function runProcessing() {
             let stepStartTime = 0;
             
@@ -364,7 +419,15 @@ $userName = $_SESSION['user_name'] ?? 'User';
         
         // Start processing on page load
         document.addEventListener('DOMContentLoaded', function() {
-            runProcessing();
+            if (isDemoMode) {
+                // Run visual simulation for demo
+                runProcessing();
+            } else {
+                // Poll real API for status
+                pollJobStatus();
+                // Also run visual simulation as backup
+                runProcessing();
+            }
         });
     </script>
 </body>

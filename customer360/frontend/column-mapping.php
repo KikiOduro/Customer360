@@ -7,22 +7,12 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-// Get uploaded file info from session (would be set after upload)
-$uploadedFile = $_SESSION['uploaded_file'] ?? 'ghana_sales_Q3.csv';
+// Get uploaded file info from session (set by upload API)
+$upload = $_SESSION['current_upload'] ?? null;
+$uploadedFile = $upload['filename'] ?? $_SESSION['uploaded_file'] ?? 'ghana_sales_Q3.csv';
 
-// Sample data that would come from parsing the uploaded file
-// In production, this would be extracted from the actual uploaded CSV/Excel file
-$sampleData = [
-    ['row' => 1, 'cust_ref' => 'CUST-001', 'name' => 'Kwame Enterprises', 'date' => '12/10/2023', 'inv' => 'INV-2023-884', 'amount' => '2,450.00', 'status' => 'Paid'],
-    ['row' => 2, 'cust_ref' => 'CUST-002', 'name' => 'Accra Logistics Ltd', 'date' => '14/10/2023', 'inv' => 'INV-2023-885', 'amount' => '15,300.50', 'status' => 'Pending'],
-    ['row' => 3, 'cust_ref' => 'CUST-003', 'name' => 'Golden Cocoa Exports', 'date' => '15/10/2023', 'inv' => 'INV-2023-886', 'amount' => '8,900.00', 'status' => 'Paid'],
-    ['row' => 4, 'cust_ref' => 'CUST-004', 'name' => 'Osei & Sons Hardware', 'date' => '16/10/2023', 'inv' => 'INV-2023-887', 'amount' => '450.00', 'status' => 'Paid'],
-    ['row' => 5, 'cust_ref' => 'CUST-001', 'name' => 'Kwame Enterprises', 'date' => '18/10/2023', 'inv' => 'INV-2023-888', 'amount' => '1,200.00', 'status' => 'Overdue'],
-    ['row' => 6, 'cust_ref' => 'CUST-005', 'name' => 'Tema Textiles', 'date' => '19/10/2023', 'inv' => 'INV-2023-889', 'amount' => '5,670.00', 'status' => 'Paid'],
-];
-
-// Available columns from the uploaded file (would be detected from file headers)
-$availableColumns = [
+// Get columns and sample data from session (populated by upload API)
+$availableColumns = $upload['columns'] ?? [
     'Cust_Ref_ID',
     'Customer Name',
     'Transaction_Date',
@@ -30,6 +20,21 @@ $availableColumns = [
     'Total_GHS',
     'Status'
 ];
+
+$sampleRows = $upload['sample_rows'] ?? [];
+$suggestedMapping = $upload['suggested_mapping'] ?? null;
+
+// If no sample rows from upload, use demo data
+if (empty($sampleRows)) {
+    $sampleRows = [
+        ['Cust_Ref_ID' => 'CUST-001', 'Customer Name' => 'Kwame Enterprises', 'Transaction_Date' => '12/10/2023', 'Inv_Num' => 'INV-2023-884', 'Total_GHS' => '2,450.00', 'Status' => 'Paid'],
+        ['Cust_Ref_ID' => 'CUST-002', 'Customer Name' => 'Accra Logistics Ltd', 'Transaction_Date' => '14/10/2023', 'Inv_Num' => 'INV-2023-885', 'Total_GHS' => '15,300.50', 'Status' => 'Pending'],
+        ['Cust_Ref_ID' => 'CUST-003', 'Customer Name' => 'Golden Cocoa Exports', 'Transaction_Date' => '15/10/2023', 'Inv_Num' => 'INV-2023-886', 'Total_GHS' => '8,900.00', 'Status' => 'Paid'],
+        ['Cust_Ref_ID' => 'CUST-004', 'Customer Name' => 'Osei & Sons Hardware', 'Transaction_Date' => '16/10/2023', 'Inv_Num' => 'INV-2023-887', 'Total_GHS' => '450.00', 'Status' => 'Paid'],
+        ['Cust_Ref_ID' => 'CUST-001', 'Customer Name' => 'Kwame Enterprises', 'Transaction_Date' => '18/10/2023', 'Inv_Num' => 'INV-2023-888', 'Total_GHS' => '1,200.00', 'Status' => 'Overdue'],
+        ['Cust_Ref_ID' => 'CUST-005', 'Customer Name' => 'Tema Textiles', 'Transaction_Date' => '19/10/2023', 'Inv_Num' => 'INV-2023-889', 'Total_GHS' => '5,670.00', 'Status' => 'Paid'],
+    ];
+}
 
 // Required fields for Customer 360
 $requiredFields = [
@@ -210,36 +215,36 @@ $requiredFields = [
                         <thead class="bg-primary-subtle dark:bg-primary/40 text-primary dark:text-white font-semibold">
                             <tr>
                                 <th class="px-6 py-3 border-b border-border-subtle">Row</th>
-                                <th class="px-6 py-3 border-b border-border-subtle">Cust_Ref_ID</th>
-                                <th class="px-6 py-3 border-b border-border-subtle">Customer Name</th>
-                                <th class="px-6 py-3 border-b border-border-subtle">Transaction_Date</th>
-                                <th class="px-6 py-3 border-b border-border-subtle">Inv_Num</th>
-                                <th class="px-6 py-3 border-b border-border-subtle text-right">Total_GHS</th>
-                                <th class="px-6 py-3 border-b border-border-subtle">Status</th>
+                                <?php foreach ($availableColumns as $col): ?>
+                                <th class="px-6 py-3 border-b border-border-subtle"><?php echo htmlspecialchars($col); ?></th>
+                                <?php endforeach; ?>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-border-subtle dark:divide-white/10">
-                            <?php foreach ($sampleData as $row): ?>
+                            <?php foreach ($sampleRows as $i => $row): ?>
                             <tr class="hover:bg-primary-subtle/50 dark:hover:bg-primary/20 transition-colors">
-                                <td class="px-6 py-3 text-[#536e93]"><?php echo $row['row']; ?></td>
-                                <td class="px-6 py-3 font-medium text-primary dark:text-white"><?php echo htmlspecialchars($row['cust_ref']); ?></td>
-                                <td class="px-6 py-3"><?php echo htmlspecialchars($row['name']); ?></td>
-                                <td class="px-6 py-3"><?php echo htmlspecialchars($row['date']); ?></td>
-                                <td class="px-6 py-3"><?php echo htmlspecialchars($row['inv']); ?></td>
-                                <td class="px-6 py-3 text-right font-mono"><?php echo htmlspecialchars($row['amount']); ?></td>
-                                <td class="px-6 py-3">
-                                    <?php
-                                    $statusClasses = [
-                                        'Paid' => 'bg-green-50 text-green-700 ring-green-600/20',
-                                        'Pending' => 'bg-yellow-50 text-yellow-800 ring-yellow-600/20',
-                                        'Overdue' => 'bg-red-50 text-red-700 ring-red-600/10',
-                                    ];
-                                    $statusClass = $statusClasses[$row['status']] ?? 'bg-gray-50 text-gray-700 ring-gray-600/20';
+                                <td class="px-6 py-3 text-[#536e93]"><?php echo $i + 1; ?></td>
+                                <?php foreach ($availableColumns as $col): ?>
+                                <td class="px-6 py-3 <?php echo $col === reset($availableColumns) ? 'font-medium text-primary dark:text-white' : ''; ?>">
+                                    <?php 
+                                    $value = $row[$col] ?? '';
+                                    // Check if it's a status-like field
+                                    if (in_array(strtolower($value), ['paid', 'pending', 'overdue', 'active', 'inactive'])) {
+                                        $statusClasses = [
+                                            'paid' => 'bg-green-50 text-green-700 ring-green-600/20',
+                                            'active' => 'bg-green-50 text-green-700 ring-green-600/20',
+                                            'pending' => 'bg-yellow-50 text-yellow-800 ring-yellow-600/20',
+                                            'overdue' => 'bg-red-50 text-red-700 ring-red-600/10',
+                                            'inactive' => 'bg-gray-50 text-gray-700 ring-gray-600/20',
+                                        ];
+                                        $statusClass = $statusClasses[strtolower($value)] ?? 'bg-gray-50 text-gray-700 ring-gray-600/20';
+                                        echo '<span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset ' . $statusClass . '">' . htmlspecialchars($value) . '</span>';
+                                    } else {
+                                        echo htmlspecialchars($value);
+                                    }
                                     ?>
-                                    <span class="inline-flex items-center rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset <?php echo $statusClass; ?>">
-                                        <?php echo htmlspecialchars($row['status']); ?>
-                                    </span>
                                 </td>
+                                <?php endforeach; ?>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -325,26 +330,69 @@ $requiredFields = [
             continueBtn.innerHTML = '<span class="material-symbols-outlined animate-spin text-sm mr-2">progress_activity</span> Processing...';
             
             // Gather mapping data
-            const formData = new FormData(form);
             const mappings = {};
-            
             document.querySelectorAll('.mapping-select').forEach(select => {
                 const fieldName = select.name.match(/\[(.+)\]/)[1];
                 mappings[fieldName] = select.value;
             });
             
-            // Store in sessionStorage for the processing page
-            sessionStorage.setItem('columnMappings', JSON.stringify(mappings));
-            sessionStorage.setItem('uploadedFile', '<?php echo addslashes($uploadedFile); ?>');
+            // Submit to API
+            fetch('api/mapping.php?action=save', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ mapping: mappings })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success || data.redirect) {
+                    // Store in sessionStorage as backup
+                    sessionStorage.setItem('columnMappings', JSON.stringify(mappings));
+                    sessionStorage.setItem('jobId', data.job_id || '');
+                    
+                    // Redirect to processing page
+                    window.location.href = data.redirect || 'processing.php';
+                } else {
+                    throw new Error(data.error || 'Failed to save mapping');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving mapping: ' + error.message);
+                
+                // Reset button
+                continueBtn.disabled = false;
+                continueBtn.innerHTML = 'Continue';
+            });
+        }
+        
+        // Apply suggested mapping if available
+        function applySuggestedMapping() {
+            const suggested = <?php echo json_encode($suggestedMapping); ?>;
+            if (!suggested) return;
             
-            // Small delay for UX feedback, then redirect to processing page
-            setTimeout(() => {
-                window.location.href = 'processing.php';
-            }, 800);
+            const fieldMap = {
+                'customer_id': suggested.customer_id,
+                'date': suggested.invoice_date,
+                'invoice_id': suggested.invoice_id,
+                'amount': suggested.amount
+            };
+            
+            document.querySelectorAll('.mapping-select').forEach(select => {
+                const fieldName = select.name.match(/\[(.+)\]/)[1];
+                if (fieldMap[fieldName]) {
+                    select.value = fieldMap[fieldName];
+                }
+            });
+            
+            updateMappingStatus();
         }
         
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', function() {
+            // Apply suggested mapping if available
+            applySuggestedMapping();
             updateMappingStatus();
             
             // Get file name from sessionStorage if available

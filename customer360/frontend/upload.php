@@ -392,9 +392,16 @@ $currentPage = 'upload';
                     progressWidth = '100%';
                     statusText = `${sizeFormatted} • Completed`;
                     opacity = 'opacity-60';
+                } else if (fileData.status === 'error') {
+                    statusHtml = `<span class="text-xs text-red-600 dark:text-red-400 font-bold flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">error</span> Error
+                    </span>`;
+                    progressWidth = '100%';
+                    statusText = fileData.errorMessage || 'Upload failed';
                 }
                 
-                const progressBg = fileData.status === 'uploading' ? 'bg-secondary' : 'bg-primary dark:bg-blue-500';
+                const progressBg = fileData.status === 'uploading' ? 'bg-secondary' : 
+                    (fileData.status === 'error' ? 'bg-red-500' : 'bg-primary dark:bg-blue-500');
                 
                 return `
                     <div class="flex items-center justify-between p-3 bg-background-light dark:bg-background-dark rounded-lg border border-gray-200 dark:border-gray-700 ${opacity}">
@@ -443,38 +450,82 @@ $currentPage = 'upload';
             const uploadBtn = document.getElementById('uploadBtn');
             uploadBtn.disabled = true;
             
-            // Simulate upload for each file
+            // Upload each file to the API
+            let completedCount = 0;
+            
             filesToUpload.forEach((fileData, index) => {
                 if (fileData.status !== 'ready') return;
                 
                 fileData.status = 'uploading';
                 fileData.progress = 0;
+                renderFilesList();
                 
-                // Simulate upload progress
-                const interval = setInterval(() => {
-                    fileData.progress += Math.random() * 15 + 5;
-                    if (fileData.progress >= 100) {
-                        fileData.progress = 100;
-                        fileData.status = 'completed';
-                        clearInterval(interval);
-                        
-                        // Check if all files are uploaded
-                        const allCompleted = filesToUpload.every(f => f.status === 'completed');
-                        if (allCompleted) {
+                // Create FormData for file upload
+                const formData = new FormData();
+                formData.append('file', fileData.file);
+                formData.append('save_config', document.getElementById('saveConfig').checked ? '1' : '0');
+                
+                // Use XMLHttpRequest for progress tracking
+                const xhr = new XMLHttpRequest();
+                
+                xhr.upload.onprogress = (e) => {
+                    if (e.lengthComputable) {
+                        fileData.progress = Math.round((e.loaded / e.total) * 100);
+                        renderFilesList();
+                    }
+                };
+                
+                xhr.onload = () => {
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        try {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.success) {
+                                fileData.status = 'completed';
+                                fileData.progress = 100;
+                                completedCount++;
+                                
+                                // Check if all files are uploaded
+                                const allCompleted = filesToUpload.every(f => f.status === 'completed' || f.status === 'ready');
+                                if (completedCount === filesToUpload.filter(f => f.status !== 'ready' || f.status === 'completed').length) {
+                                    uploadBtn.disabled = false;
+                                    
+                                    // Redirect to column mapping
+                                    setTimeout(() => {
+                                        window.location.href = 'column-mapping.php';
+                                    }, 500);
+                                }
+                            } else {
+                                fileData.status = 'error';
+                                fileData.errorMessage = response.error || 'Upload failed';
+                                alert(`Error uploading ${fileData.name}: ${response.error || 'Unknown error'}`);
+                                uploadBtn.disabled = false;
+                            }
+                        } catch (e) {
+                            fileData.status = 'error';
+                            fileData.errorMessage = 'Invalid server response';
+                            alert(`Error uploading ${fileData.name}: Invalid server response`);
                             uploadBtn.disabled = false;
-                            // Store file info and redirect to column mapping
-                            setTimeout(() => {
-                                // Store the first file name for column mapping
-                                sessionStorage.setItem('uploadedFile', filesToUpload[0].name);
-                                window.location.href = 'column-mapping.php';
-                            }, 500);
                         }
+                    } else {
+                        fileData.status = 'error';
+                        fileData.errorMessage = 'Server error';
+                        alert(`Error uploading ${fileData.name}: Server error (${xhr.status})`);
+                        uploadBtn.disabled = false;
                     }
                     renderFilesList();
-                }, 200);
+                };
+                
+                xhr.onerror = () => {
+                    fileData.status = 'error';
+                    fileData.errorMessage = 'Network error';
+                    alert(`Error uploading ${fileData.name}: Network error`);
+                    uploadBtn.disabled = false;
+                    renderFilesList();
+                };
+                
+                xhr.open('POST', 'api/upload.php');
+                xhr.send(formData);
             });
-            
-            renderFilesList();
         }
     </script>
 </body>
