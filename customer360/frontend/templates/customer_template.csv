@@ -1,0 +1,4 @@
+customer_id,customer_name,email,phone,transaction_date,transaction_amount,product_category,payment_method
+C001,Kwame Asante,kwame@example.com,+233201234567,2024-01-15,250.00,Electronics,Mobile Money
+C002,Ama Mensah,ama@example.com,+233209876543,2024-01-16,125.50,Fashion,Cash
+C003,Kofi Owusu,kofi@example.com,+233205551234,2024-01-17,89.99,Groceries,Card
