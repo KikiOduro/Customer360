@@ -5,7 +5,7 @@
  */
 
 // Python FastAPI backend URL
-define('BACKEND_API_URL', 'http://localhost:8000/api');
+define('BACKEND_API_URL', 'http://localhost/');
 
 // Session configuration
 ini_set('session.cookie_httponly', 1);
