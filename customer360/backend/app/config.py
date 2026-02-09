@@ -9,14 +9,23 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 UPLOAD_DIR = DATA_DIR / "uploads"
 OUTPUT_DIR = DATA_DIR / "outputs"
-DB_DIR = DATA_DIR / "db"
 
 # Create directories if they don't exist
-for directory in [DATA_DIR, UPLOAD_DIR, OUTPUT_DIR, DB_DIR]:
+for directory in [DATA_DIR, UPLOAD_DIR, OUTPUT_DIR]:
     directory.mkdir(parents=True, exist_ok=True)
 
-# Database
-DATABASE_URL = f"sqlite:///{DB_DIR}/customer360.db"
+# Database (MySQL)
+# Format: mysql+pymysql://user:password@host:port/database
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "3306")
+DB_USER = os.getenv("DB_USER", "root")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "")
+DB_NAME = os.getenv("DB_NAME", "customer360")
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+)
 
 # JWT Settings
 SECRET_KEY = os.getenv("SECRET_KEY", "customer360-secret-key-change-in-production-2026")

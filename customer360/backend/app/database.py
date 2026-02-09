@@ -1,17 +1,23 @@
 """
 Database connection and session management for Customer360.
-Uses SQLAlchemy with SQLite.
+Uses SQLAlchemy with MySQL.
 """
 from sqlalchemy import create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import QueuePool
 
 from .config import DATABASE_URL
 
-# Create SQLite engine with check_same_thread=False for FastAPI
+# Create MySQL engine with connection pooling
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False}
+    poolclass=QueuePool,
+    pool_size=10,
+    max_overflow=20,
+    pool_pre_ping=True,  # Verify connections before using
+    pool_recycle=3600,   # Recycle connections after 1 hour
+    echo=False           # Set to True for SQL debugging
 )
 
 # Session factory
