@@ -68,7 +68,7 @@ $contactPhone = "+233 20 000 0000";
                                 <a class="text-primary/80 hover:text-primary text-sm font-medium leading-normal transition-colors" href="#pricing">Pricing</a>
                                 <a class="text-primary/80 hover:text-primary text-sm font-medium leading-normal transition-colors" href="#faq">FAQ</a>
                             </div>
-                            <a href="index.html" class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-6 bg-primary hover:bg-primary-hover text-[#f8fafb] text-sm font-bold leading-normal tracking-[0.015em] transition-all">
+                            <a href="register.php" class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-6 bg-primary hover:bg-primary-hover text-[#f8fafb] text-sm font-bold leading-normal tracking-[0.015em] transition-all">
                                 <span class="truncate">Get Started</span>
                             </a>
                         </div>
@@ -99,7 +99,7 @@ $contactPhone = "+233 20 000 0000";
                                 </h2>
                             </div>
                             <div class="flex flex-wrap gap-4">
-                                <a href="index.html#upload" class="flex min-w-[140px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-6 bg-accent-gold hover:bg-[#c29f2d] text-primary text-base font-bold leading-normal tracking-[0.015em] shadow-md transition-all">
+                                <a href="upload.php" class="flex min-w-[140px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-12 px-6 bg-accent-gold hover:bg-[#c29f2d] text-primary text-base font-bold leading-normal tracking-[0.015em] shadow-md transition-all">
                                     <span class="truncate">Upload Data</span>
                                     <span class="material-symbols-outlined ml-2 text-sm">upload</span>
                                 </a>
