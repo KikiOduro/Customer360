@@ -6,17 +6,54 @@
 require_once __DIR__ . '/config.php';
 session_start();
 
-// Check if this is an AJAX request
-function isAjax() {
-    return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
-           strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
+// Enable CORS for API calls
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Headers: Content-Type, Authorization');
+
+// Handle preflight requests
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
+
+// Get JSON body if content-type is application/json
+$inputData = [];
+$contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+if (strpos($contentType, 'application/json') !== false) {
+    $rawInput = file_get_contents('php://input');
+    $inputData = json_decode($rawInput, true) ?? [];
+}
+
+// Merge with POST data
+$requestData = array_merge($_POST, $inputData);
+
+// Check if this is an AJAX/API request (not a form submission)
+function isApiRequest() {
+    // Check for XMLHttpRequest header
+    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
+        strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+        return true;
+    }
+    // Check for JSON content type
+    $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
+    if (strpos($contentType, 'application/json') !== false) {
+        return true;
+    }
+    // Check for Accept: application/json header
+    $accept = $_SERVER['HTTP_ACCEPT'] ?? '';
+    if (strpos($accept, 'application/json') !== false) {
+        return true;
+    }
+    return false;
 }
 
 // Helper to respond with redirect or JSON
 function respondOrRedirect($data, $successUrl = null, $errorUrl = null) {
     $isSuccess = isset($data['success']) && $data['success'];
     
-    if (isAjax()) {
+    // For API/AJAX requests, always return JSON
+    if (isApiRequest()) {
         header('Content-Type: application/json');
         echo json_encode($data);
         exit;
@@ -60,10 +97,12 @@ switch ($action) {
 }
 
 function handleRegister() {
-    $email = $_POST['email'] ?? '';
-    $password = $_POST['password'] ?? '';
-    $company_name = $_POST['company_name'] ?? '';
-    $name = $_POST['name'] ?? '';
+    global $requestData;
+    
+    $email = $requestData['email'] ?? '';
+    $password = $requestData['password'] ?? '';
+    $company_name = $requestData['company_name'] ?? '';
+    $name = $requestData['name'] ?? '';
     
     if (!$email || !$password) {
         respondOrRedirect(
@@ -126,8 +165,10 @@ function handleRegister() {
 }
 
 function handleLogin() {
-    $email = $_POST['email'] ?? '';
-    $password = $_POST['password'] ?? '';
+    global $requestData;
+    
+    $email = $requestData['email'] ?? '';
+    $password = $requestData['password'] ?? '';
     
     if (!$email || !$password) {
         respondOrRedirect(
@@ -183,8 +224,8 @@ function handleLogin() {
 function handleLogout() {
     session_destroy();
     
-    // If called via AJAX
-    if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') {
+    // If called via API/AJAX
+    if (isApiRequest()) {
         jsonResponse(['success' => true, 'redirect' => 'signin.php']);
     }
     

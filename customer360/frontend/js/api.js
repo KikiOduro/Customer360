@@ -3,7 +3,13 @@
  * Handles all HTTP requests to the backend API
  */
 
-const API_BASE_URL = 'http://localhost:8000/api';
+// Dynamically determine API base URL based on current host
+const API_BASE_URL = (() => {
+    const protocol = window.location.protocol;
+    const host = window.location.host;
+    // Use PHP API bridge (relative path)
+    return `${protocol}//${host}/customer360/frontend/api`;
+})();
 
 /**
  * API client with automatic token handling

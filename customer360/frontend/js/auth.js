@@ -29,7 +29,7 @@ const auth = {
      * Register a new user
      */
     async register(email, password, companyName) {
-        const data = await api.post('/auth/register', {
+        const data = await api.post('/auth.php?action=register', {
             email,
             password,
             company_name: companyName
@@ -41,7 +41,7 @@ const auth = {
      * Login user
      */
     async login(email, password) {
-        const data = await api.post('/auth/login/json', {
+        const data = await api.post('/auth.php?action=login', {
             email,
             password
         }, false);
