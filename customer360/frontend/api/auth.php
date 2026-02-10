@@ -28,6 +28,9 @@ if (strpos($contentType, 'application/json') !== false) {
 // Merge with POST data
 $requestData = array_merge($_POST, $inputData);
 
+// Get action from multiple sources
+$action = $_GET['action'] ?? $requestData['action'] ?? '';
+
 // Check if this is an AJAX/API request (not a form submission)
 function isApiRequest() {
     // Check for XMLHttpRequest header
@@ -76,8 +79,6 @@ function respondOrRedirect($data, $successUrl = null, $errorUrl = null) {
     echo json_encode($data);
     exit;
 }
-
-$action = $_GET['action'] ?? $_POST['action'] ?? '';
 
 switch ($action) {
     case 'register':
