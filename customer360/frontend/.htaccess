@@ -1,0 +1,20 @@
+# Customer360 - Apache Configuration
+# Redirect to PHP pages instead of SPA
+
+# Enable rewrite engine
+RewriteEngine On
+
+# Redirect root (/) to landing.php
+RewriteRule ^$ landing.php [L,R=302]
+
+# Redirect index.html to landing.php
+RewriteRule ^index\.html$ landing.php [L,R=302]
+
+# Redirect hash routes to PHP equivalents (for bookmarked URLs)
+# Note: Hash fragments (#) are not sent to server, so this catches the base URL
+
+# Set default document
+DirectoryIndex landing.php index.php index.html
+
+# Prevent directory listing
+Options -Indexes
