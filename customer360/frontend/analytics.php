@@ -167,27 +167,27 @@ function getSegmentBarClass($color) {
         </div>
         <div class="flex flex-1 flex-col justify-between p-4">
             <nav class="flex flex-col gap-2">
-                <a href="dashboard.php" class="flex items-center gap-3 rounded-lg bg-primary/10 px-3 py-2 text-primary dark:text-white dark:bg-white/10">
+                <a href="dashboard.php" class="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800">
                     <span class="material-symbols-outlined">dashboard</span>
                     <span class="text-sm font-medium">Dashboard</span>
                 </a>
-                <a href="customers.php" class="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800">
-                    <span class="material-symbols-outlined">group</span>
-                    <span class="text-sm font-medium">Customers</span>
+                <a href="upload.php" class="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800">
+                    <span class="material-symbols-outlined">upload_file</span>
+                    <span class="text-sm font-medium">Upload Data</span>
                 </a>
-                <a href="campaigns.php" class="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800">
-                    <span class="material-symbols-outlined">campaign</span>
-                    <span class="text-sm font-medium">Campaigns</span>
-                </a>
-                <a href="analytics.php" class="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800">
-                    <span class="material-symbols-outlined">bar_chart</span>
+                <a href="analytics.php" class="flex items-center gap-3 rounded-lg bg-primary/10 px-3 py-2 text-primary dark:text-white dark:bg-white/10">
+                    <span class="material-symbols-outlined">analytics</span>
                     <span class="text-sm font-medium">Analytics</span>
+                </a>
+                <a href="reports.php" class="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800">
+                    <span class="material-symbols-outlined">bar_chart</span>
+                    <span class="text-sm font-medium">Reports</span>
                 </a>
             </nav>
             <div class="flex flex-col gap-2">
-                <a href="settings.php" class="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800">
-                    <span class="material-symbols-outlined">settings</span>
-                    <span class="text-sm font-medium">Settings</span>
+                <a href="help.php" class="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800">
+                    <span class="material-symbols-outlined">help</span>
+                    <span class="text-sm font-medium">Help & Support</span>
                 </a>
                 <div class="mt-4 flex items-center gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
                     <div class="h-10 w-10 overflow-hidden rounded-full bg-gray-200 bg-center bg-cover" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDHPryeJlt-KAnpYpMT8jqoGREFuY1XijiPNZALaT8F6aC9Kn0VFD06uDAJKdrVRxQ5fS3IvGrHKKG4wOCtb2KO_13UFB3yWBJI7CWfYi0cmlxYZM40cNOhnVgh0m_NQkqhNMBpIyTTRpkHTjdoDir1tJkdiAjZFPagfvKADsycOwyP-95G_cx-MdmD_E0KeGyOr1zbS_gnsg00FC8cNktrcmjfnz2rKUqfsanTCmI7E6cE_9YAVRX4-zbqRzySwBsqFrY7z_GDLh8');"></div>

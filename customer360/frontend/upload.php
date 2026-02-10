@@ -70,7 +70,7 @@ $currentPage = 'upload';
                     <a class="text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors" href="dashboard.php">Dashboard</a>
                     <a class="text-primary dark:text-white bg-primary/5 dark:bg-white/10 px-3 py-2 rounded-md text-sm font-semibold" href="upload.php">Upload Data</a>
                     <a class="text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors" href="analytics.php">Analytics</a>
-                    <a class="text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors" href="settings.php">Settings</a>
+                    <a class="text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors" href="reports.php">Reports</a>
                 </nav>
                 
                 <!-- Actions -->
@@ -91,7 +91,7 @@ $currentPage = 'upload';
                             <div class="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
                                 <p class="text-sm font-medium text-primary dark:text-white"><?php echo htmlspecialchars($userName); ?></p>
                             </div>
-                            <a href="settings.php" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">Settings</a>
+                            <a href="help.php" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">Help & Support</a>
                             <a href="api/auth.php?action=logout" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-50 dark:hover:bg-gray-800">Sign Out</a>
                         </div>
                     </div>
@@ -110,7 +110,7 @@ $currentPage = 'upload';
                 <a class="block text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors" href="dashboard.php">Dashboard</a>
                 <a class="block text-primary dark:text-white bg-primary/5 dark:bg-white/10 px-3 py-2 rounded-md text-sm font-semibold" href="upload.php">Upload Data</a>
                 <a class="block text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors" href="analytics.php">Analytics</a>
-                <a class="block text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors" href="settings.php">Settings</a>
+                <a class="block text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors" href="reports.php">Reports</a>
             </nav>
         </div>
     </header>
@@ -249,8 +249,8 @@ $currentPage = 'upload';
                         <p class="text-sm text-blue-100 mb-4 leading-relaxed">
                             Our support team is available to help verify your data structure before uploading.
                         </p>
-                        <button onclick="window.location.href='support.php'" class="text-xs font-bold bg-white text-primary px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors w-full sm:w-auto">
-                            Chat with Support
+                        <button onclick="window.location.href='help.php'" class="text-xs font-bold bg-white text-primary px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors w-full sm:w-auto">
+                            Get Help
                         </button>
                     </div>
                 </div>

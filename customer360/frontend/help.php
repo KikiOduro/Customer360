@@ -124,9 +124,9 @@ $resources = [
             
             <nav class="hidden md:flex flex-1 items-center justify-end gap-8">
                 <a class="text-sm font-medium text-primary/70 hover:text-primary transition-colors dark:text-white/70 dark:hover:text-white" href="dashboard.php">Dashboard</a>
+                <a class="text-sm font-medium text-primary/70 hover:text-primary transition-colors dark:text-white/70 dark:hover:text-white" href="upload.php">Upload</a>
                 <a class="text-sm font-medium text-primary/70 hover:text-primary transition-colors dark:text-white/70 dark:hover:text-white" href="analytics.php">Analytics</a>
                 <a class="text-sm font-medium text-primary/70 hover:text-primary transition-colors dark:text-white/70 dark:hover:text-white" href="reports.php">Reports</a>
-                <a class="text-sm font-medium text-primary/70 hover:text-primary transition-colors dark:text-white/70 dark:hover:text-white" href="settings.php">Settings</a>
                 <a class="text-sm font-bold text-primary dark:text-white" href="help.php">Help & Support</a>
             </nav>
             
@@ -161,9 +161,9 @@ $resources = [
                 </div>
                 <nav class="p-4 space-y-2">
                     <a class="block px-4 py-2 rounded-lg text-primary/70 hover:bg-primary/5 dark:text-white/70 dark:hover:bg-white/5" href="dashboard.php">Dashboard</a>
+                    <a class="block px-4 py-2 rounded-lg text-primary/70 hover:bg-primary/5 dark:text-white/70 dark:hover:bg-white/5" href="upload.php">Upload Data</a>
                     <a class="block px-4 py-2 rounded-lg text-primary/70 hover:bg-primary/5 dark:text-white/70 dark:hover:bg-white/5" href="analytics.php">Analytics</a>
                     <a class="block px-4 py-2 rounded-lg text-primary/70 hover:bg-primary/5 dark:text-white/70 dark:hover:bg-white/5" href="reports.php">Reports</a>
-                    <a class="block px-4 py-2 rounded-lg text-primary/70 hover:bg-primary/5 dark:text-white/70 dark:hover:bg-white/5" href="settings.php">Settings</a>
                     <a class="block px-4 py-2 rounded-lg bg-primary/10 text-primary font-medium dark:bg-white/10 dark:text-white" href="help.php">Help & Support</a>
                     <hr class="my-4 border-primary/10 dark:border-white/10">
                     <a class="block px-4 py-2 rounded-lg text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20" href="api/auth.php?action=logout">Log Out</a>
@@ -318,13 +318,13 @@ $resources = [
                                         <p class="text-xs text-primary/60 dark:text-white/60">Explore customer insights</p>
                                     </div>
                                 </a>
-                                <a href="settings.php" class="flex items-center gap-4 p-4 rounded-lg border border-primary/10 dark:border-white/10 hover:bg-primary/5 dark:hover:bg-white/5 transition-colors group">
+                                <a href="reports.php" class="flex items-center gap-4 p-4 rounded-lg border border-primary/10 dark:border-white/10 hover:bg-primary/5 dark:hover:bg-white/5 transition-colors group">
                                     <div class="flex-shrink-0 w-10 h-10 rounded-lg bg-gray-100 dark:bg-white/10 flex items-center justify-center">
-                                        <span class="material-symbols-outlined text-gray-600 dark:text-gray-400">settings</span>
+                                        <span class="material-symbols-outlined text-gray-600 dark:text-gray-400">description</span>
                                     </div>
                                     <div>
-                                        <h4 class="font-medium text-primary dark:text-white group-hover:text-gray-600 dark:group-hover:text-gray-400 transition-colors">Account Settings</h4>
-                                        <p class="text-xs text-primary/60 dark:text-white/60">Manage your preferences</p>
+                                        <h4 class="font-medium text-primary dark:text-white group-hover:text-gray-600 dark:group-hover:text-gray-400 transition-colors">View Reports</h4>
+                                        <p class="text-xs text-primary/60 dark:text-white/60">See all your reports</p>
                                     </div>
                                 </a>
                             </div>

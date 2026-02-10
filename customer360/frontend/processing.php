@@ -89,9 +89,9 @@ $userName = $_SESSION['user_name'] ?? 'User';
             <div class="flex flex-1 justify-end gap-8">
                 <div class="hidden md:flex items-center gap-9">
                     <a class="text-primary dark:text-white text-sm font-medium leading-normal hover:text-primary/70 dark:hover:text-white/70 transition-colors" href="dashboard.php">Dashboard</a>
-                    <a class="text-primary dark:text-white text-sm font-medium leading-normal hover:text-primary/70 dark:hover:text-white/70 transition-colors" href="customers.php">Customers</a>
-                    <a class="text-primary dark:text-white text-sm font-medium leading-normal hover:text-primary/70 dark:hover:text-white/70 transition-colors" href="campaigns.php">Campaigns</a>
-                    <a class="text-primary dark:text-white text-sm font-medium leading-normal hover:text-primary/70 dark:hover:text-white/70 transition-colors" href="settings.php">Settings</a>
+                    <a class="text-primary dark:text-white text-sm font-medium leading-normal hover:text-primary/70 dark:hover:text-white/70 transition-colors" href="upload.php">Upload</a>
+                    <a class="text-primary dark:text-white text-sm font-medium leading-normal hover:text-primary/70 dark:hover:text-white/70 transition-colors" href="analytics.php">Analytics</a>
+                    <a class="text-primary dark:text-white text-sm font-medium leading-normal hover:text-primary/70 dark:hover:text-white/70 transition-colors" href="reports.php">Reports</a>
                 </div>
                 <div class="flex gap-3 items-center">
                     <button class="flex items-center justify-center rounded-lg size-10 bg-slate-100 dark:bg-slate-800 text-primary dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">

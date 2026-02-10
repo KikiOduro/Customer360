@@ -152,13 +152,13 @@ $currentPage = 'dashboard';
                     <span class="material-symbols-outlined">dashboard</span>
                     Dashboard
                 </a>
-                <a class="flex items-center gap-3 rounded-lg <?php echo $currentPage === 'customers' ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'; ?> px-4 py-3 text-sm font-medium transition-colors" href="customers.php">
-                    <span class="material-symbols-outlined">groups</span>
-                    Customer Data
+                <a class="flex items-center gap-3 rounded-lg <?php echo $currentPage === 'upload' ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'; ?> px-4 py-3 text-sm font-medium transition-colors" href="upload.php">
+                    <span class="material-symbols-outlined">upload_file</span>
+                    Upload Data
                 </a>
-                <a class="flex items-center gap-3 rounded-lg <?php echo $currentPage === 'campaigns' ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'; ?> px-4 py-3 text-sm font-medium transition-colors" href="campaigns.php">
-                    <span class="material-symbols-outlined">campaign</span>
-                    Campaigns
+                <a class="flex items-center gap-3 rounded-lg <?php echo $currentPage === 'analytics' ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'; ?> px-4 py-3 text-sm font-medium transition-colors" href="analytics.php">
+                    <span class="material-symbols-outlined">analytics</span>
+                    Analytics
                 </a>
                 <a class="flex items-center gap-3 rounded-lg <?php echo $currentPage === 'reports' ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'; ?> px-4 py-3 text-sm font-medium transition-colors" href="reports.php">
                     <span class="material-symbols-outlined">bar_chart</span>
@@ -167,13 +167,9 @@ $currentPage = 'dashboard';
                 
                 <div class="my-4 border-t border-slate-700/50"></div>
                 
-                <a class="flex items-center gap-3 rounded-lg <?php echo $currentPage === 'settings' ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'; ?> px-4 py-3 text-sm font-medium transition-colors" href="settings.php">
-                    <span class="material-symbols-outlined">settings</span>
-                    Settings
-                </a>
-                <a class="flex items-center gap-3 rounded-lg <?php echo $currentPage === 'support' ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'; ?> px-4 py-3 text-sm font-medium transition-colors" href="support.php">
+                <a class="flex items-center gap-3 rounded-lg <?php echo $currentPage === 'help' ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'; ?> px-4 py-3 text-sm font-medium transition-colors" href="help.php">
                     <span class="material-symbols-outlined">help</span>
-                    Support
+                    Help & Support
                 </a>
             </nav>
             
@@ -192,7 +188,7 @@ $currentPage = 'dashboard';
                 
                 <!-- User Dropdown Menu -->
                 <div id="userMenu" class="hidden mt-2 py-2 bg-slate-800 rounded-lg shadow-lg">
-                    <a href="settings.php" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+                    <a href="help.php" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
                         <span class="material-symbols-outlined text-[18px]">person</span>
                         My Profile
                     </a>
@@ -506,33 +502,7 @@ $currentPage = 'dashboard';
                 </button>
             </div>
             
-            <nav class="px-4 py-6 space-y-2">
-                <a class="flex items-center gap-3 rounded-lg bg-white/10 px-4 py-3 text-sm font-medium text-white transition-colors" href="dashboard.php">
-                    <span class="material-symbols-outlined">dashboard</span>
-                    Dashboard
-                </a>
-                <a class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors" href="customers.php">
-                    <span class="material-symbols-outlined">groups</span>
-                    Customer Data
-                </a>
-                <a class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors" href="campaigns.php">
-                    <span class="material-symbols-outlined">campaign</span>
-                    Campaigns
-                </a>
-                <a class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors" href="reports.php">
-                    <span class="material-symbols-outlined">bar_chart</span>
-                    Reports
-                </a>
-                <div class="my-4 border-t border-slate-700/50"></div>
-                <a class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors" href="settings.php">
-                    <span class="material-symbols-outlined">settings</span>
-                    Settings
-                </a>
-                <a class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-red-400 hover:bg-white/5 hover:text-red-300 transition-colors" href="api/auth.php?action=logout">
-                    <span class="material-symbols-outlined">logout</span>
-                    Sign Out
-                </a>
-            </nav>
+            <nav class=\"px-4 py-6 space-y-2\">\n                <a class=\"flex items-center gap-3 rounded-lg bg-white/10 px-4 py-3 text-sm font-medium text-white transition-colors\" href=\"dashboard.php\">\n                    <span class=\"material-symbols-outlined\">dashboard</span>\n                    Dashboard\n                </a>\n                <a class=\"flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors\" href=\"upload.php\">\n                    <span class=\"material-symbols-outlined\">upload_file</span>\n                    Upload Data\n                </a>\n                <a class=\"flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors\" href=\"analytics.php\">\n                    <span class=\"material-symbols-outlined\">analytics</span>\n                    Analytics\n                </a>\n                <a class=\"flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors\" href=\"reports.php\">\n                    <span class=\"material-symbols-outlined\">bar_chart</span>\n                    Reports\n                </a>\n                <div class=\"my-4 border-t border-slate-700/50\"></div>\n                <a class=\"flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors\" href=\"help.php\">\n                    <span class=\"material-symbols-outlined\">help</span>\n                    Help & Support\n                </a>\n                <a class=\"flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-red-400 hover:bg-white/5 hover:text-red-300 transition-colors\" href=\"api/auth.php?action=logout\">\n                    <span class=\"material-symbols-outlined\">logout</span>\n                    Sign Out\n                </a>\n            </nav>
         </aside>
     </div>
 

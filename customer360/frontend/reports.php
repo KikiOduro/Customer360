@@ -261,28 +261,24 @@ function getStatusBadge($status) {
                             <span class="material-symbols-outlined text-[20px]">dashboard</span>
                             <span class="text-sm font-medium">Dashboard</span>
                         </a>
-                        <a class="nav-link flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#2a3441]" href="analytics.php">
-                            <span class="material-symbols-outlined text-[20px]">analytics</span>
-                            <span class="text-sm font-medium">Analytics</span>
-                        </a>
                         <a class="nav-link flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#2a3441]" href="upload.php">
                             <span class="material-symbols-outlined text-[20px]">cloud_upload</span>
                             <span class="text-sm font-medium">Upload Data</span>
                         </a>
+                        <a class="nav-link flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#2a3441]" href="analytics.php">
+                            <span class="material-symbols-outlined text-[20px]">analytics</span>
+                            <span class="text-sm font-medium">Analytics</span>
+                        </a>
                         <a class="nav-link flex items-center gap-3 rounded-lg bg-primary/10 px-3 py-2 text-primary dark:bg-blue-500/20 dark:text-blue-200" href="reports.php">
                             <span class="material-symbols-outlined text-[20px]">description</span>
                             <span class="text-sm font-medium">Reports</span>
-                        </a>
-                        <a class="nav-link flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#2a3441]" href="settings.php">
-                            <span class="material-symbols-outlined text-[20px]">settings</span>
-                            <span class="text-sm font-medium">Settings</span>
                         </a>
                     </nav>
                 </div>
                 
                 <!-- Bottom Actions -->
                 <div class="flex flex-col gap-2 border-t border-[#e8ecf2] pt-4 dark:border-[#2a3441]">
-                    <a href="#" class="nav-link flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#2a3441]">
+                    <a href="help.php" class="nav-link flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#2a3441]">
                         <span class="material-symbols-outlined text-[20px]">help</span>
                         <span class="text-sm font-medium">Help & Support</span>
                     </a>
@@ -596,21 +592,21 @@ function getStatusBadge($status) {
                 <span class="material-symbols-outlined text-[20px]">dashboard</span>
                 <span class="text-sm font-medium">Dashboard</span>
             </a>
-            <a class="nav-link flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#2a3441]" href="analytics.php">
-                <span class="material-symbols-outlined text-[20px]">analytics</span>
-                <span class="text-sm font-medium">Analytics</span>
-            </a>
             <a class="nav-link flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#2a3441]" href="upload.php">
                 <span class="material-symbols-outlined text-[20px]">cloud_upload</span>
                 <span class="text-sm font-medium">Upload Data</span>
+            </a>
+            <a class="nav-link flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#2a3441]" href="analytics.php">
+                <span class="material-symbols-outlined text-[20px]">analytics</span>
+                <span class="text-sm font-medium">Analytics</span>
             </a>
             <a class="nav-link flex items-center gap-3 rounded-lg bg-primary/10 px-3 py-2 text-primary dark:bg-blue-500/20 dark:text-blue-200" href="reports.php">
                 <span class="material-symbols-outlined text-[20px]">description</span>
                 <span class="text-sm font-medium">Reports</span>
             </a>
-            <a class="nav-link flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#2a3441]" href="settings.php">
-                <span class="material-symbols-outlined text-[20px]">settings</span>
-                <span class="text-sm font-medium">Settings</span>
+            <a class="nav-link flex items-center gap-3 rounded-lg px-3 py-2 text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-[#2a3441]" href="help.php">
+                <span class="material-symbols-outlined text-[20px]">help</span>
+                <span class="text-sm font-medium">Help & Support</span>
             </a>
         </nav>
     </div>
