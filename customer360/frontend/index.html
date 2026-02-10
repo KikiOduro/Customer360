@@ -2,8 +2,28 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=landing.php">
     <title>Redirecting...</title>
+    <script>
+        // Redirect hash routes to PHP pages
+        (function() {
+            var hash = window.location.hash;
+            var redirectMap = {
+                '#/login': 'signin.php',
+                '#/register': 'register.php',
+                '#/dashboard': 'dashboard.php',
+                '#/upload': 'upload.php',
+                '#/analytics': 'analytics.php',
+                '#/reports': 'reports.php',
+                '#/help': 'help.php'
+            };
+            
+            if (hash && redirectMap[hash]) {
+                window.location.replace(redirectMap[hash]);
+            } else {
+                window.location.replace('landing.php');
+            }
+        })();
+    </script>
 </head>
 <body>
     <p>Redirecting to <a href="landing.php">Customer360</a>...</p>
