@@ -5,7 +5,8 @@
  */
 
 // Python FastAPI backend URL
-define('BACKEND_API_URL', 'http://localhost/');
+// FastAPI is running on port 80
+define('BACKEND_API_URL', 'http://127.0.0.1:80/api');
 
 // Session configuration
 ini_set('session.cookie_httponly', 1);
