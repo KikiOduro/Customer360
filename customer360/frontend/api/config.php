@@ -5,8 +5,9 @@
  */
 
 // Python FastAPI backend URL
-// FastAPI is running on port 80
-define('BACKEND_API_URL', 'http://127.0.0.1:80/api');
+// FastAPI runs on port 8000, nginx proxies 80 -> 8000
+// PHP connects directly to FastAPI on port 8000
+define('BACKEND_API_URL', 'http://localhost:8000/api');
 
 // Session configuration
 ini_set('session.cookie_httponly', 1);
