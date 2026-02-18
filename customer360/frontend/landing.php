@@ -65,11 +65,10 @@ $contactPhone = "+233 20 000 0000";
                             <div class="flex items-center gap-8">
                                 <a class="text-primary/80 hover:text-primary text-sm font-medium leading-normal transition-colors" href="#features">Features</a>
                                 <a class="text-primary/80 hover:text-primary text-sm font-medium leading-normal transition-colors" href="#how-it-works">How it works</a>
-                                <a class="text-primary/80 hover:text-primary text-sm font-medium leading-normal transition-colors" href="#pricing">Pricing</a>
                                 <a class="text-primary/80 hover:text-primary text-sm font-medium leading-normal transition-colors" href="#faq">FAQ</a>
                             </div>
                             <a href="register.php" class="flex min-w-[84px] cursor-pointer items-center justify-center overflow-hidden rounded-lg h-10 px-6 bg-primary hover:bg-primary-hover text-[#f8fafb] text-sm font-bold leading-normal tracking-[0.015em] transition-all">
-                                <span class="truncate">Get Started</span>
+                                <span class="truncate">Get Started Free</span>
                             </a>
                         </div>
                         <!-- Mobile Menu Icon -->
@@ -341,65 +340,55 @@ $contactPhone = "+233 20 000 0000";
         </div>
     </div>
 
-    <!-- Pricing Section -->
-    <div class="py-20 bg-white border-t border-[#e8ecf2]" id="pricing">
+    <!-- Get Started Free Section -->
+    <div class="py-20 bg-white border-t border-[#e8ecf2]" id="get-started">
         <div class="layout-container flex justify-center">
-            <div class="layout-content-container flex flex-col max-w-[1200px] flex-1 px-4">
-                <div class="text-center mb-16">
-                    <h2 class="text-primary text-3xl md:text-4xl font-bold mb-4">Transparent Pricing</h2>
-                    <p class="text-[#536e93] max-w-2xl mx-auto">Choose a plan that fits your business stage.</p>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
-                    <!-- Starter Plan -->
-                    <div class="flex flex-col p-6 rounded-2xl border border-[#d1dae5] bg-white h-full hover:border-primary/30 transition-colors">
-                        <h3 class="text-primary text-xl font-bold mb-2">Starter</h3>
-                        <div class="mb-4">
-                            <span class="text-4xl font-black text-primary">GH₵ 150</span>
-                            <span class="text-[#536e93] text-sm">/month</span>
-                        </div>
-                        <p class="text-[#536e93] text-sm mb-6">Perfect for small shops just starting to organize data.</p>
-                        <button class="w-full py-2.5 rounded-lg border border-primary text-primary font-bold text-sm mb-6 hover:bg-primary/5 transition-colors">Choose Starter</button>
-                        <ul class="flex flex-col gap-3 text-sm text-[#3b4b5c]">
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-green-500 text-lg">check</span> Up to 1,000 customers</li>
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-green-500 text-lg">check</span> Basic Segmentation</li>
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-green-500 text-lg">check</span> Monthly Reports</li>
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-gray-300 text-lg">close</span> SMS Integration</li>
-                        </ul>
+            <div class="layout-content-container flex flex-col max-w-[900px] flex-1 px-4">
+                <div class="text-center">
+                    <!-- Free Badge -->
+                    <div class="inline-flex items-center gap-2 bg-accent-emerald/10 text-accent-emerald px-4 py-2 rounded-full text-sm font-bold mb-6">
+                        <span class="material-symbols-outlined text-lg">celebration</span>
+                        100% Free for Ghanaian SMEs
                     </div>
-                    <!-- Growth Plan (Highlighted) -->
-                    <div class="relative flex flex-col p-6 rounded-2xl border border-accent-gold bg-primary text-white h-full transform md:-translate-y-4 shadow-xl">
-                        <div class="absolute top-0 right-0 left-0 -mt-3 flex justify-center">
-                            <span class="bg-accent-gold text-primary text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Most Popular</span>
-                        </div>
-                        <h3 class="text-white text-xl font-bold mb-2 mt-2">Growth</h3>
-                        <div class="mb-4">
-                            <span class="text-4xl font-black text-accent-gold">GH₵ 350</span>
-                            <span class="text-white/60 text-sm">/month</span>
-                        </div>
-                        <p class="text-white/70 text-sm mb-6">For growing businesses needing deeper insights.</p>
-                        <button class="w-full py-2.5 rounded-lg bg-accent-gold text-primary font-bold text-sm mb-6 hover:bg-[#c29f2d] transition-colors">Choose Growth</button>
-                        <ul class="flex flex-col gap-3 text-sm text-white/90">
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-accent-gold text-lg">check</span> Up to 10,000 customers</li>
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-accent-gold text-lg">check</span> Advanced Segmentation</li>
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-accent-gold text-lg">check</span> Sales Forecasting</li>
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-accent-gold text-lg">check</span> SMS Integration (500 credits)</li>
-                        </ul>
+                    
+                    <h2 class="text-primary text-3xl md:text-4xl font-bold mb-4">Ready to Grow Your Business?</h2>
+                    <p class="text-[#536e93] max-w-2xl mx-auto mb-8 text-lg">
+                        Customer 360 is completely free for small and medium enterprises in Ghana. 
+                        No credit card required. No hidden fees. Just powerful analytics to help your business thrive.
+                    </p>
+                    
+                    <!-- CTA Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center mb-12">
+                        <a href="register.php" class="inline-flex items-center justify-center gap-2 px-8 py-4 bg-accent-gold hover:bg-[#c29f2d] text-primary font-bold rounded-lg shadow-lg transition-all text-lg">
+                            <span>Create Free Account</span>
+                            <span class="material-symbols-outlined">arrow_forward</span>
+                        </a>
+                        <a href="signin.php" class="inline-flex items-center justify-center gap-2 px-8 py-4 border-2 border-primary text-primary hover:bg-primary/5 font-bold rounded-lg transition-all text-lg">
+                            <span>Sign In</span>
+                        </a>
                     </div>
-                    <!-- Pro Plan -->
-                    <div class="flex flex-col p-6 rounded-2xl border border-[#d1dae5] bg-white h-full hover:border-primary/30 transition-colors">
-                        <h3 class="text-primary text-xl font-bold mb-2">Pro</h3>
-                        <div class="mb-4">
-                            <span class="text-4xl font-black text-primary">GH₵ 700</span>
-                            <span class="text-[#536e93] text-sm">/month</span>
+                    
+                    <!-- What's Included -->
+                    <div class="bg-[#f8fafb] rounded-2xl p-8 border border-[#e8ecf2]">
+                        <h3 class="text-primary font-bold text-lg mb-6">Everything You Need, Completely Free</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+                            <div class="flex flex-col items-center gap-2">
+                                <span class="material-symbols-outlined text-accent-emerald text-3xl">groups</span>
+                                <span class="text-sm text-[#3b4b5c] font-medium">Unlimited Customers</span>
+                            </div>
+                            <div class="flex flex-col items-center gap-2">
+                                <span class="material-symbols-outlined text-accent-emerald text-3xl">analytics</span>
+                                <span class="text-sm text-[#3b4b5c] font-medium">Full Analytics</span>
+                            </div>
+                            <div class="flex flex-col items-center gap-2">
+                                <span class="material-symbols-outlined text-accent-emerald text-3xl">download</span>
+                                <span class="text-sm text-[#3b4b5c] font-medium">PDF Reports</span>
+                            </div>
+                            <div class="flex flex-col items-center gap-2">
+                                <span class="material-symbols-outlined text-accent-emerald text-3xl">support_agent</span>
+                                <span class="text-sm text-[#3b4b5c] font-medium">Email Support</span>
+                            </div>
                         </div>
-                        <p class="text-[#536e93] text-sm mb-6">Full suite for established SMEs with multiple branches.</p>
-                        <button class="w-full py-2.5 rounded-lg border border-primary text-primary font-bold text-sm mb-6 hover:bg-primary/5 transition-colors">Choose Pro</button>
-                        <ul class="flex flex-col gap-3 text-sm text-[#3b4b5c]">
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-green-500 text-lg">check</span> Unlimited customers</li>
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-green-500 text-lg">check</span> All Growth Features</li>
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-green-500 text-lg">check</span> Multi-user Access</li>
-                            <li class="flex items-center gap-2"><span class="material-symbols-outlined text-green-500 text-lg">check</span> Priority Support</li>
-                        </ul>
                     </div>
                 </div>
             </div>
@@ -422,7 +411,7 @@ $contactPhone = "+233 20 000 0000";
                         <h4 class="font-bold mb-4">Product</h4>
                         <ul class="flex flex-col gap-2 text-sm text-white/60">
                             <li><a class="hover:text-white" href="#features">Features</a></li>
-                            <li><a class="hover:text-white" href="#pricing">Pricing</a></li>
+                            <li><a class="hover:text-white" href="#how-it-works">How It Works</a></li>
                             <li><a class="hover:text-white" href="#">Case Studies</a></li>
                         </ul>
                     </div>

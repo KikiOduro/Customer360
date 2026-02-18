@@ -113,6 +113,10 @@ function handleRegister() {
         );
     }
     
+    // Log the backend URL for debugging
+    error_log("Backend URL: " . BACKEND_API_URL);
+    error_log("Attempting to register user: " . $email);
+    
     // Try Python backend first
     $result = apiRequest('/auth/register', 'POST', [
         'email' => $email,
@@ -121,6 +125,7 @@ function handleRegister() {
     ]);
     
     // Log for debugging
+    error_log("Register API call to: " . BACKEND_API_URL . "/auth/register");
     error_log("Register result: " . json_encode($result));
     
     if ($result['success']) {
