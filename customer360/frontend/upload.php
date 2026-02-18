@@ -9,7 +9,8 @@ if (!isset($_SESSION['user_id'])) {
 
 // User data from session
 $userName = $_SESSION['user_name'] ?? 'User';
-$userInitials = strtoupper(substr($userName, 0, 1) . (strpos($userName, ' ') ? substr($userName, strpos($userName, ' ') + 1, 1) : ''));
+$companyName = $_SESSION['company_name'] ?? 'My Business';
+$userInitials = strtoupper(substr($userName, 0, 1));
 $currentYear = date('Y');
 $currentPage = 'upload';
 ?>
@@ -18,7 +19,7 @@ $currentPage = 'upload';
 <head>
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Customer 360 - Data Upload</title>
+    <title>Upload Data - Customer 360</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -28,323 +29,278 @@ $currentPage = 'upload';
             theme: {
                 extend: {
                     colors: {
-                        primary: "#0b203c",
-                        secondary: "#d4a017",
+                        "primary": "#0b203c",
+                        "primary-hover": "#153055",
                         "background-light": "#f6f7f8",
                         "background-dark": "#121820",
-                        "surface-light": "#ffffff",
-                        "surface-dark": "#1a222e",
+                        "accent": "#e8b031",
                     },
                     fontFamily: {
-                        display: ["Inter", "sans-serif"],
-                        body: ["Inter", "sans-serif"],
-                    },
-                    borderRadius: {
-                        DEFAULT: "0.5rem",
-                        lg: "0.75rem",
-                        xl: "1rem",
-                        full: "9999px"
+                        "display": ["Inter", "sans-serif"],
+                        "body": ["Inter", "sans-serif"]
                     },
                 },
             },
         }
     </script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        aside::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); }
+    </style>
 </head>
-<body class="bg-background-light dark:bg-background-dark font-display text-primary dark:text-white min-h-screen flex flex-col">
-    <!-- Top Navigation -->
-    <header class="sticky top-0 z-50 bg-surface-light dark:bg-surface-dark border-b border-gray-200 dark:border-gray-800">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between h-16">
-                <!-- Logo & Brand -->
-                <div class="flex items-center gap-3">
-                    <a href="dashboard.php" class="flex items-center gap-3">
-                        <div class="bg-primary text-white p-1.5 rounded-lg">
-                            <span class="material-symbols-outlined text-2xl">analytics</span>
-                        </div>
-                        <span class="font-bold text-xl tracking-tight text-primary dark:text-white">Customer 360</span>
-                    </a>
-                </div>
-                
-                <!-- Navigation Links -->
-                <nav class="hidden md:flex items-center space-x-8">
-                    <a class="text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors" href="dashboard.php">Dashboard</a>
-                    <a class="text-primary dark:text-white bg-primary/5 dark:bg-white/10 px-3 py-2 rounded-md text-sm font-semibold" href="upload.php">Upload Data</a>
-                    <a class="text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors" href="analytics.php">Analytics</a>
-                    <a class="text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors" href="reports.php">Reports</a>
-                </nav>
-                
-                <!-- Actions -->
-                <div class="flex items-center gap-3">
-                    <button class="p-2 text-gray-500 hover:text-primary dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
-                        <span class="material-symbols-outlined">notifications</span>
-                    </button>
-                    <button class="p-2 text-gray-500 hover:text-primary dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
-                        <span class="material-symbols-outlined">help</span>
-                    </button>
-                    
-                    <!-- User Menu -->
-                    <div class="relative" id="userMenuContainer">
-                        <button onclick="toggleUserMenu()" class="h-9 w-9 rounded-full bg-gradient-to-tr from-primary to-blue-600 flex items-center justify-center text-white font-bold text-sm ring-2 ring-white dark:ring-gray-800 ml-2 hover:ring-secondary transition-all">
-                            <?php echo htmlspecialchars($userInitials); ?>
-                        </button>
-                        <div id="userDropdown" class="hidden absolute right-0 mt-2 w-48 bg-white dark:bg-surface-dark rounded-lg shadow-lg border border-gray-100 dark:border-gray-700 py-1 z-50">
-                            <div class="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
-                                <p class="text-sm font-medium text-primary dark:text-white"><?php echo htmlspecialchars($userName); ?></p>
-                            </div>
-                            <a href="help.php" class="block px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800">Help & Support</a>
-                            <a href="api/auth.php?action=logout" class="block px-4 py-2 text-sm text-red-600 hover:bg-gray-50 dark:hover:bg-gray-800">Sign Out</a>
-                        </div>
-                    </div>
-                    
-                    <!-- Mobile Menu Button -->
-                    <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-gray-500 hover:text-primary dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/10 rounded-full transition-colors">
-                        <span class="material-symbols-outlined">menu</span>
-                    </button>
-                </div>
-            </div>
-        </div>
+<body class="font-display bg-background-light text-slate-900 antialiased">
+    <div class="flex h-screen w-full overflow-hidden">
         
-        <!-- Mobile Navigation -->
-        <div id="mobileMenu" class="hidden md:hidden border-t border-gray-200 dark:border-gray-800 bg-surface-light dark:bg-surface-dark">
-            <nav class="px-4 py-3 space-y-2">
-                <a class="block text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors" href="dashboard.php">Dashboard</a>
-                <a class="block text-primary dark:text-white bg-primary/5 dark:bg-white/10 px-3 py-2 rounded-md text-sm font-semibold" href="upload.php">Upload Data</a>
-                <a class="block text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors" href="analytics.php">Analytics</a>
-                <a class="block text-gray-500 dark:text-gray-400 hover:text-primary dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors" href="reports.php">Reports</a>
-            </nav>
-        </div>
-    </header>
-    
-    <!-- Main Content -->
-    <main class="flex-grow py-8 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto w-full">
-        <!-- Header Section -->
-        <div class="mb-10 text-center md:text-left">
-            <h1 class="text-3xl md:text-4xl font-extrabold text-primary dark:text-white tracking-tight mb-3">Data Upload</h1>
-            <p class="text-lg text-gray-500 dark:text-gray-400 max-w-3xl">
-                Securely import your customer and sales data to unlock 360-degree insights. We support CSV and Excel formats to help you get started quickly.
-            </p>
-        </div>
-        
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left Column: Upload Area (Span 2) -->
-            <div class="lg:col-span-2 space-y-6">
-                <!-- Drag & Drop Zone -->
-                <div id="dropZone" class="bg-surface-light dark:bg-surface-dark rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-700 hover:border-secondary dark:hover:border-secondary transition-colors group relative overflow-hidden cursor-pointer">
-                    <div class="absolute inset-0 bg-gradient-to-br from-transparent to-primary/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
-                    <div class="flex flex-col items-center justify-center py-16 px-6 text-center">
-                        <div class="h-20 w-20 bg-primary/5 dark:bg-white/5 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                            <span class="material-symbols-outlined text-5xl text-primary dark:text-white">cloud_upload</span>
-                        </div>
-                        <h3 class="text-xl font-bold text-primary dark:text-white mb-2">Drag & drop your files here</h3>
-                        <p class="text-gray-500 dark:text-gray-400 mb-8 max-w-sm">
-                            Or <button type="button" onclick="document.getElementById('fileInput').click()" class="text-secondary font-semibold hover:underline focus:outline-none">browse files</button> from your computer to get started.
-                        </p>
-                        <div class="flex flex-wrap justify-center gap-4 text-xs text-gray-400 dark:text-gray-500 font-medium">
-                            <span class="flex items-center gap-1 bg-gray-100 dark:bg-white/5 px-3 py-1 rounded-full">
-                                <span class="material-symbols-outlined text-sm">csv</span> CSV
-                            </span>
-                            <span class="flex items-center gap-1 bg-gray-100 dark:bg-white/5 px-3 py-1 rounded-full">
-                                <span class="material-symbols-outlined text-sm">table_view</span> XLSX
-                            </span>
-                            <span class="flex items-center gap-1 bg-gray-100 dark:bg-white/5 px-3 py-1 rounded-full">
-                                <span class="material-symbols-outlined text-sm">hard_drive</span> Max 25MB
-                            </span>
-                        </div>
-                    </div>
-                    <input type="file" id="fileInput" class="hidden" accept=".csv,.xlsx,.xls" multiple />
+        <!-- Sidebar -->
+        <aside class="flex w-72 flex-col bg-primary text-white h-full border-r border-slate-800 hidden md:flex">
+            <div class="flex h-20 items-center gap-3 px-6 border-b border-slate-700/50">
+                <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white">
+                    <span class="material-symbols-outlined">analytics</span>
                 </div>
-                
-                <!-- Active Uploads List -->
-                <div id="uploadsList" class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 hidden">
-                    <h4 class="text-sm font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-4">Files to Upload</h4>
-                    <div id="filesContainer" class="space-y-4">
-                        <!-- File items will be dynamically added here -->
-                    </div>
-                </div>
-                
-                <!-- Action Bar -->
-                <div id="actionBar" class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-gray-200 dark:border-gray-800 hidden">
-                    <label class="flex items-center cursor-pointer select-none group">
-                        <div class="relative">
-                            <input id="saveConfig" class="sr-only peer" type="checkbox"/>
-                            <div class="block bg-gray-300 dark:bg-gray-600 w-10 h-6 rounded-full peer-checked:bg-secondary transition-colors"></div>
-                            <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition transform peer-checked:translate-x-4"></div>
-                        </div>
-                        <div class="ml-3 text-sm font-medium text-primary dark:text-white group-hover:text-secondary transition-colors">
-                            Save this run configuration
-                        </div>
-                    </label>
-                    <div class="flex items-center gap-4 w-full sm:w-auto">
-                        <div class="flex items-center text-xs text-gray-500 dark:text-gray-400 gap-1 hidden md:flex">
-                            <span class="material-symbols-outlined text-sm text-green-600">lock</span>
-                            Data is encrypted & secure
-                        </div>
-                        <button id="uploadBtn" onclick="uploadFiles()" class="flex-1 sm:flex-none bg-primary hover:bg-primary/90 text-white px-8 py-3 rounded-lg font-bold shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-                            <span>Upload & Analyze</span>
-                            <span class="material-symbols-outlined text-sm">arrow_forward</span>
-                        </button>
-                    </div>
+                <div>
+                    <h1 class="text-lg font-bold leading-tight tracking-tight">Customer 360</h1>
+                    <p class="text-slate-400 text-xs font-normal">SME Intelligence</p>
                 </div>
             </div>
             
-            <!-- Right Column: Requirements (Span 1) -->
-            <div class="space-y-6">
-                <!-- Requirements Card -->
-                <div class="bg-surface-light dark:bg-surface-dark rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 sticky top-24">
-                    <div class="flex items-center gap-2 mb-6 text-primary dark:text-white">
-                        <span class="material-symbols-outlined text-secondary">verified_user</span>
-                        <h3 class="font-bold text-lg">Requirements</h3>
+            <nav class="flex-1 overflow-y-auto px-4 py-6 space-y-2">
+                <a class="flex items-center gap-3 rounded-lg <?php echo $currentPage === 'dashboard' ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'; ?> px-4 py-3 text-sm font-medium transition-colors" href="dashboard.php">
+                    <span class="material-symbols-outlined">dashboard</span>
+                    Dashboard
+                </a>
+                <a class="flex items-center gap-3 rounded-lg <?php echo $currentPage === 'upload' ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'; ?> px-4 py-3 text-sm font-medium transition-colors" href="upload.php">
+                    <span class="material-symbols-outlined">upload_file</span>
+                    Upload Data
+                </a>
+                <a class="flex items-center gap-3 rounded-lg <?php echo $currentPage === 'analytics' ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'; ?> px-4 py-3 text-sm font-medium transition-colors" href="analytics.php">
+                    <span class="material-symbols-outlined">analytics</span>
+                    Analytics
+                </a>
+                <a class="flex items-center gap-3 rounded-lg <?php echo $currentPage === 'reports' ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'; ?> px-4 py-3 text-sm font-medium transition-colors" href="reports.php">
+                    <span class="material-symbols-outlined">bar_chart</span>
+                    Reports
+                </a>
+                
+                <div class="my-4 border-t border-slate-700/50"></div>
+                
+                <a class="flex items-center gap-3 rounded-lg <?php echo $currentPage === 'help' ? 'bg-white/10 text-white' : 'text-slate-300 hover:bg-white/5 hover:text-white'; ?> px-4 py-3 text-sm font-medium transition-colors" href="help.php">
+                    <span class="material-symbols-outlined">help</span>
+                    Help & Support
+                </a>
+            </nav>
+            
+            <div class="border-t border-slate-700/50 p-4">
+                <div class="flex items-center gap-3 rounded-lg p-2 hover:bg-white/5 cursor-pointer transition-colors group" onclick="toggleUserMenu()">
+                    <div class="h-10 w-10 rounded-full bg-slate-600 flex items-center justify-center text-white font-semibold text-sm">
+                        <?php echo $userInitials; ?>
                     </div>
-                    <ul class="space-y-5">
-                        <li class="flex gap-3">
-                            <div class="shrink-0 h-6 w-6 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-primary dark:text-blue-300">
-                                <span class="material-symbols-outlined text-sm font-bold">folder_open</span>
-                            </div>
-                            <div>
-                                <h5 class="text-sm font-bold text-primary dark:text-white">Supported Formats</h5>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">We strictly support .CSV and .XLSX files to ensure data integrity.</p>
-                            </div>
-                        </li>
-                        <li class="flex gap-3">
-                            <div class="shrink-0 h-6 w-6 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-primary dark:text-blue-300">
-                                <span class="material-symbols-outlined text-sm font-bold">sd_storage</span>
-                            </div>
-                            <div>
-                                <h5 class="text-sm font-bold text-primary dark:text-white">Max File Size</h5>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Up to 25MB per file. For larger datasets, please contact support.</p>
-                            </div>
-                        </li>
-                        <li class="flex gap-3">
-                            <div class="shrink-0 h-6 w-6 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-primary dark:text-blue-300">
-                                <span class="material-symbols-outlined text-sm font-bold">view_column</span>
-                            </div>
-                            <div>
-                                <h5 class="text-sm font-bold text-primary dark:text-white">Column Headers</h5>
-                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Ensure your first row contains the exact headers as defined in the template.</p>
-                            </div>
-                        </li>
-                    </ul>
-                    <div class="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800">
-                        <h5 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Resources</h5>
-                        <a class="group flex items-center justify-between p-3 rounded-lg bg-background-light dark:bg-background-dark hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-700" href="templates/customer_template.csv" download>
-                            <div class="flex items-center gap-3">
-                                <span class="material-symbols-outlined text-green-600">download</span>
-                                <div class="text-sm font-medium text-primary dark:text-white">Download Template</div>
-                            </div>
-                            <span class="material-symbols-outlined text-gray-400 text-sm group-hover:translate-x-1 transition-transform">chevron_right</span>
-                        </a>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-medium text-white truncate"><?php echo htmlspecialchars($userName); ?></p>
+                        <p class="text-xs text-slate-400 truncate"><?php echo htmlspecialchars($companyName); ?></p>
+                    </div>
+                    <span class="material-symbols-outlined text-slate-400 group-hover:text-white transition-colors text-[20px]">expand_more</span>
+                </div>
+                
+                <div id="userMenu" class="hidden mt-2 py-2 bg-slate-800 rounded-lg shadow-lg">
+                    <a href="help.php" class="flex items-center gap-2 px-4 py-2 text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors">
+                        <span class="material-symbols-outlined text-[18px]">person</span>
+                        My Profile
+                    </a>
+                    <a href="api/auth.php?action=logout" class="flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-slate-700 hover:text-red-300 transition-colors">
+                        <span class="material-symbols-outlined text-[18px]">logout</span>
+                        Sign Out
+                    </a>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex flex-1 flex-col overflow-y-auto bg-background-light relative">
+            
+            <header class="sticky top-0 z-10 flex h-20 items-center justify-between border-b border-slate-200 bg-white px-6 sm:px-10">
+                <div class="flex items-center gap-4">
+                    <button class="md:hidden text-slate-500 hover:text-slate-700" onclick="toggleMobileMenu()">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <div class="hidden sm:flex items-center text-sm text-slate-500">
+                        <a class="hover:text-primary transition-colors" href="dashboard.php">Home</a>
+                        <span class="mx-2 text-slate-300">/</span>
+                        <span class="font-medium text-primary">Upload Data</span>
                     </div>
                 </div>
                 
-                <!-- Help Card -->
-                <div class="bg-primary rounded-xl p-6 text-white relative overflow-hidden">
-                    <!-- Abstract pattern background -->
-                    <div class="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
-                    <div class="absolute bottom-0 left-0 w-24 h-24 bg-secondary/20 rounded-full blur-xl"></div>
-                    <div class="relative z-10">
-                        <div class="flex items-center gap-2 mb-3">
-                            <span class="material-symbols-outlined text-secondary">lightbulb</span>
-                            <h4 class="font-bold">Need assistance?</h4>
+                <div class="flex items-center gap-4">
+                    <div class="relative hidden sm:block">
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-[20px]">search</span>
+                        <input class="h-10 w-64 rounded-full border border-slate-200 bg-slate-50 pl-10 pr-4 text-sm text-slate-700 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Search data..." type="text"/>
+                    </div>
+                    <button class="relative rounded-full p-2 text-slate-500 hover:bg-slate-100 transition-colors">
+                        <span class="material-symbols-outlined">notifications</span>
+                        <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span>
+                    </button>
+                </div>
+            </header>
+
+            <div class="p-6 sm:p-10 max-w-7xl mx-auto w-full">
+                <div class="mb-8">
+                    <h1 class="text-3xl font-bold text-primary tracking-tight">Data Upload</h1>
+                    <p class="text-slate-500 mt-2">Securely import your customer and sales data to unlock 360-degree insights.</p>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 space-y-6">
+                        <div id="dropZone" class="bg-white rounded-xl border-2 border-dashed border-slate-300 hover:border-accent transition-colors group relative overflow-hidden cursor-pointer shadow-sm">
+                            <div class="flex flex-col items-center justify-center py-16 px-6 text-center">
+                                <div class="h-20 w-20 bg-primary/5 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
+                                    <span class="material-symbols-outlined text-5xl text-primary">cloud_upload</span>
+                                </div>
+                                <h3 class="text-xl font-bold text-primary mb-2">Drag & drop your files here</h3>
+                                <p class="text-slate-500 mb-8 max-w-sm">
+                                    Or <button type="button" onclick="document.getElementById('fileInput').click()" class="text-accent font-semibold hover:underline focus:outline-none">browse files</button> from your computer.
+                                </p>
+                                <div class="flex flex-wrap justify-center gap-4 text-xs text-slate-400 font-medium">
+                                    <span class="flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full">CSV</span>
+                                    <span class="flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full">XLSX</span>
+                                    <span class="flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full">Max 25MB</span>
+                                </div>
+                            </div>
+                            <input type="file" id="fileInput" class="hidden" accept=".csv,.xlsx,.xls" multiple />
                         </div>
-                        <p class="text-sm text-blue-100 mb-4 leading-relaxed">
-                            Our support team is available to help verify your data structure before uploading.
-                        </p>
-                        <button onclick="window.location.href='help.php'" class="text-xs font-bold bg-white text-primary px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors w-full sm:w-auto">
-                            Get Help
-                        </button>
+                        
+                        <div id="uploadsList" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hidden">
+                            <h4 class="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4">Files to Upload</h4>
+                            <div id="filesContainer" class="space-y-4"></div>
+                        </div>
+                        
+                        <div id="actionBar" class="flex flex-col sm:flex-row items-center justify-between gap-4 pt-4 border-t border-slate-200 hidden">
+                            <div class="flex items-center text-xs text-slate-500 gap-1">
+                                <span class="material-symbols-outlined text-sm text-green-600">lock</span>
+                                Data is encrypted & secure
+                            </div>
+                            <button id="uploadBtn" onclick="uploadFiles()" class="bg-primary hover:bg-primary-hover text-white px-8 py-3 rounded-lg font-bold shadow-lg transition-all flex items-center gap-2 disabled:opacity-50">
+                                <span>Upload & Analyze</span>
+                                <span class="material-symbols-outlined text-sm">arrow_forward</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-6">
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                            <div class="flex items-center gap-2 mb-6 text-primary">
+                                <span class="material-symbols-outlined text-accent">verified_user</span>
+                                <h3 class="font-bold text-lg">Requirements</h3>
+                            </div>
+                            <ul class="space-y-5">
+                                <li class="flex gap-3">
+                                    <div class="shrink-0 h-6 w-6 rounded-full bg-blue-50 flex items-center justify-center text-primary">
+                                        <span class="material-symbols-outlined text-sm">folder_open</span>
+                                    </div>
+                                    <div>
+                                        <h5 class="text-sm font-bold text-primary">Supported Formats</h5>
+                                        <p class="text-xs text-slate-500 mt-0.5">CSV and XLSX files only.</p>
+                                    </div>
+                                </li>
+                                <li class="flex gap-3">
+                                    <div class="shrink-0 h-6 w-6 rounded-full bg-blue-50 flex items-center justify-center text-primary">
+                                        <span class="material-symbols-outlined text-sm">sd_storage</span>
+                                    </div>
+                                    <div>
+                                        <h5 class="text-sm font-bold text-primary">Max File Size</h5>
+                                        <p class="text-xs text-slate-500 mt-0.5">Up to 25MB per file.</p>
+                                    </div>
+                                </li>
+                            </ul>
+                            <div class="mt-8 pt-6 border-t border-slate-100">
+                                <a class="group flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors" href="templates/customer_template.csv" download>
+                                    <div class="flex items-center gap-3">
+                                        <span class="material-symbols-outlined text-green-600">download</span>
+                                        <div class="text-sm font-medium text-primary">Download Template</div>
+                                    </div>
+                                    <span class="material-symbols-outlined text-slate-400 text-sm">chevron_right</span>
+                                </a>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-primary rounded-xl p-6 text-white relative overflow-hidden">
+                            <div class="absolute -top-10 -right-10 w-32 h-32 bg-white/10 rounded-full blur-2xl"></div>
+                            <div class="relative z-10">
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="material-symbols-outlined text-accent">lightbulb</span>
+                                    <h4 class="font-bold">Need assistance?</h4>
+                                </div>
+                                <p class="text-sm text-blue-100 mb-4">Our support team can help verify your data structure.</p>
+                                <a href="help.php" class="inline-block text-xs font-bold bg-white text-primary px-4 py-2 rounded-lg hover:bg-slate-50 transition-colors">Get Help</a>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </main>
+        </main>
+    </div>
     
-    <footer class="mt-auto border-t border-gray-200 dark:border-gray-800 bg-surface-light dark:bg-surface-dark py-6">
-        <div class="max-w-7xl mx-auto px-4 text-center text-sm text-gray-500 dark:text-gray-400">
-            © <?php echo $currentYear; ?> Customer 360 Ghana. All rights reserved. | <a class="hover:text-primary dark:hover:text-white" href="#">Privacy Policy</a>
+    <div id="mobileMenuOverlay" class="fixed inset-0 bg-black/50 z-40 hidden md:hidden" onclick="toggleMobileMenu()"></div>
+    
+    <aside id="mobileSidebar" class="fixed top-0 left-0 w-72 h-full bg-primary text-white z-50 transform -translate-x-full transition-transform md:hidden">
+        <div class="flex h-20 items-center gap-3 px-6 border-b border-slate-700/50">
+            <div class="flex h-10 w-10 items-center justify-center rounded-lg bg-white/10 text-white">
+                <span class="material-symbols-outlined">analytics</span>
+            </div>
+            <div class="flex-1">
+                <h1 class="text-lg font-bold">Customer 360</h1>
+                <p class="text-slate-400 text-xs">SME Intelligence</p>
+            </div>
+            <button class="text-slate-400 hover:text-white" onclick="toggleMobileMenu()">
+                <span class="material-symbols-outlined">close</span>
+            </button>
         </div>
-    </footer>
+        <nav class="px-4 py-6 space-y-2">
+            <a class="flex items-center gap-3 rounded-lg text-slate-300 hover:bg-white/5 px-4 py-3 text-sm font-medium" href="dashboard.php"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
+            <a class="flex items-center gap-3 rounded-lg bg-white/10 text-white px-4 py-3 text-sm font-medium" href="upload.php"><span class="material-symbols-outlined">upload_file</span>Upload Data</a>
+            <a class="flex items-center gap-3 rounded-lg text-slate-300 hover:bg-white/5 px-4 py-3 text-sm font-medium" href="analytics.php"><span class="material-symbols-outlined">analytics</span>Analytics</a>
+            <a class="flex items-center gap-3 rounded-lg text-slate-300 hover:bg-white/5 px-4 py-3 text-sm font-medium" href="reports.php"><span class="material-symbols-outlined">bar_chart</span>Reports</a>
+            <div class="my-4 border-t border-slate-700/50"></div>
+            <a class="flex items-center gap-3 rounded-lg text-slate-300 hover:bg-white/5 px-4 py-3 text-sm font-medium" href="help.php"><span class="material-symbols-outlined">help</span>Help & Support</a>
+            <a class="flex items-center gap-3 rounded-lg text-red-400 hover:bg-white/5 px-4 py-3 text-sm font-medium" href="api/auth.php?action=logout"><span class="material-symbols-outlined">logout</span>Sign Out</a>
+        </nav>
+    </aside>
     
     <script>
-        // File storage
         let filesToUpload = [];
         
-        // Toggle user menu
         function toggleUserMenu() {
-            const dropdown = document.getElementById('userDropdown');
-            dropdown.classList.toggle('hidden');
+            document.getElementById('userMenu').classList.toggle('hidden');
         }
         
-        // Toggle mobile menu
         function toggleMobileMenu() {
-            const mobileMenu = document.getElementById('mobileMenu');
-            mobileMenu.classList.toggle('hidden');
+            document.getElementById('mobileSidebar').classList.toggle('-translate-x-full');
+            document.getElementById('mobileMenuOverlay').classList.toggle('hidden');
         }
         
-        // Close dropdowns when clicking outside
-        document.addEventListener('click', function(e) {
-            const userMenuContainer = document.getElementById('userMenuContainer');
-            if (!userMenuContainer.contains(e.target)) {
-                document.getElementById('userDropdown').classList.add('hidden');
-            }
-        });
-        
-        // Drag and drop handling
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
         
         dropZone.addEventListener('click', () => fileInput.click());
-        
-        dropZone.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            dropZone.classList.add('border-secondary', 'bg-secondary/5');
-        });
-        
-        dropZone.addEventListener('dragleave', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-secondary', 'bg-secondary/5');
-        });
-        
-        dropZone.addEventListener('drop', (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('border-secondary', 'bg-secondary/5');
-            const files = Array.from(e.dataTransfer.files);
-            handleFiles(files);
-        });
-        
-        fileInput.addEventListener('change', (e) => {
-            const files = Array.from(e.target.files);
-            handleFiles(files);
-        });
+        dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-accent', 'bg-accent/5'); });
+        dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('border-accent', 'bg-accent/5'); });
+        dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('border-accent', 'bg-accent/5'); handleFiles(Array.from(e.dataTransfer.files)); });
+        fileInput.addEventListener('change', (e) => handleFiles(Array.from(e.target.files)));
         
         function handleFiles(files) {
             const validExtensions = ['.csv', '.xlsx', '.xls'];
-            const maxSize = 25 * 1024 * 1024; // 25MB
+            const maxSize = 25 * 1024 * 1024;
             
             files.forEach(file => {
                 const ext = '.' + file.name.split('.').pop().toLowerCase();
-                
-                if (!validExtensions.includes(ext)) {
-                    alert(`Invalid file type: ${file.name}. Please upload CSV or Excel files only.`);
-                    return;
-                }
-                
-                if (file.size > maxSize) {
-                    alert(`File too large: ${file.name}. Maximum file size is 25MB.`);
-                    return;
-                }
-                
-                // Check for duplicates
+                if (!validExtensions.includes(ext)) { alert(`Invalid file type: ${file.name}`); return; }
+                if (file.size > maxSize) { alert(`File too large: ${file.name}`); return; }
                 if (!filesToUpload.find(f => f.name === file.name)) {
-                    filesToUpload.push({
-                        file: file,
-                        name: file.name,
-                        size: file.size,
-                        status: 'ready',
-                        progress: 0
-                    });
+                    filesToUpload.push({ file, name: file.name, size: file.size, status: 'ready', progress: 0 });
                 }
             });
-            
             renderFilesList();
         }
         
@@ -353,179 +309,59 @@ $currentPage = 'upload';
             const filesContainer = document.getElementById('filesContainer');
             const actionBar = document.getElementById('actionBar');
             
-            if (filesToUpload.length === 0) {
-                uploadsList.classList.add('hidden');
-                actionBar.classList.add('hidden');
-                return;
-            }
+            if (filesToUpload.length === 0) { uploadsList.classList.add('hidden'); actionBar.classList.add('hidden'); return; }
             
             uploadsList.classList.remove('hidden');
             actionBar.classList.remove('hidden');
             
-            filesContainer.innerHTML = filesToUpload.map((fileData, index) => {
-                const isExcel = fileData.name.endsWith('.xlsx') || fileData.name.endsWith('.xls');
-                const iconBg = isExcel ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30';
-                const iconColor = isExcel ? 'text-primary dark:text-blue-300' : 'text-green-700 dark:text-green-400';
-                const icon = isExcel ? 'table_chart' : 'description';
-                const sizeFormatted = formatFileSize(fileData.size);
-                
-                let statusHtml = '';
-                let progressWidth = '0%';
-                let statusText = '';
-                let opacity = '';
-                
-                if (fileData.status === 'ready') {
-                    statusHtml = `<span class="text-xs text-green-600 dark:text-green-400 font-bold flex items-center gap-1">
-                        <span class="material-symbols-outlined text-sm">check_circle</span> Ready
-                    </span>`;
-                    progressWidth = '100%';
-                    statusText = `${sizeFormatted} • Ready to upload`;
-                    opacity = 'opacity-60';
-                } else if (fileData.status === 'uploading') {
-                    statusHtml = `<span class="text-xs text-gray-500 dark:text-gray-400">${fileData.progress}%</span>`;
-                    progressWidth = `${fileData.progress}%`;
-                    statusText = `${formatFileSize(fileData.size * fileData.progress / 100)} of ${sizeFormatted}`;
-                } else if (fileData.status === 'completed') {
-                    statusHtml = `<span class="text-xs text-green-600 dark:text-green-400 font-bold flex items-center gap-1">
-                        <span class="material-symbols-outlined text-sm">check_circle</span> Completed
-                    </span>`;
-                    progressWidth = '100%';
-                    statusText = `${sizeFormatted} • Completed`;
-                    opacity = 'opacity-60';
-                } else if (fileData.status === 'error') {
-                    statusHtml = `<span class="text-xs text-red-600 dark:text-red-400 font-bold flex items-center gap-1">
-                        <span class="material-symbols-outlined text-sm">error</span> Error
-                    </span>`;
-                    progressWidth = '100%';
-                    statusText = fileData.errorMessage || 'Upload failed';
-                }
-                
-                const progressBg = fileData.status === 'uploading' ? 'bg-secondary' : 
-                    (fileData.status === 'error' ? 'bg-red-500' : 'bg-primary dark:bg-blue-500');
-                
-                return `
-                    <div class="flex items-center justify-between p-3 bg-background-light dark:bg-background-dark rounded-lg border border-gray-200 dark:border-gray-700 ${opacity}">
-                        <div class="flex items-center gap-4 flex-1">
-                            <div class="h-10 w-10 ${iconBg} ${iconColor} rounded-lg flex items-center justify-center">
-                                <span class="material-symbols-outlined">${icon}</span>
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <div class="flex justify-between mb-1">
-                                    <p class="text-sm font-medium text-primary dark:text-white truncate">${fileData.name}</p>
-                                    ${statusHtml}
-                                </div>
-                                <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
-                                    <div class="${progressBg} h-1.5 rounded-full transition-all duration-300" style="width: ${progressWidth}"></div>
-                                </div>
-                                <p class="text-xs text-gray-400 mt-1">${statusText}</p>
-                            </div>
+            filesContainer.innerHTML = filesToUpload.map((f, i) => `
+                <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <div class="flex items-center gap-4 flex-1">
+                        <div class="h-10 w-10 bg-green-100 text-green-700 rounded-lg flex items-center justify-center">
+                            <span class="material-symbols-outlined">description</span>
                         </div>
-                        <button onclick="removeFile(${index})" class="ml-4 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors">
-                            <span class="material-symbols-outlined text-lg">${fileData.status === 'completed' ? 'delete' : 'close'}</span>
-                        </button>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-primary truncate">${f.name}</p>
+                            <p class="text-xs text-slate-400">${formatFileSize(f.size)} • ${f.status === 'ready' ? 'Ready' : f.status}</p>
+                        </div>
                     </div>
-                `;
-            }).join('');
+                    <button onclick="removeFile(${i})" class="ml-4 p-1.5 text-slate-400 hover:text-red-500 rounded-md">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+            `).join('');
         }
         
         function formatFileSize(bytes) {
             if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const k = 1024, sizes = ['Bytes', 'KB', 'MB', 'GB'];
             const i = Math.floor(Math.log(bytes) / Math.log(k));
             return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
         
-        function removeFile(index) {
-            filesToUpload.splice(index, 1);
-            renderFilesList();
-        }
+        function removeFile(index) { filesToUpload.splice(index, 1); renderFilesList(); }
         
         function uploadFiles() {
-            if (filesToUpload.length === 0) {
-                alert('Please select at least one file to upload.');
-                return;
-            }
+            if (filesToUpload.length === 0) { alert('Please select a file.'); return; }
             
             const uploadBtn = document.getElementById('uploadBtn');
             uploadBtn.disabled = true;
             
-            // Upload each file to the API
-            let completedCount = 0;
+            const fileData = filesToUpload[0];
+            const formData = new FormData();
+            formData.append('file', fileData.file);
             
-            filesToUpload.forEach((fileData, index) => {
-                if (fileData.status !== 'ready') return;
-                
-                fileData.status = 'uploading';
-                fileData.progress = 0;
-                renderFilesList();
-                
-                // Create FormData for file upload
-                const formData = new FormData();
-                formData.append('file', fileData.file);
-                formData.append('save_config', document.getElementById('saveConfig').checked ? '1' : '0');
-                
-                // Use XMLHttpRequest for progress tracking
-                const xhr = new XMLHttpRequest();
-                
-                xhr.upload.onprogress = (e) => {
-                    if (e.lengthComputable) {
-                        fileData.progress = Math.round((e.loaded / e.total) * 100);
-                        renderFilesList();
-                    }
-                };
-                
-                xhr.onload = () => {
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            if (response.success) {
-                                fileData.status = 'completed';
-                                fileData.progress = 100;
-                                completedCount++;
-                                
-                                // Check if all files are uploaded
-                                const allCompleted = filesToUpload.every(f => f.status === 'completed' || f.status === 'ready');
-                                if (completedCount === filesToUpload.filter(f => f.status !== 'ready' || f.status === 'completed').length) {
-                                    uploadBtn.disabled = false;
-                                    
-                                    // Redirect to column mapping
-                                    setTimeout(() => {
-                                        window.location.href = 'column-mapping.php';
-                                    }, 500);
-                                }
-                            } else {
-                                fileData.status = 'error';
-                                fileData.errorMessage = response.error || 'Upload failed';
-                                alert(`Error uploading ${fileData.name}: ${response.error || 'Unknown error'}`);
-                                uploadBtn.disabled = false;
-                            }
-                        } catch (e) {
-                            fileData.status = 'error';
-                            fileData.errorMessage = 'Invalid server response';
-                            alert(`Error uploading ${fileData.name}: Invalid server response`);
-                            uploadBtn.disabled = false;
-                        }
+            fetch('api/upload.php', { method: 'POST', body: formData })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.success) {
+                        window.location.href = 'column-mapping.php';
                     } else {
-                        fileData.status = 'error';
-                        fileData.errorMessage = 'Server error';
-                        alert(`Error uploading ${fileData.name}: Server error (${xhr.status})`);
+                        alert(data.error || 'Upload failed');
                         uploadBtn.disabled = false;
                     }
-                    renderFilesList();
-                };
-                
-                xhr.onerror = () => {
-                    fileData.status = 'error';
-                    fileData.errorMessage = 'Network error';
-                    alert(`Error uploading ${fileData.name}: Network error`);
-                    uploadBtn.disabled = false;
-                    renderFilesList();
-                };
-                
-                xhr.open('POST', 'api/upload.php');
-                xhr.send(formData);
-            });
+                })
+                .catch(() => { alert('Network error'); uploadBtn.disabled = false; });
         }
     </script>
 </body>
