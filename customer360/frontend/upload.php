@@ -343,25 +343,35 @@ $currentPage = 'upload';
         
         function uploadFiles() {
             if (filesToUpload.length === 0) { alert('Please select a file.'); return; }
-            
+
             const uploadBtn = document.getElementById('uploadBtn');
+            const btnText   = uploadBtn.querySelector('span:first-child');
             uploadBtn.disabled = true;
-            
+            btnText.textContent = 'Uploading...';
+
             const fileData = filesToUpload[0];
             const formData = new FormData();
             formData.append('file', fileData.file);
-            
+
             fetch('api/upload.php', { method: 'POST', body: formData })
                 .then(res => res.json())
                 .then(data => {
                     if (data.success) {
-                        window.location.href = 'column-mapping.php';
+                        // Store job_id in sessionStorage so processing.php can access it
+                        sessionStorage.setItem('current_job_id', data.job_id);
+                        // Redirect to processing page which polls until the ML job finishes
+                        window.location.href = 'processing.php?job_id=' + encodeURIComponent(data.job_id);
                     } else {
-                        alert(data.error || 'Upload failed');
+                        alert(data.error || 'Upload failed. Please try again.');
                         uploadBtn.disabled = false;
+                        btnText.textContent = 'Upload & Analyze';
                     }
                 })
-                .catch(() => { alert('Network error'); uploadBtn.disabled = false; });
+                .catch(() => {
+                    alert('Network error. Please check your connection and try again.');
+                    uploadBtn.disabled = false;
+                    btnText.textContent = 'Upload & Analyze';
+                });
         }
     </script>
 </body>

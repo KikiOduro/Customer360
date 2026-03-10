@@ -1,9 +1,13 @@
 """
 Main analytics pipeline for Customer360.
 Orchestrates the full preprocessing -> RFM -> clustering -> segmentation flow.
+Includes outlier treatment, PCA, optimal-K selection, SHAP, and chart generation.
 """
 import json
 import os
+import warnings
+warnings.filterwarnings('ignore')
+
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
@@ -19,11 +23,25 @@ from .segmentation import analyze_clusters, get_cluster_sizes, get_segment_summa
 logger = logging.getLogger(__name__)
 
 
+# ── Optional heavy imports (fail gracefully if not installed) ──────────────────
+
+def _try_import(module_name):
+    try:
+        import importlib
+        return importlib.import_module(module_name)
+    except ImportError:
+        logger.warning(f"Optional dependency '{module_name}' not installed — skipping.")
+        return None
+
+
 class SegmentationPipeline:
     """
     Main pipeline class for customer segmentation analysis.
+    Implements the full universal notebook flow:
+      preprocessing → outlier treatment → RFM → normalise → PCA →
+      optimal-K (majority vote) → K-Means → segmentation → SHAP → charts → PDF
     """
-    
+
     def __init__(
         self,
         file_path: str,
@@ -33,176 +51,439 @@ class SegmentationPipeline:
         clustering_method: str = 'kmeans',
         include_comparison: bool = False
     ):
-        """
-        Initialize the segmentation pipeline.
-        
-        Args:
-            file_path: Path to input CSV file
-            output_dir: Directory to save outputs
-            job_id: Unique job identifier
-            column_mapping: Optional column name mapping
-            clustering_method: 'kmeans', 'gmm', or 'hierarchical'
-            include_comparison: Whether to run all methods for comparison
-        """
-        self.file_path = file_path
-        self.output_dir = Path(output_dir)
-        self.job_id = job_id
+        self.file_path      = file_path
+        self.output_dir     = Path(output_dir)
+        self.job_id         = job_id
         self.column_mapping = column_mapping
-        self.clustering_method = clustering_method
-        self.include_comparison = include_comparison
-        
-        # Create output directory
+        self.clustering_method   = clustering_method
+        self.include_comparison  = include_comparison
+
         self.output_dir.mkdir(parents=True, exist_ok=True)
-        
-        # Results storage
-        self.results = {}
-        self.df = None
-        self.rfm = None
-        self.labels = None
+
+        self.results  = {}
+        self.df       = None
+        self.rfm      = None
+        self.labels   = None
         self.segments = None
-    
+
+    # ── Public entry point ─────────────────────────────────────────────────────
+
     def run(self) -> Dict[str, Any]:
-        """
-        Execute the full segmentation pipeline.
-        
-        Returns:
-            Dictionary with all results and metadata
-        """
+        """Execute the full segmentation pipeline."""
         start_time = datetime.utcnow()
         logger.info(f"Starting segmentation pipeline for job {self.job_id}")
-        
+
         try:
-            # Step 1: Preprocess data
+            # 1. Preprocess
             logger.info("Step 1: Preprocessing data...")
             self.df, preprocessing_meta = preprocess_transaction_data(
-                self.file_path,
-                self.column_mapping
+                self.file_path, self.column_mapping
             )
             self.results['preprocessing'] = preprocessing_meta
-            
-            # Step 2: Compute RFM
-            logger.info("Step 2: Computing RFM metrics...")
+
+            # 2. Outlier treatment (IQR Winsorization on the amount column)
+            logger.info("Step 2: Outlier treatment...")
+            self.df, outlier_meta = self._winsorise(self.df)
+            self.results['outlier_treatment'] = outlier_meta
+
+            # 3. RFM
+            logger.info("Step 3: Computing RFM metrics...")
             self.rfm = compute_rfm(self.df)
-            rfm_stats = get_rfm_statistics(self.rfm)
-            rfm_distributions = get_rfm_distributions(self.rfm)
-            self.results['rfm_statistics'] = rfm_stats
-            self.results['rfm_distributions'] = rfm_distributions
-            
-            # Step 3: Normalize RFM features
-            logger.info("Step 3: Normalizing RFM features...")
-            rfm_normalized, scaler = normalize_rfm(self.rfm)
-            
-            # Get feature matrix for clustering
+            self.results['rfm_statistics']   = get_rfm_statistics(self.rfm)
+            self.results['rfm_distributions'] = get_rfm_distributions(self.rfm)
+
+            # 4. Normalise
+            logger.info("Step 4: Normalising RFM features...")
+            rfm_normalised, scaler = normalize_rfm(self.rfm)
             feature_cols = ['recency_normalized', 'frequency_normalized', 'monetary_normalized']
-            X = rfm_normalized[feature_cols].values
-            
-            # Step 4: Run clustering
-            logger.info(f"Step 4: Running {self.clustering_method} clustering...")
+            X = rfm_normalised[feature_cols].values
+
+            # 5. PCA (for visualisation only — clustering uses the 3 RFM features)
+            logger.info("Step 5: PCA projection...")
+            pca_result = self._run_pca(X)
+            self.results['pca'] = pca_result
+
+            # 6. Optimal K — majority vote across 4 metrics
+            logger.info("Step 6: Finding optimal K...")
+            optimal_k, k_meta = self._find_optimal_k_majority_vote(X)
+            self.results['optimal_k'] = k_meta
+
+            # 7. Clustering
+            logger.info(f"Step 7: Running {self.clustering_method} clustering (k={optimal_k})...")
             self.labels, clustering_info = run_clustering(
                 X,
                 method=self.clustering_method,
-                auto_k=True
+                n_clusters=optimal_k,
+                auto_k=False          # we already chose K above
             )
             self.results['clustering'] = clustering_info
-            
-            # Step 4b: Run comparison if requested
+
             if self.include_comparison:
-                logger.info("Step 4b: Running clustering comparison...")
-                comparison_results = run_comparison(X)
-                self.results['comparison'] = comparison_results
-            
-            # Step 5: Analyze segments
-            logger.info("Step 5: Analyzing segments...")
+                logger.info("Step 7b: Running clustering comparison...")
+                self.results['comparison'] = run_comparison(X, n_clusters=optimal_k)
+
+            # 8. Segmentation
+            logger.info("Step 8: Analysing segments...")
             self.segments = analyze_clusters(self.rfm, self.labels)
-            cluster_sizes = get_cluster_sizes(self.labels)
-            segment_summary = get_segment_summary(self.segments)
-            
-            self.results['segments'] = self.segments
-            self.results['cluster_sizes'] = cluster_sizes
-            self.results['segment_summary'] = segment_summary
-            
-            # Step 6: Prepare customer-level output
-            logger.info("Step 6: Preparing customer-level output...")
-            customer_output = self._prepare_customer_output(rfm_normalized)
-            
-            # Step 7: Save all outputs
-            logger.info("Step 7: Saving outputs...")
+            self.results['segments']        = self.segments
+            self.results['cluster_sizes']   = get_cluster_sizes(self.labels)
+            self.results['segment_summary'] = get_segment_summary(self.segments)
+
+            # 9. Customer-level output
+            logger.info("Step 9: Preparing customer output...")
+            customer_output = self._prepare_customer_output(rfm_normalised)
+
+            # 10. SHAP explainability
+            logger.info("Step 10: SHAP explainability...")
+            shap_meta = self._run_shap(X, self.labels, feature_cols)
+            self.results['shap'] = shap_meta
+
+            # 11. Charts
+            logger.info("Step 11: Generating charts...")
+            chart_paths = self._generate_charts(rfm_normalised, pca_result)
+            self.results['charts'] = chart_paths
+
+            # 12. Save outputs
+            logger.info("Step 12: Saving outputs...")
             self._save_outputs(customer_output)
-            
-            # Finalize results
+
             end_time = datetime.utcnow()
             self.results['meta'] = {
-                'job_id': self.job_id,
-                'status': 'completed',
-                'start_time': start_time.isoformat(),
-                'end_time': end_time.isoformat(),
-                'duration_seconds': (end_time - start_time).total_seconds(),
-                'num_customers': len(self.rfm),
-                'num_transactions': len(self.df),
-                'total_revenue': float(self.df['amount'].sum()),
-                'num_clusters': int(clustering_info['n_clusters']),
-                'silhouette_score': float(clustering_info.get('silhouette_score', 0)),
+                'job_id':            self.job_id,
+                'status':            'completed',
+                'start_time':        start_time.isoformat(),
+                'end_time':          end_time.isoformat(),
+                'duration_seconds':  (end_time - start_time).total_seconds(),
+                'num_customers':     len(self.rfm),
+                'num_transactions':  len(self.df),
+                'total_revenue':     float(self.df['amount'].sum()),
+                'num_clusters':      int(clustering_info['n_clusters']),
+                'silhouette_score':  float(clustering_info.get('silhouette_score', 0)),
                 'clustering_method': self.clustering_method
             }
-            
-            logger.info(f"Pipeline completed successfully in {self.results['meta']['duration_seconds']:.1f}s")
-            
+
+            logger.info(
+                f"Pipeline completed in {self.results['meta']['duration_seconds']:.1f}s"
+            )
             return self.results
-            
+
         except Exception as e:
-            logger.error(f"Pipeline failed: {str(e)}")
+            logger.error(f"Pipeline failed: {str(e)}", exc_info=True)
             self.results['meta'] = {
                 'job_id': self.job_id,
                 'status': 'failed',
-                'error': str(e)
+                'error':  str(e)
             }
             raise
-    
-    def _prepare_customer_output(self, rfm_normalized: pd.DataFrame) -> pd.DataFrame:
+
+    # ── Step implementations ───────────────────────────────────────────────────
+
+    def _winsorise(self, df: pd.DataFrame) -> tuple:
         """
-        Prepare customer-level output with all analysis results.
+        IQR Winsorization on the amount column.
+        Caps outliers at [Q1 - 1.5*IQR, Q3 + 1.5*IQR] instead of removing them.
         """
-        output = rfm_normalized[['customer_id', 'recency', 'frequency', 'monetary']].copy()
+        df = df.copy()
+        col = 'amount'
+
+        q1  = df[col].quantile(0.25)
+        q3  = df[col].quantile(0.75)
+        iqr = q3 - q1
+        lower = q1 - 1.5 * iqr
+        upper = q3 + 1.5 * iqr
+
+        n_below = (df[col] < lower).sum()
+        n_above = (df[col] > upper).sum()
+
+        df[col] = df[col].clip(lower=lower, upper=upper)
+
+        meta = {
+            'column':       col,
+            'q1':           float(q1),
+            'q3':           float(q3),
+            'iqr':          float(iqr),
+            'lower_bound':  float(lower),
+            'upper_bound':  float(upper),
+            'capped_below': int(n_below),
+            'capped_above': int(n_above)
+        }
+        logger.info(f"Winsorization: capped {n_below} low, {n_above} high outliers")
+        return df, meta
+
+    def _run_pca(self, X: np.ndarray) -> Dict[str, Any]:
+        """Reduce 3D RFM features to 2D for visualisation."""
+        try:
+            from sklearn.decomposition import PCA
+            pca = PCA(n_components=2, random_state=42)
+            X_pca = pca.fit_transform(X)
+            return {
+                'components':           X_pca.tolist(),
+                'explained_variance':   pca.explained_variance_ratio_.tolist(),
+                'total_variance_explained': float(pca.explained_variance_ratio_.sum())
+            }
+        except Exception as e:
+            logger.warning(f"PCA skipped: {e}")
+            return {}
+
+    def _find_optimal_k_majority_vote(
+        self, X: np.ndarray, k_min: int = 2, k_max: int = 10
+    ) -> tuple:
+        """
+        Majority vote across 4 metrics to choose optimal K:
+          - Elbow (inertia inflection)
+          - Silhouette (highest score)
+          - Calinski-Harabasz (highest score)
+          - Davies-Bouldin (lowest score)
+        Falls back to 4 if vote is inconclusive.
+        """
+        from sklearn.cluster import KMeans
+        from sklearn.metrics import (
+            silhouette_score, calinski_harabasz_score, davies_bouldin_score
+        )
+
+        k_range   = range(k_min, k_max + 1)
+        inertias  = []
+        sil_scores, ch_scores, db_scores = [], [], []
+
+        for k in k_range:
+            km     = KMeans(n_clusters=k, random_state=42, n_init=10)
+            labels = km.fit_predict(X)
+            inertias.append(km.inertia_)
+            if len(set(labels)) > 1:
+                sil_scores.append(silhouette_score(X, labels))
+                ch_scores.append(calinski_harabasz_score(X, labels))
+                db_scores.append(davies_bouldin_score(X, labels))
+            else:
+                sil_scores.append(0)
+                ch_scores.append(0)
+                db_scores.append(float('inf'))
+
+        k_list = list(k_range)
+
+        # Elbow: largest second derivative of inertia
+        if len(inertias) >= 3:
+            d2     = np.diff(np.diff(inertias))
+            k_elbow = k_list[int(np.argmax(d2)) + 2]
+        else:
+            k_elbow = k_list[0]
+
+        k_sil = k_list[int(np.argmax(sil_scores))]
+        k_ch  = k_list[int(np.argmax(ch_scores))]
+        k_db  = k_list[int(np.argmin(db_scores))]
+
+        votes = [k_elbow, k_sil, k_ch, k_db]
+        # Pick the value with most votes; ties broken by silhouette winner
+        from collections import Counter
+        vote_counts = Counter(votes)
+        max_votes   = max(vote_counts.values())
+        candidates  = [k for k, v in vote_counts.items() if v == max_votes]
+        optimal_k   = k_sil if k_sil in candidates else candidates[0]
+
+        meta = {
+            'k_range':        [k_min, k_max],
+            'votes':          {'elbow': k_elbow, 'silhouette': k_sil,
+                               'calinski_harabasz': k_ch, 'davies_bouldin': k_db},
+            'optimal_k':      optimal_k,
+            'inertias':       inertias,
+            'silhouette_scores': sil_scores,
+            'ch_scores':      ch_scores,
+            'db_scores':      [float('inf') if v == float('inf') else v for v in db_scores]
+        }
+        logger.info(f"Optimal K = {optimal_k} (votes: elbow={k_elbow}, sil={k_sil}, CH={k_ch}, DB={k_db})")
+        return optimal_k, meta
+
+    def _run_shap(
+        self, X: np.ndarray, labels: np.ndarray, feature_names: list
+    ) -> Dict[str, Any]:
+        """
+        Train a lightweight Random Forest to predict cluster labels,
+        then compute SHAP values to explain feature importance.
+        """
+        shap = _try_import('shap')
+        if shap is None:
+            return {'available': False, 'reason': 'shap not installed'}
+
+        try:
+            from sklearn.ensemble import RandomForestClassifier
+
+            clf = RandomForestClassifier(n_estimators=50, random_state=42, n_jobs=-1)
+            clf.fit(X, labels)
+
+            explainer   = shap.TreeExplainer(clf)
+            shap_values = explainer.shap_values(X)
+
+            # Mean absolute SHAP per feature (average across classes)
+            if isinstance(shap_values, list):
+                mean_abs = np.mean([np.abs(sv).mean(axis=0) for sv in shap_values], axis=0)
+            else:
+                mean_abs = np.abs(shap_values).mean(axis=0)
+
+            # Clean feature names for display
+            display_names = [f.replace('_normalized', '') for f in feature_names]
+
+            importance = {
+                display_names[i]: float(mean_abs[i])
+                for i in range(len(display_names))
+            }
+            ranked = sorted(importance.items(), key=lambda x: x[1], reverse=True)
+
+            return {
+                'available':        True,
+                'feature_importance': importance,
+                'ranked_features':  [{'feature': k, 'importance': v} for k, v in ranked]
+            }
+
+        except Exception as e:
+            logger.warning(f"SHAP skipped: {e}")
+            return {'available': False, 'reason': str(e)}
+
+    def _generate_charts(
+        self, rfm_normalised: pd.DataFrame, pca_result: Dict
+    ) -> Dict[str, str]:
+        """
+        Generate and save analysis charts as PNG files.
+        Returns a dict mapping chart name -> file path (relative to output_dir).
+        """
+        mpl = _try_import('matplotlib')
+        if mpl is None:
+            return {}
+
+        import matplotlib
+        matplotlib.use('Agg')  # non-interactive backend
+        import matplotlib.pyplot as plt
+        import matplotlib.cm as cm
+
+        charts = {}
+        n_clusters = len(set(self.labels))
+        palette    = cm.get_cmap('tab10', n_clusters)
+        colors     = [palette(i) for i in range(n_clusters)]
+
+        # ── Chart 1: Cluster scatter (PCA 2D) ────────────────────────────────
+        if pca_result.get('components'):
+            try:
+                comps = np.array(pca_result['components'])
+                fig, ax = plt.subplots(figsize=(8, 6))
+                for i in range(n_clusters):
+                    mask = self.labels == i
+                    seg  = next(
+                        (s for s in self.segments if s['cluster_id'] == i),
+                        {'segment_label': f'Cluster {i}'}
+                    )
+                    ax.scatter(
+                        comps[mask, 0], comps[mask, 1],
+                        c=[colors[i]], label=seg['segment_label'],
+                        alpha=0.6, s=20
+                    )
+                var = pca_result.get('explained_variance', [0, 0])
+                ax.set_xlabel(f'PC1 ({var[0]*100:.1f}% variance)')
+                ax.set_ylabel(f'PC2 ({var[1]*100:.1f}% variance)')
+                ax.set_title('Customer Segments — PCA Projection')
+                ax.legend(loc='best', fontsize=8)
+                path = self.output_dir / f"{self.job_id}_chart_pca.png"
+                fig.savefig(path, dpi=120, bbox_inches='tight')
+                plt.close(fig)
+                charts['pca_scatter'] = str(path)
+            except Exception as e:
+                logger.warning(f"PCA chart skipped: {e}")
+
+        # ── Chart 2: Segment size bar chart ──────────────────────────────────
+        try:
+            labels_list = [s['segment_label'] for s in self.segments]
+            counts      = [s['num_customers'] for s in self.segments]
+            fig, ax = plt.subplots(figsize=(9, 5))
+            bars = ax.barh(labels_list, counts, color=[colors[i % n_clusters] for i in range(len(counts))])
+            ax.bar_label(bars, padding=4, fontsize=9)
+            ax.set_xlabel('Number of Customers')
+            ax.set_title('Segment Sizes')
+            ax.invert_yaxis()
+            path = self.output_dir / f"{self.job_id}_chart_segments.png"
+            fig.savefig(path, dpi=120, bbox_inches='tight')
+            plt.close(fig)
+            charts['segment_sizes'] = str(path)
+        except Exception as e:
+            logger.warning(f"Segment size chart skipped: {e}")
+
+        # ── Chart 3: RFM distributions ───────────────────────────────────────
+        try:
+            sns = _try_import('seaborn')
+            if sns:
+                fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+                for ax, col, title in zip(
+                    axes,
+                    ['recency', 'frequency', 'monetary'],
+                    ['Recency (days)', 'Frequency (txns)', 'Monetary (revenue)']
+                ):
+                    sns.histplot(self.rfm[col], ax=ax, bins=30, kde=True, color='steelblue')
+                    ax.set_title(title)
+                    ax.set_xlabel('')
+                plt.tight_layout()
+                path = self.output_dir / f"{self.job_id}_chart_rfm_dist.png"
+                fig.savefig(path, dpi=120, bbox_inches='tight')
+                plt.close(fig)
+                charts['rfm_distributions'] = str(path)
+        except Exception as e:
+            logger.warning(f"RFM distribution chart skipped: {e}")
+
+        # ── Chart 4: Revenue by segment (Pareto-style) ───────────────────────
+        try:
+            segs_sorted = sorted(self.segments, key=lambda x: x['total_revenue'], reverse=True)
+            seg_labels  = [s['segment_label'] for s in segs_sorted]
+            revenues    = [s['total_revenue'] for s in segs_sorted]
+            total_rev   = sum(revenues)
+            cumulative  = np.cumsum(revenues) / total_rev * 100
+
+            fig, ax1 = plt.subplots(figsize=(9, 5))
+            ax2 = ax1.twinx()
+            ax1.bar(seg_labels, revenues,
+                    color=[colors[i % n_clusters] for i in range(len(seg_labels))],
+                    alpha=0.8)
+            ax2.plot(seg_labels, cumulative, 'k-o', linewidth=2, markersize=5)
+            ax2.axhline(80, color='red', linestyle='--', linewidth=1, label='80%')
+            ax1.set_ylabel('Total Revenue')
+            ax2.set_ylabel('Cumulative %')
+            ax1.set_title('Revenue by Segment (Pareto)')
+            plt.xticks(rotation=25, ha='right')
+            path = self.output_dir / f"{self.job_id}_chart_pareto.png"
+            fig.savefig(path, dpi=120, bbox_inches='tight')
+            plt.close(fig)
+            charts['pareto'] = str(path)
+        except Exception as e:
+            logger.warning(f"Pareto chart skipped: {e}")
+
+        logger.info(f"Generated {len(charts)} charts")
+        return charts
+
+    # ── Output helpers ─────────────────────────────────────────────────────────
+
+    def _prepare_customer_output(self, rfm_normalised: pd.DataFrame) -> pd.DataFrame:
+        output = rfm_normalised[['customer_id', 'recency', 'frequency', 'monetary']].copy()
         output['cluster'] = self.labels
-        
-        # Add segment labels
         segment_map = {s['cluster_id']: s['segment_label'] for s in self.segments}
         output['segment'] = output['cluster'].map(segment_map)
-        
         return output
-    
+
     def _save_outputs(self, customer_output: pd.DataFrame):
-        """
-        Save all analysis outputs to files.
-        """
-        # Save customer-level results as CSV
+        # Customers CSV
         customer_csv_path = self.output_dir / f"{self.job_id}_customers.csv"
         customer_output.to_csv(customer_csv_path, index=False)
-        
-        # Save full results as JSON
+
+        # Full results JSON
         results_json_path = self.output_dir / f"{self.job_id}_results.json"
-        
-        # Convert numpy types for JSON serialization
-        results_json = self._convert_to_serializable(self.results)
-        
         with open(results_json_path, 'w') as f:
-            json.dump(results_json, f, indent=2, default=str)
-        
-        # Save segment summary as JSON
+            json.dump(self._convert_to_serializable(self.results), f, indent=2, default=str)
+
+        # Segments JSON (kept for backwards compat with jobs.py)
         segments_json_path = self.output_dir / f"{self.job_id}_segments.json"
         with open(segments_json_path, 'w') as f:
             json.dump(self.segments, f, indent=2)
-        
+
         self.results['output_files'] = {
-            'customers_csv': str(customer_csv_path),
-            'results_json': str(results_json_path),
-            'segments_json': str(segments_json_path)
+            'customers_csv':  str(customer_csv_path),
+            'results_json':   str(results_json_path),
+            'segments_json':  str(segments_json_path)
         }
-    
+
     def _convert_to_serializable(self, obj):
-        """
-        Convert numpy/pandas types to JSON-serializable Python types.
-        """
         if isinstance(obj, dict):
             return {k: self._convert_to_serializable(v) for k, v in obj.items()}
         elif isinstance(obj, list):
@@ -217,9 +498,10 @@ class SegmentationPipeline:
             return bool(obj)
         elif isinstance(obj, pd.Timestamp):
             return obj.isoformat()
-        else:
-            return obj
+        return obj
 
+
+# ── Convenience function (called by jobs.py — signature unchanged) ─────────────
 
 def run_pipeline(
     file_path: str,
@@ -231,17 +513,7 @@ def run_pipeline(
 ) -> Dict[str, Any]:
     """
     Convenience function to run the segmentation pipeline.
-    
-    Args:
-        file_path: Path to input CSV file
-        output_dir: Directory to save outputs
-        job_id: Unique job identifier
-        column_mapping: Optional column name mapping
-        clustering_method: 'kmeans', 'gmm', or 'hierarchical'
-        include_comparison: Whether to run all methods for comparison
-        
-    Returns:
-        Dictionary with all results
+    Signature is identical to the previous version — jobs.py needs no changes.
     """
     pipeline = SegmentationPipeline(
         file_path=file_path,
@@ -251,5 +523,4 @@ def run_pipeline(
         clustering_method=clustering_method,
         include_comparison=include_comparison
     )
-    
     return pipeline.run()
