@@ -323,7 +323,7 @@ $userName = $_SESSION['user_name'] ?? 'User';
         
         // Navigate to results
         function goToResults() {
-            window.location.href = 'analytics.php';
+            window.location.href = 'analytics.php?job_id=' + encodeURIComponent(jobId);
         }
         
         // Job ID and demo mode from PHP
