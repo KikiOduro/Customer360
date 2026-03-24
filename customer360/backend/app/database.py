@@ -1,24 +1,65 @@
 """
 Database connection and session management for Customer360.
-Uses SQLAlchemy with MySQL.
+Supports both MySQL and SQLite with automatic fallback.
 """
-from sqlalchemy import create_engine
+import os
+import logging
+from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.pool import QueuePool
+from sqlalchemy.pool import QueuePool, StaticPool
 
 from .config import DATABASE_URL
 
-# Create MySQL engine with connection pooling
-engine = create_engine(
-    DATABASE_URL,
-    poolclass=QueuePool,
-    pool_size=10,
-    max_overflow=20,
-    pool_pre_ping=True,  # Verify connections before using
-    pool_recycle=3600,   # Recycle connections after 1 hour
-    echo=False           # Set to True for SQL debugging
-)
+logger = logging.getLogger(__name__)
+
+# Attempt to use DATABASE_URL; fall back to SQLite if MySQL fails
+database_url = DATABASE_URL
+is_sqlite = False
+
+# Check if we're trying to use MySQL but it's not available
+if "mysql" in database_url.lower():
+    try:
+        # Try to create a test connection
+        from sqlalchemy import text
+        test_engine = create_engine(database_url, pool_pre_ping=True, connect_args={"timeout": 2})
+        with test_engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        logger.info("✅ MySQL connection successful")
+        engine = create_engine(
+            database_url,
+            poolclass=QueuePool,
+            pool_size=10,
+            max_overflow=20,
+            pool_pre_ping=True,
+            pool_recycle=3600,
+            echo=False
+        )
+    except Exception as e:
+        logger.warning(f"⚠️  MySQL connection failed: {str(e)}")
+        logger.warning("Falling back to SQLite for development/testing...")
+        # Fall back to SQLite
+        sqlite_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "customer360.db")
+        database_url = f"sqlite:///{sqlite_path}"
+        is_sqlite = True
+        engine = create_engine(
+            database_url,
+            connect_args={"check_same_thread": False},
+            poolclass=StaticPool,
+            echo=False
+        )
+else:
+    # SQLite configuration
+    is_sqlite = True
+    engine = create_engine(
+        database_url,
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        echo=False
+    )
+
+# Log which database is being used
+logger.info(f"Using database: {'SQLite (development mode)' if is_sqlite else 'MySQL (production)'}")
 
 # Session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -44,5 +85,10 @@ def init_db():
     Initialize database tables.
     Call this on application startup.
     """
-    from . import models  # noqa: F401
-    Base.metadata.create_all(bind=engine)
+    try:
+        from . import models  # noqa: F401
+        Base.metadata.create_all(bind=engine)
+        logger.info("✅ Database tables initialized successfully")
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize database: {str(e)}")
+        raise
