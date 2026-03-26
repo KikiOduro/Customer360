@@ -23,7 +23,7 @@ from ..schemas import (
 from ..auth import get_current_user
 from ..config import UPLOAD_DIR, OUTPUT_DIR, MAX_FILE_SIZE_MB, ALLOWED_EXTENSIONS
 from ..analytics.preprocessing import get_csv_preview
-from ..analytics.complete_pipeline import run_full_pipeline
+from ..analytics.production_pipeline import ProductionPipeline
 from ..report import generate_report
 
 router = APIRouter()
@@ -70,23 +70,18 @@ def run_segmentation_job(
         job.status = "processing"
         db.commit()
         
-        # Run the new pipeline
-        results = run_full_pipeline(
-            csv_file_path=file_path,
-            output_directory=output_dir,
-            job_id=job_id,
-            column_mapping=column_mapping
-        )
+        # Run the production pipeline
+        pipeline = ProductionPipeline(output_dir=output_dir)
+        results = pipeline.run(csv_path=file_path)
         
         # Update job with results
-        meta = results.get('rfm', {})
         job.status = "completed"
         job.completed_at = datetime.utcnow()
-        job.num_customers = meta.get('num_customers')
-        job.num_transactions = results.get('data_shape', [0, 0])[0]
-        job.total_revenue = meta.get('total_revenue')
-        job.num_clusters = results.get('optimal_k', 3)
-        job.silhouette_score = results.get('clustering', {}).get('silhouette_score')
+        job.num_customers = results.get('num_customers', 0)
+        job.num_transactions = results.get('num_transactions', 0)
+        job.total_revenue = results.get('total_revenue', 0)
+        job.num_clusters = results.get('num_clusters', 0)
+        job.silhouette_score = results.get('silhouette_score', 0)
         job.output_path = output_dir
         
         db.commit()
