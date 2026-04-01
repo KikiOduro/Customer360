@@ -13,9 +13,13 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 // Get user info from session
-$userName = isset($_SESSION['user_name']) ? htmlspecialchars($_SESSION['user_name']) : 'User';
-$companyName = isset($_SESSION['company_name']) ? htmlspecialchars($_SESSION['company_name']) : 'Company';
-$userEmail = isset($_SESSION['user_email']) ? htmlspecialchars($_SESSION['user_email']) : '';
+$rawUserName = trim((string) ($_SESSION['user_name'] ?? ''));
+$rawCompanyName = trim((string) ($_SESSION['company_name'] ?? ''));
+$rawUserEmail = trim((string) ($_SESSION['user_email'] ?? ''));
+
+$userName = htmlspecialchars($rawUserName !== '' ? $rawUserName : ($rawUserEmail !== '' ? explode('@', $rawUserEmail)[0] : ''));
+$companyName = htmlspecialchars($rawCompanyName);
+$userEmail = htmlspecialchars($rawUserEmail);
 $authToken = $_SESSION['auth_token'] ?? null;
 $isDemoMode = isset($_SESSION['demo_mode']) && $_SESSION['demo_mode'];
 
@@ -219,6 +223,13 @@ if ($authToken) {
 }
 
 $showUploadMessage = empty($recentRuns);
+$welcomeTarget = $companyName !== '' ? $companyName : ($userName !== '' ? $userName : 'your workspace');
+$welcomeMessage = $showUploadMessage
+    ? 'Upload your first customer dataset to begin building your segmentation history.'
+    : 'Track your latest segmentation runs, statuses, and customer insights in one place.';
+$profileLabel = $userName !== '' ? $userName : $userEmail;
+$profileSubLabel = $companyName !== '' ? $companyName : 'Signed in account';
+$userInitial = strtoupper(substr($profileLabel, 0, 1));
 
 // Current page for navigation highlighting
 $currentPage = 'dashboard';
@@ -330,11 +341,11 @@ $currentPage = 'dashboard';
             <div class="border-t border-slate-700/50 p-4">
                 <div class="flex items-center gap-3 rounded-lg p-2 hover:bg-white/5 cursor-pointer transition-colors group" onclick="toggleUserMenu()">
                     <div class="h-10 w-10 rounded-full bg-slate-600 flex items-center justify-center text-white font-semibold text-sm">
-                        <?php echo strtoupper(substr($userName, 0, 1)); ?>
+                        <?php echo htmlspecialchars($userInitial); ?>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-white truncate"><?php echo $userName; ?></p>
-                        <p class="text-xs text-slate-400 truncate"><?php echo $companyName; ?></p>
+                        <p class="text-sm font-medium text-white truncate"><?php echo $profileLabel; ?></p>
+                        <p class="text-xs text-slate-400 truncate"><?php echo $profileSubLabel; ?></p>
                     </div>
                     <span class="material-symbols-outlined text-slate-400 group-hover:text-white transition-colors text-[20px]">expand_more</span>
                 </div>
@@ -399,7 +410,7 @@ $currentPage = 'dashboard';
                 <div class="mb-8 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-900 dark:text-white">Dashboard</h2>
-                        <p class="mt-1 text-slate-500 dark:text-slate-400">Welcome back, get insights into your customer base.</p>
+                        <p class="mt-1 text-slate-500 dark:text-slate-400"><?php echo htmlspecialchars("Overview for {$welcomeTarget}. {$welcomeMessage}"); ?></p>
                     </div>
                     <div>
                         <button 
