@@ -134,7 +134,7 @@ function buildActionConfig(array $run): array {
 
     if ($run['status'] === 'failed') {
         return [
-            'href' => 'upload.php',
+            'href' => 'analysis.php',
             'label' => 'Retry upload',
             'icon' => 'refresh',
             'classes' => 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300',
@@ -143,7 +143,7 @@ function buildActionConfig(array $run): array {
 
     if ($run['status'] === 'cancelled') {
         return [
-            'href' => 'upload.php',
+            'href' => 'analysis.php',
             'label' => 'Start over',
             'icon' => 'upload_file',
             'classes' => 'text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-white',
@@ -547,7 +547,7 @@ $currentPage = 'dashboard';
                         <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                             <a
                                 class="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
-                                href="upload.php"
+                                href="analysis.php"
                             >
                                 <span class="material-symbols-outlined text-[18px]">upload_file</span>
                                 Upload Your First File

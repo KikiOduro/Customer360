@@ -225,7 +225,7 @@ function getSegmentBarClass($color): string {
                 <h2 class="mt-4 text-xl font-bold text-primary">No live analytics available yet</h2>
                 <p class="mt-2 text-sm text-slate-500"><?php echo htmlspecialchars($loadError ?: 'Run and complete an analysis job to view customer segments and KPIs here.'); ?></p>
                 <div class="mt-6 flex justify-center gap-3">
-                    <a href="upload.php" class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-hover"><span class="material-symbols-outlined text-[20px]">upload_file</span>Upload Data</a>
+                    <a href="analysis.php" class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white hover:bg-primary-hover"><span class="material-symbols-outlined text-[20px]">upload_file</span>Start Analysis</a>
                     <a href="reports.php" class="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-primary hover:bg-slate-50"><span class="material-symbols-outlined text-[20px]">bar_chart</span>View Jobs</a>
                 </div>
             </div>

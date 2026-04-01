@@ -1,6 +1,6 @@
 <?php
 session_start();
-
+//TODO: MAKE SURE THIS PAGE CAN ONLY BE ACCESSED IF THERE IS A CURRENT UPLOAD WITH AVAILABLE COLUMNS AND SAMPLE ROWS IN THE SESSION. OTHERWISE REDIRECT BACK TO UPLOAD.
 if (!isset($_SESSION['user_id'])) {
     header('Location: signin.php');
     exit;

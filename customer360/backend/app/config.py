@@ -9,6 +9,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 DATA_DIR = BASE_DIR / "data"
 UPLOAD_DIR = DATA_DIR / "uploads"
 OUTPUT_DIR = DATA_DIR / "outputs"
+MODELS_DIR = BASE_DIR.parent / "models"
 
 # Create directories if they don't exist
 for directory in [DATA_DIR, UPLOAD_DIR, OUTPUT_DIR]:
@@ -45,6 +46,9 @@ SUPABASE_STORAGE_PUBLIC_BASE = os.getenv(
     f"{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET}"
 ).rstrip("/")
 SUPABASE_STORAGE_OBJECT_BASE = f"{SUPABASE_URL}/storage/v1/object/{SUPABASE_STORAGE_BUCKET}"
+
+# AI integration
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
 # Clustering settings
 DEFAULT_K_RANGE = (2, 10)  # Range of k values to try for K-Means

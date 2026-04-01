@@ -23,7 +23,7 @@ from ..schemas import (
 from ..auth import get_current_user
 from ..config import UPLOAD_DIR, OUTPUT_DIR, MAX_FILE_SIZE_MB, ALLOWED_EXTENSIONS
 from ..analytics.preprocessing import get_csv_preview
-from ..analytics.production_pipeline import ProductionPipeline
+from ..analytics.pipeline import run_pipeline
 from ..report import generate_report
 from ..storage import build_storage_object_path, upload_file_to_supabase, delete_supabase_object
 
@@ -106,9 +106,14 @@ def run_segmentation_job(
         job.status = "processing"
         db.commit()
         
-        # Run the production pipeline
-        pipeline = ProductionPipeline(output_dir=output_dir)
-        results = pipeline.run(csv_path=file_path)
+        results = run_pipeline(
+            file_path=file_path,
+            output_dir=output_dir,
+            job_id=job_id,
+            column_mapping=column_mapping,
+            clustering_method=clustering_method,
+            include_comparison=include_comparison,
+        )
 
         # Respect cancellation if it happened while the job was running.
         db.refresh(job)
@@ -118,11 +123,12 @@ def run_segmentation_job(
         # Update job with results
         job.status = "completed"
         job.completed_at = datetime.utcnow()
-        job.num_customers = results.get('num_customers', 0)
-        job.num_transactions = results.get('num_transactions', 0)
-        job.total_revenue = results.get('total_revenue', 0)
-        job.num_clusters = results.get('num_clusters', 0)
-        job.silhouette_score = results.get('silhouette_score', 0)
+        meta = results.get('meta', {})
+        job.num_customers = meta.get('num_customers', 0)
+        job.num_transactions = meta.get('num_transactions', 0)
+        job.total_revenue = meta.get('total_revenue', 0)
+        job.num_clusters = meta.get('num_clusters', 0)
+        job.silhouette_score = meta.get('silhouette_score', 0)
         job.output_path = output_dir
         
         db.commit()

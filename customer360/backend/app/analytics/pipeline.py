@@ -132,6 +132,7 @@ class SegmentationPipeline:
             # 9. Customer-level output
             logger.info("Step 9: Preparing customer output...")
             customer_output = self._prepare_customer_output(rfm_normalised)
+            self.results['recent_customers'] = self._build_recent_customers(customer_output)
 
             # 10. SHAP explainability
             logger.info("Step 10: SHAP explainability...")
@@ -159,7 +160,8 @@ class SegmentationPipeline:
                 'total_revenue':     float(self.df['amount'].sum()),
                 'num_clusters':      int(clustering_info['n_clusters']),
                 'silhouette_score':  float(clustering_info.get('silhouette_score', 0)),
-                'clustering_method': self.clustering_method
+                'clustering_method': self.clustering_method,
+                'currency': 'GHS',
             }
 
             logger.info(
@@ -482,6 +484,47 @@ class SegmentationPipeline:
             'results_json':   str(results_json_path),
             'segments_json':  str(segments_json_path)
         }
+
+    def _build_recent_customers(self, customer_output: pd.DataFrame, limit: int = 8):
+        """Prepare a lightweight recent-customer table for the frontend."""
+        if customer_output.empty:
+            return []
+
+        merged = customer_output.copy()
+        merged['last_purchase'] = pd.NaT
+        merged['total_spend'] = merged.get('monetary', 0)
+        merged['status'] = np.where(merged['recency'] <= 30, 'Active', 'Inactive')
+
+        try:
+            grouped = (
+                self.df.groupby('customer_id')
+                .agg(last_purchase=('invoice_date', 'max'), total_spend=('amount', 'sum'))
+                .reset_index()
+            )
+            merged = merged.merge(grouped, on='customer_id', how='left', suffixes=('', '_grouped'))
+            merged['last_purchase'] = merged['last_purchase_grouped'].combine_first(merged['last_purchase'])
+            merged['total_spend'] = merged['total_spend_grouped'].combine_first(merged['total_spend'])
+            merged = merged.drop(columns=[c for c in ['last_purchase_grouped', 'total_spend_grouped'] if c in merged.columns])
+        except Exception as exc:
+            logger.warning("Could not enrich recent customers table: %s", exc)
+
+        merged = merged.sort_values(by='last_purchase', ascending=False, na_position='last').head(limit)
+
+        rows = []
+        for _, row in merged.iterrows():
+            customer_name = str(row['customer_id'])
+            initials = ''.join(part[:1].upper() for part in customer_name.split()[:2])[:2] or customer_name[:2].upper()
+            rows.append({
+                'customer_id': str(row['customer_id']),
+                'customer_name': customer_name,
+                'customer_email': '',
+                'initials': initials,
+                'segment': row.get('segment', 'Unknown'),
+                'last_purchase': row['last_purchase'].isoformat() if pd.notna(row['last_purchase']) else None,
+                'status': row.get('status', 'Active'),
+                'total_spend': float(row.get('total_spend', 0) or 0),
+            })
+        return rows
 
     def _convert_to_serializable(self, obj):
         if isinstance(obj, dict):

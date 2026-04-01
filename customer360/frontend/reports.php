@@ -161,7 +161,7 @@ function getStatusBadge(string $status): string {
                         <h1 class="text-3xl font-bold text-primary tracking-tight">Reports History</h1>
                         <p class="text-slate-500 mt-1">View and manage your generated customer analysis reports.</p>
                     </div>
-                    <a href="upload.php" class="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-hover shadow-md">
+                    <a href="analysis.php" class="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-hover shadow-md">
                         <span class="material-symbols-outlined text-[20px]">add</span>New Analysis
                     </a>
                 </div>
@@ -202,7 +202,7 @@ function getStatusBadge(string $status): string {
                         <span class="material-symbols-outlined text-5xl text-slate-300">description</span>
                         <h2 class="mt-4 text-lg font-semibold text-primary">No analysis reports yet</h2>
                         <p class="mt-2 text-sm text-slate-500">Analysis jobs will appear here once you upload customer data and start processing.</p>
-                        <a href="upload.php" class="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-hover shadow-md">
+                        <a href="analysis.php" class="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-hover shadow-md">
                             <span class="material-symbols-outlined text-[20px]">upload_file</span>Upload Data
                         </a>
                     </div>

@@ -5,13 +5,16 @@ and receive customer segments with actionable insights.
 """
 import logging
 from contextlib import asynccontextmanager
+import json
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
+import joblib
 
 from .database import init_db
 from .routes import api_router
+from .config import MODELS_DIR
 
 # Configure logging
 logging.basicConfig(
@@ -30,6 +33,37 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Customer360 application...")
     init_db()
     logger.info("Database initialized successfully")
+    assets = {
+        "scaler": None,
+        "segment_map": {},
+        "cluster_rfm_profile_path": None,
+        "models_dir": str(MODELS_DIR),
+    }
+
+    scaler_path = MODELS_DIR / "scaler.pkl"
+    segment_map_path = MODELS_DIR / "segment_map.json"
+    cluster_profile_path = MODELS_DIR / "cluster_rfm_profile.csv"
+
+    if scaler_path.exists():
+        try:
+            assets["scaler"] = joblib.load(scaler_path)
+            logger.info("Loaded scaler artifact from %s", scaler_path)
+        except Exception as exc:
+            logger.warning("Failed to load scaler artifact: %s", exc)
+
+    if segment_map_path.exists():
+        try:
+            with open(segment_map_path, "r") as handle:
+                assets["segment_map"] = json.load(handle)
+            logger.info("Loaded segment map artifact from %s", segment_map_path)
+        except Exception as exc:
+            logger.warning("Failed to load segment map artifact: %s", exc)
+
+    if cluster_profile_path.exists():
+        assets["cluster_rfm_profile_path"] = str(cluster_profile_path)
+        logger.info("Detected cluster profile artifact at %s", cluster_profile_path)
+
+    app.state.analysis_assets = assets
     yield
     logger.info("Shutting down Customer360 application...")
 
