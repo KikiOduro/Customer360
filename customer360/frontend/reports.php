@@ -81,6 +81,8 @@ function getStatusBadge(string $status): string {
             return '<span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800"><span class="material-symbols-outlined text-[14px]">schedule</span>Pending</span>';
         case 'failed':
             return '<span class="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800"><span class="material-symbols-outlined text-[14px]">error</span>Failed</span>';
+        case 'cancelled':
+            return '<span class="inline-flex items-center gap-1 rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-800"><span class="material-symbols-outlined text-[14px]">block</span>Cancelled</span>';
         default:
             return '<span class="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-800">Unknown</span>';
     }

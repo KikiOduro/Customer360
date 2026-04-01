@@ -8,6 +8,7 @@ session_start();
 
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
+$action = $_GET['action'] ?? $_POST['action'] ?? 'upload';
 
 // Require authentication
 if (!isset($_SESSION['user_id'])) {
@@ -39,6 +40,37 @@ if ($file['size'] > 25 * 1024 * 1024) {
 
 if ($file['error'] !== UPLOAD_ERR_OK) {
     jsonResponse(['success' => false, 'error' => 'File upload error. Please try again.'], 400);
+}
+
+if ($action === 'preview') {
+    $previewDir = rtrim(UPLOAD_DIR, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'preview' . DIRECTORY_SEPARATOR;
+    if (!is_dir($previewDir)) {
+        mkdir($previewDir, 0755, true);
+    }
+
+    $tempName = uniqid('preview_', true) . $ext;
+    $tempPath = $previewDir . $tempName;
+
+    if (!move_uploaded_file($file['tmp_name'], $tempPath)) {
+        jsonResponse(['success' => false, 'error' => 'Could not prepare file preview.'], 500);
+    }
+
+    $preview = getFilePreview($tempPath, $ext);
+    $_SESSION['current_upload'] = [
+        'filename' => $file['name'],
+        'filepath' => $tempPath,
+        'columns' => $preview['columns'] ?? [],
+        'sample_rows' => $preview['sample_rows'] ?? [],
+        'suggested_mapping' => $preview['suggested_mapping'] ?? null,
+    ];
+
+    jsonResponse([
+        'success' => true,
+        'filename' => $file['name'],
+        'columns' => $preview['columns'] ?? [],
+        'sample_rows' => $preview['sample_rows'] ?? [],
+        'suggested_mapping' => $preview['suggested_mapping'] ?? null,
+    ]);
 }
 
 if (!$authToken) {

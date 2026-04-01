@@ -115,8 +115,91 @@ function handleReport($jobId) {
         jsonResponse(['error' => 'No job ID provided'], 400);
     }
 
-    requireToken();
-    header("Location: " . BACKEND_API_URL . "/jobs/report/$jobId");
+    $token = requireToken();
+    $reportUrl = BACKEND_API_URL . "/jobs/report/$jobId";
+
+    if (function_exists('curl_init')) {
+        $ch = curl_init($reportUrl);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 120,
+            CURLOPT_HTTPHEADER => [
+                'Authorization: Bearer ' . $token,
+                'Accept: application/pdf',
+            ],
+            CURLOPT_HEADER => true,
+        ]);
+
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError) {
+            jsonResponse(['error' => 'Failed to download report: ' . $curlError], 502);
+        }
+
+        $rawHeaders = substr($response, 0, $headerSize);
+        $body = substr($response, $headerSize);
+        if ($httpCode < 200 || $httpCode >= 300) {
+            $decoded = json_decode($body, true);
+            jsonResponse(['error' => $decoded['detail'] ?? 'Failed to download report'], $httpCode ?: 502);
+        }
+
+        $contentType = 'application/pdf';
+        $contentDisposition = 'attachment; filename="customer360_report.pdf"';
+        foreach (explode("\r\n", $rawHeaders) as $headerLine) {
+            if (stripos($headerLine, 'Content-Type:') === 0) {
+                $contentType = trim(substr($headerLine, strlen('Content-Type:')));
+            }
+            if (stripos($headerLine, 'Content-Disposition:') === 0) {
+                $contentDisposition = trim(substr($headerLine, strlen('Content-Disposition:')));
+            }
+        }
+
+        header('Content-Type: ' . $contentType);
+        header('Content-Disposition: ' . $contentDisposition);
+        echo $body;
+        exit;
+    }
+
+    $context = stream_context_create(['http' => [
+        'method' => 'GET',
+        'header' => implode("\r\n", [
+            'Authorization: Bearer ' . $token,
+            'Accept: application/pdf',
+        ]),
+        'timeout' => 120,
+        'ignore_errors' => true,
+    ]]);
+
+    $body = file_get_contents($reportUrl, false, $context);
+    if ($body === false) {
+        jsonResponse(['error' => 'Failed to download report'], 502);
+    }
+
+    $httpCode = 200;
+    $contentType = 'application/pdf';
+    $contentDisposition = 'attachment; filename="customer360_report.pdf"';
+    foreach ($http_response_header ?? [] as $headerLine) {
+        if (preg_match('/HTTP\/\d\.\d\s+(\d+)/', $headerLine, $matches)) {
+            $httpCode = (int) $matches[1];
+        } elseif (stripos($headerLine, 'Content-Type:') === 0) {
+            $contentType = trim(substr($headerLine, strlen('Content-Type:')));
+        } elseif (stripos($headerLine, 'Content-Disposition:') === 0) {
+            $contentDisposition = trim(substr($headerLine, strlen('Content-Disposition:')));
+        }
+    }
+
+    if ($httpCode < 200 || $httpCode >= 300) {
+        $decoded = json_decode($body, true);
+        jsonResponse(['error' => $decoded['detail'] ?? 'Failed to download report'], $httpCode ?: 502);
+    }
+
+    header('Content-Type: ' . $contentType);
+    header('Content-Disposition: ' . $contentDisposition);
+    echo $body;
     exit;
 }
 

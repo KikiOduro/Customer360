@@ -98,6 +98,9 @@ def run_segmentation_job(
         job = db.query(Job).filter(Job.job_id == job_id).first()
         if not job:
             return
+
+        if job.status == "cancelled":
+            return
         
         # Update status to processing
         job.status = "processing"
@@ -106,6 +109,11 @@ def run_segmentation_job(
         # Run the production pipeline
         pipeline = ProductionPipeline(output_dir=output_dir)
         results = pipeline.run(csv_path=file_path)
+
+        # Respect cancellation if it happened while the job was running.
+        db.refresh(job)
+        if job.status == "cancelled":
+            return
         
         # Update job with results
         job.status = "completed"
@@ -122,7 +130,7 @@ def run_segmentation_job(
     except Exception as e:
         # Update job with error
         job = db.query(Job).filter(Job.job_id == job_id).first()
-        if job:
+        if job and job.status != "cancelled":
             job.status = "failed"
             job.error_message = str(e)
             db.commit()
@@ -612,3 +620,46 @@ async def delete_job(
     db.commit()
     
     return {"message": "Job deleted successfully"}
+
+
+@router.post("/{job_id}/cancel")
+async def cancel_job(
+    job_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Cancel a job that has not completed yet.
+    """
+    job = db.query(Job).filter(
+        Job.job_id == job_id,
+        Job.user_id == current_user.id
+    ).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    if job.status == "completed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Completed jobs cannot be cancelled"
+        )
+
+    if job.status == "failed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Failed jobs cannot be cancelled"
+        )
+
+    if job.status == "cancelled":
+        return {"message": "Job already cancelled", "job_id": job.job_id, "status": job.status}
+
+    job.status = "cancelled"
+    job.error_message = "Cancelled by user"
+    job.completed_at = datetime.utcnow()
+    db.commit()
+
+    return {"message": "Job cancelled successfully", "job_id": job.job_id, "status": job.status}

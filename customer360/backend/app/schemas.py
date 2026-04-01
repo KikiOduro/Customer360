@@ -36,6 +36,9 @@ class Token(BaseModel):
     """Schema for JWT token response."""
     access_token: str
     token_type: str = "bearer"
+    user_id: Optional[int] = None
+    email: Optional[str] = None
+    company_name: Optional[str] = None
 
 
 class TokenData(BaseModel):

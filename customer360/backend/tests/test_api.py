@@ -145,6 +145,8 @@ class TestAuthEndpoints:
         data = response.json()
         assert "access_token" in data
         assert data["token_type"] == "bearer"
+        assert "user_id" in data
+        assert data["email"] == "test@example.com"
     
     def test_login_wrong_password(self, client):
         """Test login with wrong password."""
@@ -317,6 +319,50 @@ class TestJobEndpoints:
         )
         
         assert response.status_code == 404
+
+    def test_cancel_job_success(self, client, auth_headers):
+        """Test cancelling a pending job."""
+        db = TestingSessionLocal()
+        try:
+            user = db.query(User).filter(User.email == "test@example.com").first()
+            job = Job(
+                job_id="job-cancel-1",
+                user_id=user.id,
+                original_filename="test.csv",
+                upload_path="users/1/jobs/job-cancel-1/test.csv",
+                status="pending",
+            )
+            db.add(job)
+            db.commit()
+        finally:
+            db.close()
+
+        response = client.post("/api/jobs/job-cancel-1/cancel", headers=auth_headers)
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "cancelled"
+
+    def test_cancel_completed_job_rejected(self, client, auth_headers):
+        """Test completed jobs cannot be cancelled."""
+        db = TestingSessionLocal()
+        try:
+            user = db.query(User).filter(User.email == "test@example.com").first()
+            job = Job(
+                job_id="job-cancel-2",
+                user_id=user.id,
+                original_filename="test.csv",
+                upload_path="users/1/jobs/job-cancel-2/test.csv",
+                status="completed",
+            )
+            db.add(job)
+            db.commit()
+        finally:
+            db.close()
+
+        response = client.post("/api/jobs/job-cancel-2/cancel", headers=auth_headers)
+
+        assert response.status_code == 400
 
 
 class TestHealthEndpoint:

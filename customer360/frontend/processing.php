@@ -205,7 +205,8 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
             const statusConfig = {
                 pending: { progress: 15, activeStep: 0, message: 'Your file has been received and queued for analysis.' },
                 processing: { progress: 70, activeStep: 3, message: 'Analysis is running on the backend now.' },
-                completed: { progress: 100, activeStep: 4, message: 'Analysis finished successfully.' }
+                completed: { progress: 100, activeStep: 4, message: 'Analysis finished successfully.' },
+                cancelled: { progress: 100, activeStep: 0, message: 'This analysis job was cancelled.' }
             };
             const config = statusConfig[status] || statusConfig.pending;
 
@@ -233,6 +234,12 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
                 if (data.status === 'failed') {
                     updateProgress(100, 'Analysis failed.');
                     alert('Processing failed: ' + (data.error_message || 'Unknown error'));
+                    return;
+                }
+
+                if (data.status === 'cancelled') {
+                    updateProgress(100, 'Analysis cancelled.');
+                    alert(data.error_message || 'This analysis job was cancelled.');
                     return;
                 }
 

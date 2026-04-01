@@ -98,8 +98,17 @@ function handleSaveMapping() {
                 'job_id' => $result['data']['job_id'],
                 'status' => $result['data']['status'],
                 'filename' => $upload['filename'],
-                'created_at' => $result['data']['created_at']
+                'created_at' => $result['data']['created_at'],
+                'storage_provider' => $result['data']['storage_provider'] ?? null,
+                'storage_bucket' => $result['data']['storage_bucket'] ?? null,
+                'storage_object_path' => $result['data']['storage_object_path'] ?? null,
+                'storage_public_url' => $result['data']['storage_public_url'] ?? null,
             ];
+
+            if (!empty($upload['filepath']) && file_exists($upload['filepath'])) {
+                @unlink($upload['filepath']);
+            }
+            unset($_SESSION['current_upload']);
             
             jsonResponse([
                 'success' => true,

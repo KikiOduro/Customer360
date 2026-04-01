@@ -84,6 +84,10 @@ function getRunVisuals(string $status): array {
             'icon' => 'warning',
             'container' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
         ],
+        'cancelled' => [
+            'icon' => 'block',
+            'container' => 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+        ],
     ];
 
     return $map[$status] ?? [
@@ -98,6 +102,7 @@ function getStatusBadgeClass(string $status): string {
         'processing' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
         'pending' => 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
         'failed' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+        'cancelled' => 'bg-slate-200 text-slate-800 dark:bg-slate-800 dark:text-slate-300',
     ];
 
     return $map[$status] ?? 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
@@ -109,6 +114,7 @@ function getStatusLabel(string $status): string {
         'processing' => 'Processing',
         'pending' => 'Pending',
         'failed' => 'Failed',
+        'cancelled' => 'Cancelled',
     ];
 
     return $map[$status] ?? ucfirst($status ?: 'Unknown');
@@ -132,6 +138,15 @@ function buildActionConfig(array $run): array {
             'label' => 'Retry upload',
             'icon' => 'refresh',
             'classes' => 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300',
+        ];
+    }
+
+    if ($run['status'] === 'cancelled') {
+        return [
+            'href' => 'upload.php',
+            'label' => 'Start over',
+            'icon' => 'upload_file',
+            'classes' => 'text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-white',
         ];
     }
 
