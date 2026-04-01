@@ -130,6 +130,13 @@ def run_segmentation_job(
         job.num_clusters = meta.get('num_clusters', 0)
         job.silhouette_score = meta.get('silhouette_score', 0)
         job.output_path = output_dir
+
+        pdf_path = Path(output_dir) / f"{job_id}_report.pdf"
+        generate_report(
+            results=results,
+            output_path=str(pdf_path),
+            company_name=job.user.company_name if job.user and job.user.company_name else ""
+        )
         
         db.commit()
         
@@ -149,7 +156,7 @@ async def upload_file(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     clustering_method: str = Form(default="kmeans"),
-    include_comparison: bool = Form(default=False),
+    include_comparison: bool = Form(default=True),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -283,7 +290,7 @@ async def upload_with_mapping(
     product_col: Optional[str] = Form(default=None),
     category_col: Optional[str] = Form(default=None),
     clustering_method: str = Form(default="kmeans"),
-    include_comparison: bool = Form(default=False),
+    include_comparison: bool = Form(default=True),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):

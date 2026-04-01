@@ -149,6 +149,11 @@ $initialJobId = $_GET['job_id'] ?? '';
 
                 <div id="kpiGrid" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"></div>
 
+                <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                    <h3 class="text-xl font-bold text-primary">Dataset Insights</h3>
+                    <div id="edaSummary" class="mt-5"></div>
+                </section>
+
                 <section>
                     <h3 class="mb-4 text-xl font-bold text-primary">Segments</h3>
                     <div id="segmentGrid" class="grid gap-4 lg:grid-cols-2"></div>
@@ -532,6 +537,39 @@ function renderDashboard(data) {
         </div>
     `).join('');
 
+    const eda = data.meta?.eda || {};
+    const numericSummary = Object.entries(eda.numeric_summary || {}).map(([metric, stats]) => `
+        <div class="rounded-xl bg-slate-50 p-4">
+            <h4 class="font-semibold text-primary">${escapeHtml(metric.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()))}</h4>
+            <p class="mt-2 text-sm text-slate-600">Mean: ${formatNumber(stats.mean)}</p>
+            <p class="text-sm text-slate-600">Median: ${formatNumber(stats.median)}</p>
+            <p class="text-sm text-slate-600">Range: ${formatNumber(stats.min)} to ${formatNumber(stats.max)}</p>
+        </div>
+    `).join('');
+    const topCategories = (eda.top_categories || []).slice(0, 5).map(item => `<li>• ${escapeHtml(item.label)} (${formatNumber(item.count)})</li>`).join('');
+    const topProducts = (eda.top_products || []).slice(0, 5).map(item => `<li>• ${escapeHtml(item.label)} (${formatNumber(item.count)})</li>`).join('');
+    const warnings = (eda.warnings || []).map(item => `<li>• ${escapeHtml(item)}</li>`).join('');
+    document.getElementById('edaSummary').innerHTML = `
+        <div class="grid gap-4 lg:grid-cols-3">
+            <div class="rounded-xl border border-slate-200 p-4">
+                <p class="text-sm font-medium text-slate-500">Business Type</p>
+                <h4 class="mt-2 text-xl font-bold text-primary">${escapeHtml(data.meta?.business_type || 'General Retail')}</h4>
+                <p class="mt-3 text-sm text-slate-600">Rows: ${formatNumber(eda.rows)} • Columns: ${formatNumber(eda.columns)}</p>
+                <p class="text-sm text-slate-600">Duplicates: ${formatNumber(eda.duplicates)} • Missing values: ${formatNumber(eda.missing_values)}</p>
+            </div>
+            <div class="rounded-xl border border-slate-200 p-4">
+                <h4 class="text-base font-bold text-primary">Top Categories</h4>
+                <ul class="mt-3 space-y-1 text-sm text-slate-600">${topCategories || '<li>No category summary available.</li>'}</ul>
+                <h4 class="mt-5 text-base font-bold text-primary">Top Products</h4>
+                <ul class="mt-3 space-y-1 text-sm text-slate-600">${topProducts || '<li>No product summary available.</li>'}</ul>
+            </div>
+            <div class="space-y-4">
+                ${numericSummary || '<div class="rounded-xl border border-slate-200 p-4 text-sm text-slate-500">No numeric summary available.</div>'}
+                ${warnings ? `<div class="rounded-xl border border-amber-200 bg-amber-50 p-4"><h4 class="font-semibold text-amber-800">Data warnings</h4><ul class="mt-2 space-y-1 text-sm text-amber-700">${warnings}</ul></div>` : ''}
+            </div>
+        </div>
+    `;
+
     document.getElementById('segmentGrid').innerHTML = (data.segments || []).map((segment, index) => {
         const segmentId = `segment-ai-${index}`;
         const encodedSegment = encodeURIComponent(JSON.stringify(segment));
@@ -587,7 +625,7 @@ function renderDashboard(data) {
                 <img src="${value}" alt="${escapeHtml(key)}" class="mt-3 w-full rounded-xl border border-slate-100 bg-slate-50"/>
                 <figcaption class="mt-3 text-sm text-slate-500">${escapeHtml(chartCaptions[key] || 'Analysis chart generated from the current segment results.')}</figcaption>
             </figure>
-        `).join('');
+        `).join('') || '<div class="rounded-2xl border border-slate-200 bg-white p-6 text-sm text-slate-500 shadow-sm">No chart images were generated for this analysis.</div>';
 
     const validation = data.validation || {};
     const anovaRows = Object.entries(validation.anova || {}).map(([metric, row]) => `

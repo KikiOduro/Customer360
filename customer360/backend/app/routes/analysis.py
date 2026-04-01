@@ -180,10 +180,10 @@ def build_chart_payload(job_id: str, results: Dict[str, Any]) -> Dict[str, Optio
         "segment_distribution": chart_url(charts.get("segment_sizes")),
         "revenue_pareto": chart_url(charts.get("pareto")),
         "pca_clusters_2d": chart_url(charts.get("pca_scatter")),
-        "algorithm_comparison": None,
-        "radar_chart": None,
+        "algorithm_comparison": chart_url(charts.get("algorithm_comparison")),
+        "radar_chart": chart_url(charts.get("radar_chart")),
         "shap_bar": None,
-        "rfm_violin_plots": None,
+        "rfm_violin_plots": chart_url(charts.get("rfm_violin_plots")),
     }
 
 
@@ -251,12 +251,13 @@ def build_analysis_response(job: Job, pipeline: SegmentationPipeline, results: D
             "stability": build_validation_payload(pipeline, results)["ari_stability"]["rating"],
             "avg_ari": build_validation_payload(pipeline, results)["ari_stability"]["avg"],
             "currency": meta.get("currency", "GHS"),
-            "business_type": preprocessing.get("applied_mapping", {}).get("category") and "Retail" or "General Retail",
+            "business_type": preprocessing.get("business_type", "General Retail"),
             "total_revenue": meta.get("total_revenue"),
             "job_id": job.job_id,
             "source_file": job.original_filename,
             "created_at": job.created_at.isoformat() if job.created_at else None,
             "summary": summary,
+            "eda": preprocessing.get("eda", {}),
         },
         "segments": build_segment_payload(pipeline, results),
         "shap": {

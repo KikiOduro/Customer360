@@ -14,11 +14,13 @@ from typing import Dict, Any, Optional
 import pandas as pd
 import numpy as np
 import logging
+import joblib
 
 from .preprocessing import preprocess_transaction_data, get_csv_preview
 from .rfm import compute_rfm, normalize_rfm, get_rfm_statistics, get_rfm_distributions
 from .clustering import run_clustering, run_comparison
 from .segmentation import analyze_clusters, get_cluster_sizes, get_segment_summary
+from ..config import MODELS_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +67,8 @@ class SegmentationPipeline:
         self.rfm      = None
         self.labels   = None
         self.segments = None
+        self.model_artifacts = self._load_model_artifacts()
+        self.chosen_algorithm = clustering_method
 
     # ── Public entry point ─────────────────────────────────────────────────────
 
@@ -79,6 +83,8 @@ class SegmentationPipeline:
             self.df, preprocessing_meta = preprocess_transaction_data(
                 self.file_path, self.column_mapping
             )
+            preprocessing_meta['business_type'] = self._infer_business_type(self.df)
+            preprocessing_meta['eda'] = self._build_eda_summary(self.df, preprocessing_meta)
             self.results['preprocessing'] = preprocessing_meta
 
             # 2. Outlier treatment (IQR Winsorization on the amount column)
@@ -94,7 +100,8 @@ class SegmentationPipeline:
 
             # 4. Normalise
             logger.info("Step 4: Normalising RFM features...")
-            rfm_normalised, scaler = normalize_rfm(self.rfm)
+            scaler_override = self._get_compatible_scaler()
+            rfm_normalised, scaler = normalize_rfm(self.rfm, scaler_override=scaler_override)
             feature_cols = ['recency_normalized', 'frequency_normalized', 'monetary_normalized']
             X = rfm_normalised[feature_cols].values
 
@@ -110,21 +117,20 @@ class SegmentationPipeline:
 
             # 7. Clustering
             logger.info(f"Step 7: Running {self.clustering_method} clustering (k={optimal_k})...")
-            self.labels, clustering_info = run_clustering(
-                X,
-                method=self.clustering_method,
-                n_clusters=optimal_k,
-                auto_k=False          # we already chose K above
+            logger.info("Step 7b: Running clustering comparison...")
+            comparison_results = run_comparison(X, n_clusters=optimal_k)
+            self.results['comparison'] = comparison_results
+            self.labels, clustering_info = self._select_clustering_result(
+                X=X,
+                optimal_k=optimal_k,
+                comparison_results=comparison_results,
             )
             self.results['clustering'] = clustering_info
-
-            if self.include_comparison:
-                logger.info("Step 7b: Running clustering comparison...")
-                self.results['comparison'] = run_comparison(X, n_clusters=optimal_k)
 
             # 8. Segmentation
             logger.info("Step 8: Analysing segments...")
             self.segments = analyze_clusters(self.rfm, self.labels)
+            self._apply_artifact_segment_labels()
             self.results['segments']        = self.segments
             self.results['cluster_sizes']   = get_cluster_sizes(self.labels)
             self.results['segment_summary'] = get_segment_summary(self.segments)
@@ -160,8 +166,9 @@ class SegmentationPipeline:
                 'total_revenue':     float(self.df['amount'].sum()),
                 'num_clusters':      int(clustering_info['n_clusters']),
                 'silhouette_score':  float(clustering_info.get('silhouette_score', 0)),
-                'clustering_method': self.clustering_method,
+                'clustering_method': self.chosen_algorithm,
                 'currency': 'GHS',
+                'model_artifacts_used': self._artifacts_used_summary(scaler_override),
             }
 
             logger.info(
@@ -177,6 +184,187 @@ class SegmentationPipeline:
                 'error':  str(e)
             }
             raise
+
+    def _load_model_artifacts(self) -> Dict[str, Any]:
+        assets = {
+            'scaler': None,
+            'segment_map': {},
+            'cluster_profile': None,
+        }
+
+        scaler_path = MODELS_DIR / 'scaler.pkl'
+        segment_map_path = MODELS_DIR / 'segment_map.json'
+        cluster_profile_path = MODELS_DIR / 'cluster_rfm_profile.csv'
+
+        if scaler_path.exists():
+            try:
+                assets['scaler'] = joblib.load(scaler_path)
+            except Exception as exc:
+                logger.warning("Failed to load scaler artifact from %s: %s", scaler_path, exc)
+
+        if segment_map_path.exists():
+            try:
+                with open(segment_map_path, 'r') as handle:
+                    assets['segment_map'] = json.load(handle)
+            except Exception as exc:
+                logger.warning("Failed to load segment map artifact from %s: %s", segment_map_path, exc)
+
+        if cluster_profile_path.exists():
+            try:
+                assets['cluster_profile'] = pd.read_csv(cluster_profile_path)
+            except Exception as exc:
+                logger.warning("Failed to load cluster profile artifact from %s: %s", cluster_profile_path, exc)
+
+        return assets
+
+    def _infer_business_type(self, df: pd.DataFrame) -> str:
+        category_col = 'category' if 'category' in df.columns else None
+        if not category_col:
+            return 'General Retail'
+
+        cats = ' '.join(df[category_col].dropna().astype(str).str.lower().unique()[:50])
+        biz_map = [
+            (['shirt', 'dress', 'shoe', 'bag', 'fashion', 'cloth', 'apparel'], 'Fashion Retail'),
+            (['phone', 'laptop', 'electronic', 'gadget', 'computer'], 'Electronics Retail'),
+            (['food', 'grocery', 'beverage', 'snack', 'fruit', 'vegetable'], 'Food & Grocery'),
+            (['beauty', 'cosmetic', 'skincare', 'makeup', 'hair'], 'Beauty & Personal Care'),
+            (['furniture', 'home', 'kitchen', 'decor', 'sofa'], 'Home & Furniture'),
+        ]
+        for keywords, business_type in biz_map:
+            if any(keyword in cats for keyword in keywords):
+                return business_type
+        return 'General Retail'
+
+    def _build_eda_summary(self, df: pd.DataFrame, preprocessing_meta: Dict[str, Any]) -> Dict[str, Any]:
+        summary = {
+            'rows': int(len(df)),
+            'columns': int(len(df.columns)),
+            'duplicates': int(df.duplicated().sum()),
+            'missing_values': int(df.isna().sum().sum()),
+            'numeric_summary': {},
+            'top_categories': [],
+            'top_products': [],
+            'top_payments': [],
+        }
+
+        for col in ['amount', 'qty', 'price', 'discount']:
+            if col in df.columns and pd.api.types.is_numeric_dtype(df[col]):
+                series = pd.to_numeric(df[col], errors='coerce').dropna()
+                if not series.empty:
+                    summary['numeric_summary'][col] = {
+                        'mean': float(series.mean()),
+                        'median': float(series.median()),
+                        'std': float(series.std()) if len(series) > 1 else 0.0,
+                        'min': float(series.min()),
+                        'max': float(series.max()),
+                    }
+
+        for src, key in [('category', 'top_categories'), ('product', 'top_products'), ('payment', 'top_payments')]:
+            if src in df.columns:
+                summary[key] = [
+                    {'label': str(label), 'count': int(count)}
+                    for label, count in df[src].astype(str).value_counts().head(10).items()
+                ]
+
+        summary['warnings'] = preprocessing_meta.get('warnings', [])
+        return summary
+
+    def _get_compatible_scaler(self):
+        scaler = self.model_artifacts.get('scaler')
+        if scaler is None:
+            return None
+
+        expected_feature_count = 3
+        if getattr(scaler, 'n_features_in_', expected_feature_count) != expected_feature_count:
+            logger.warning("Skipping scaler artifact because expected %s features but got %s", expected_feature_count, getattr(scaler, 'n_features_in_', None))
+            return None
+
+        if not hasattr(scaler, 'transform'):
+            logger.warning("Skipping scaler artifact because it does not implement transform()")
+            return None
+
+        logger.info("Using fitted scaler artifact from %s", MODELS_DIR / 'scaler.pkl')
+        return scaler
+
+    def _select_clustering_result(self, X: np.ndarray, optimal_k: int, comparison_results: Dict[str, Any]):
+        methods = {
+            'kmeans': comparison_results.get('kmeans'),
+            'gmm': comparison_results.get('gmm'),
+            'hierarchical': comparison_results.get('hierarchical'),
+        }
+
+        selected_method = self.clustering_method if self.clustering_method in methods else 'kmeans'
+        selected_result = methods.get(selected_method)
+
+        if self.include_comparison:
+            scored_methods = {
+                name: details for name, details in methods.items()
+                if details and details.get('info', {}).get('silhouette_score') is not None
+            }
+            if scored_methods:
+                selected_method = max(
+                    scored_methods.keys(),
+                    key=lambda name: scored_methods[name].get('info', {}).get('silhouette_score', float('-inf'))
+                )
+                selected_result = scored_methods[selected_method]
+
+        if selected_result and selected_result.get('labels') is not None and selected_result.get('info'):
+            labels = np.array(selected_result['labels'])
+            selected_info = selected_result['info']
+            clustering_info = {
+                'method': selected_method,
+                'n_clusters': optimal_k,
+                'silhouette_score': float(selected_info.get('silhouette_score', 0) or 0),
+                'davies_bouldin_score': float(selected_info.get('davies_bouldin_score', 0) or 0),
+                'calinski_harabasz_score': float(selected_info.get('calinski_score', 0) or 0),
+                'selected_via': 'comparison' if self.include_comparison else 'requested_method',
+            }
+            self.chosen_algorithm = selected_method
+            return labels, clustering_info
+
+        labels, clustering_info = run_clustering(
+            X,
+            method=self.clustering_method,
+            n_clusters=optimal_k,
+            auto_k=False
+        )
+        self.chosen_algorithm = self.clustering_method
+        return labels, clustering_info
+
+    def _apply_artifact_segment_labels(self) -> None:
+        if not self.segments:
+            return
+
+        segment_map = self.model_artifacts.get('segment_map') or {}
+        cluster_profile = self.model_artifacts.get('cluster_profile')
+
+        for segment in self.segments:
+            cluster_id = segment.get('cluster_id')
+            mapped_name = segment_map.get(str(cluster_id))
+            if mapped_name:
+                segment['segment_key'] = str(mapped_name).lower().replace(' ', '_')
+                segment['segment_label'] = mapped_name
+
+            if isinstance(cluster_profile, pd.DataFrame) and not cluster_profile.empty and 'Cluster' in cluster_profile.columns:
+                match = cluster_profile[cluster_profile['Cluster'] == cluster_id]
+                if not match.empty:
+                    row = match.iloc[0]
+                    if pd.notna(row.get('SegmentName')):
+                        segment['segment_label'] = str(row['SegmentName'])
+                    segment['artifact_profile'] = {
+                        'R_score': float(row['R_score']) if pd.notna(row.get('R_score')) else None,
+                        'F_score': float(row['F_score']) if pd.notna(row.get('F_score')) else None,
+                        'M_score': float(row['M_score']) if pd.notna(row.get('M_score')) else None,
+                        'RFM_total': float(row['RFM_total']) if pd.notna(row.get('RFM_total')) else None,
+                    }
+
+    def _artifacts_used_summary(self, scaler_override) -> Dict[str, Any]:
+        cluster_profile = self.model_artifacts.get('cluster_profile')
+        return {
+            'scaler': bool(scaler_override is not None),
+            'segment_map': bool(self.model_artifacts.get('segment_map')),
+            'cluster_profile': bool(isinstance(cluster_profile, pd.DataFrame) and not cluster_profile.empty),
+        }
 
     # ── Step implementations ───────────────────────────────────────────────────
 
@@ -452,6 +640,110 @@ class SegmentationPipeline:
         except Exception as e:
             logger.warning(f"Pareto chart skipped: {e}")
 
+        # ── Chart 5: Algorithm comparison ────────────────────────────────────
+        try:
+            comparison = self.results.get('comparison', {})
+            if comparison:
+                rows = []
+                for method in ['kmeans', 'gmm', 'hierarchical']:
+                    values = comparison.get(method)
+                    if not values:
+                        continue
+                    info = values.get('info', {})
+                    rows.append({
+                        'method': method.upper(),
+                        'silhouette': info.get('silhouette_score', 0),
+                        'davies_bouldin': info.get('davies_bouldin_score', 0),
+                        'calinski_harabasz': info.get('calinski_score', 0),
+                    })
+                comparison_df = pd.DataFrame(rows)
+                if not comparison_df.empty:
+                    fig, axes = plt.subplots(1, 3, figsize=(14, 4))
+                    metrics = [
+                        ('silhouette', 'Silhouette', False),
+                        ('davies_bouldin', 'Davies-Bouldin', True),
+                        ('calinski_harabasz', 'Calinski-Harabasz', False),
+                    ]
+                    for ax, (col, title, ascending) in zip(axes, metrics):
+                        plot_df = comparison_df.sort_values(by=col, ascending=ascending)
+                        bars = ax.bar(plot_df['method'], plot_df[col], color='steelblue')
+                        if not plot_df.empty:
+                            best_method = plot_df.iloc[0]['method'] if ascending else plot_df.iloc[-1]['method']
+                            for bar, method in zip(bars, plot_df['method']):
+                                if method == best_method:
+                                    bar.set_color('#e8b031')
+                        ax.set_title(title)
+                    plt.tight_layout()
+                    path = self.output_dir / f"{self.job_id}_chart_algorithm_comparison.png"
+                    fig.savefig(path, dpi=120, bbox_inches='tight')
+                    plt.close(fig)
+                    charts['algorithm_comparison'] = str(path)
+        except Exception as e:
+            logger.warning(f"Algorithm comparison chart skipped: {e}")
+
+        # ── Chart 6: RFM radar chart ────────────────────────────────────────
+        try:
+            metrics = ['avg_recency', 'avg_frequency', 'avg_monetary']
+            if self.segments:
+                radar_df = pd.DataFrame([
+                    {
+                        'segment': s['segment_label'],
+                        'avg_recency': float(s.get('avg_recency', 0) or 0),
+                        'avg_frequency': float(s.get('avg_frequency', 0) or 0),
+                        'avg_monetary': float(s.get('avg_monetary', 0) or 0),
+                    }
+                    for s in self.segments
+                ])
+                radar_scaled = radar_df.copy()
+                for metric in metrics:
+                    max_val = radar_scaled[metric].max() or 1
+                    radar_scaled[metric] = radar_scaled[metric] / max_val
+
+                angles = np.linspace(0, 2 * np.pi, len(metrics), endpoint=False).tolist()
+                angles += angles[:1]
+                fig, ax = plt.subplots(figsize=(7, 7), subplot_kw={'polar': True})
+                for i, row in radar_scaled.iterrows():
+                    values = [row[m] for m in metrics] + [row[metrics[0]]]
+                    ax.plot(angles, values, linewidth=2, label=row['segment'])
+                    ax.fill(angles, values, alpha=0.08)
+                ax.set_xticks(angles[:-1])
+                ax.set_xticklabels(['Recency', 'Frequency', 'Monetary'])
+                ax.set_title('RFM Radar Comparison', pad=20)
+                ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.1), fontsize=8)
+                path = self.output_dir / f"{self.job_id}_chart_radar.png"
+                fig.savefig(path, dpi=120, bbox_inches='tight')
+                plt.close(fig)
+                charts['radar_chart'] = str(path)
+        except Exception as e:
+            logger.warning(f"Radar chart skipped: {e}")
+
+        # ── Chart 7: RFM violin plots ───────────────────────────────────────
+        try:
+            sns = _try_import('seaborn')
+            if sns and self.rfm is not None:
+                violin_df = self.rfm.copy()
+                violin_df['cluster_label'] = violin_df['customer_id'].map(
+                    pd.DataFrame({
+                        'customer_id': self.rfm['customer_id'].astype(str),
+                        'cluster_id': self.labels,
+                    }).assign(
+                        cluster_label=lambda d: d['cluster_id'].map({s['cluster_id']: s['segment_label'] for s in self.segments})
+                    ).set_index('customer_id')['cluster_label']
+                )
+                fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+                for ax, metric, title in zip(axes, ['recency', 'frequency', 'monetary'], ['Recency', 'Frequency', 'Monetary']):
+                    sns.violinplot(data=violin_df, x='cluster_label', y=metric, ax=ax, inner='quartile')
+                    ax.set_title(title)
+                    ax.tick_params(axis='x', rotation=30)
+                    ax.set_xlabel('')
+                plt.tight_layout()
+                path = self.output_dir / f"{self.job_id}_chart_violin.png"
+                fig.savefig(path, dpi=120, bbox_inches='tight')
+                plt.close(fig)
+                charts['rfm_violin_plots'] = str(path)
+        except Exception as e:
+            logger.warning(f"Violin plot chart skipped: {e}")
+
         logger.info(f"Generated {len(charts)} charts")
         return charts
 
@@ -552,7 +844,7 @@ def run_pipeline(
     job_id: str,
     column_mapping: Optional[Dict[str, str]] = None,
     clustering_method: str = 'kmeans',
-    include_comparison: bool = False
+    include_comparison: bool = True
 ) -> Dict[str, Any]:
     """
     Convenience function to run the segmentation pipeline.

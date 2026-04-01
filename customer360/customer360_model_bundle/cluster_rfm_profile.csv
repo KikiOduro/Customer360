@@ -1,0 +1,6 @@
+Cluster,R_score,F_score,M_score,RFM_total,SegmentName
+0,2.0,2.0,1.0,5.0,About to Sleep
+1,4.0,2.0,3.0,9.0,Potential Loyalists
+2,1.0,2.0,3.0,6.0,Hibernating
+3,4.0,2.0,4.0,10.0,Potential Loyalists
+4,4.0,2.0,1.0,7.0,About to Sleep

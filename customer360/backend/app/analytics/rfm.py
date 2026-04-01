@@ -157,7 +157,8 @@ def compute_rfm_scores(
 def normalize_rfm(
     rfm: pd.DataFrame,
     method: str = 'standard',
-    features: list = ['recency', 'frequency', 'monetary']
+    features: list = ['recency', 'frequency', 'monetary'],
+    scaler_override: Any = None,
 ) -> Tuple[pd.DataFrame, Any]:
     """
     Normalize RFM features for clustering.
@@ -166,13 +167,16 @@ def normalize_rfm(
         rfm: DataFrame with RFM columns
         method: 'standard' (z-score) or 'minmax' (0-1 scaling)
         features: List of columns to normalize
+        scaler_override: Optional pre-fitted scaler to reuse instead of fitting a new one
         
     Returns:
         Tuple of (normalized DataFrame, fitted scaler)
     """
     rfm = rfm.copy()
     
-    if method == 'standard':
+    if scaler_override is not None:
+        scaler = scaler_override
+    elif method == 'standard':
         scaler = StandardScaler()
     elif method == 'minmax':
         scaler = MinMaxScaler()
@@ -196,9 +200,11 @@ def normalize_rfm(
     rfm_normalized = rfm.copy()
     normalized_cols = [f'{f}_normalized' for f in features]
     
-    rfm_normalized[normalized_cols] = scaler.fit_transform(
-        rfm[features_for_scaling]
-    )
+    data_to_scale = rfm[features_for_scaling]
+    if scaler_override is not None:
+        rfm_normalized[normalized_cols] = scaler.transform(data_to_scale)
+    else:
+        rfm_normalized[normalized_cols] = scaler.fit_transform(data_to_scale)
     
     return rfm_normalized, scaler
 
