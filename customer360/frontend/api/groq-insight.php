@@ -25,7 +25,19 @@ if (!$segment || !is_array($segment)) {
     exit;
 }
 
-$groqKey = getenv('GROQ_API_KEY') ?: ($_ENV['GROQ_API_KEY'] ?? '');
+$cooldownSeconds = 20;
+$lastInsightAt = $_SESSION['groq_last_insight_at'] ?? 0;
+if (time() - (int) $lastInsightAt < $cooldownSeconds) {
+    http_response_code(429);
+    echo json_encode([
+        'success' => false,
+        'error' => 'Please wait before requesting another AI profile.',
+        'retry_after' => $cooldownSeconds - (time() - (int) $lastInsightAt),
+    ]);
+    exit;
+}
+
+$groqKey = getenv('GROQ_API_KEY') ?: ($_ENV['GROQ_API_KEY'] ?? '') ?: loadEnvValue('GROQ_API_KEY');
 if (!$groqKey) {
     echo json_encode([
         'success' => true,
@@ -82,12 +94,34 @@ if ($httpCode < 200 || $httpCode >= 300 || !is_array($profile)) {
     exit;
 }
 
+$_SESSION['groq_last_insight_at'] = time();
+
 echo json_encode([
     'success' => true,
     'source' => 'groq',
     'profile' => $profile,
 ]);
 exit;
+
+function loadEnvValue(string $key): string {
+    static $env = null;
+    if ($env === null) {
+        $env = [];
+        $envPath = dirname(__DIR__, 2) . '/backend/.env';
+        if (is_file($envPath) && is_readable($envPath)) {
+            $lines = file($envPath, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) ?: [];
+            foreach ($lines as $line) {
+                $line = trim($line);
+                if ($line === '' || str_starts_with($line, '#') || !str_contains($line, '=')) {
+                    continue;
+                }
+                [$envKey, $envValue] = explode('=', $line, 2);
+                $env[trim($envKey)] = trim($envValue);
+            }
+        }
+    }
+    return $env[$key] ?? '';
+}
 
 function buildPrompt(array $segment): string {
     $json = json_encode($segment, JSON_PRETTY_PRINT);

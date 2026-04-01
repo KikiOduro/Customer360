@@ -3,6 +3,7 @@ Configuration settings for Customer360 application.
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Base directories
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -10,6 +11,21 @@ DATA_DIR = BASE_DIR / "data"
 UPLOAD_DIR = DATA_DIR / "uploads"
 OUTPUT_DIR = DATA_DIR / "outputs"
 MODELS_DIR = BASE_DIR.parent / "models"
+
+# Load backend environment file if present
+load_dotenv(BASE_DIR / ".env")
+
+
+def _parse_bool(value: str | None, default: bool = False) -> bool:
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def _parse_csv(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
 
 # Create directories if they don't exist
 for directory in [DATA_DIR, UPLOAD_DIR, OUTPUT_DIR]:
@@ -32,6 +48,10 @@ DATABASE_URL = os.getenv(
 SECRET_KEY = os.getenv("SECRET_KEY", "customer360-secret-key-change-in-production-2026")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
+DEBUG = _parse_bool(os.getenv("DEBUG"), default=False)
+ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower() or "development"
+ALLOWED_ORIGINS = _parse_csv(os.getenv("ALLOWED_ORIGINS"))
+ALLOW_CREDENTIALS = _parse_bool(os.getenv("ALLOW_CREDENTIALS"), default=True)
 
 # File upload settings
 MAX_FILE_SIZE_MB = 50

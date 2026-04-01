@@ -9,7 +9,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import QueuePool, StaticPool
 
-from .config import DATABASE_URL
+from .config import DATABASE_URL, DEBUG, ENVIRONMENT
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +37,9 @@ if "mysql" in database_url.lower():
         )
     except Exception as e:
         logger.warning(f"⚠️  MySQL connection failed: {str(e)}")
+        if not DEBUG and ENVIRONMENT == "production":
+            logger.error("Refusing SQLite fallback in production. Fix DATABASE_URL or DB_* settings.")
+            raise
         logger.warning("Falling back to SQLite for development/testing...")
         # Fall back to SQLite
         sqlite_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "customer360.db")

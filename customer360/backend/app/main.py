@@ -14,7 +14,7 @@ import joblib
 
 from .database import init_db
 from .routes import api_router
-from .config import MODELS_DIR
+from .config import ALLOWED_ORIGINS, ALLOW_CREDENTIALS, DEBUG, ENVIRONMENT, MODELS_DIR
 
 # Configure logging
 logging.basicConfig(
@@ -94,10 +94,12 @@ app = FastAPI(
 )
 
 # Configure CORS
+cors_origins = ALLOWED_ORIGINS or (["*"] if DEBUG else [])
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # In production, specify actual origins
-    allow_credentials=True,
+    allow_origins=cors_origins,
+    allow_credentials=ALLOW_CREDENTIALS if cors_origins and cors_origins != ["*"] else False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -115,7 +117,8 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "Customer360 API",
-        "version": "1.0.0"
+        "version": "1.0.0",
+        "environment": ENVIRONMENT,
     }
 
 

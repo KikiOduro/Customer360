@@ -4,15 +4,32 @@
  * Settings for connecting to the Python FastAPI backend
  */
 
+function envValue(string $key, ?string $default = null): ?string {
+    $value = getenv($key);
+    if ($value === false || $value === '') {
+        return $default;
+    }
+    return $value;
+}
+
+function isHttpsRequest(): bool {
+    if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
+        return true;
+    }
+    $forwardedProto = $_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '';
+    return strtolower($forwardedProto) === 'https';
+}
+
 // Python FastAPI backend URL
-// FastAPI runs on port 8000, nginx proxies 80 -> 8000
-// PHP connects directly to FastAPI on port 8000
-define('BACKEND_API_URL', 'http://localhost:8000/api');
+$backendApiUrl = rtrim(envValue('BACKEND_API_URL', 'http://localhost:8000/api'), '/');
+define('BACKEND_API_URL', $backendApiUrl);
+define('BACKEND_VERIFY_SSL', filter_var(envValue('BACKEND_VERIFY_SSL', 'true'), FILTER_VALIDATE_BOOLEAN));
 
 // Session configuration
 ini_set('session.cookie_httponly', 1);
 ini_set('session.use_only_cookies', 1);
-ini_set('session.cookie_secure', 0); // Set to 1 in production with HTTPS
+ini_set('session.cookie_secure', isHttpsRequest() ? '1' : '0');
+ini_set('session.cookie_samesite', 'Lax');
 
 // Upload settings
 define('MAX_FILE_SIZE', 25 * 1024 * 1024); // 25MB
@@ -48,6 +65,9 @@ function apiRequest($endpoint, $method = 'GET', $data = null, $token = null, $fi
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_TIMEOUT, 120); // 2 minute timeout for large files
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, BACKEND_VERIFY_SSL);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, BACKEND_VERIFY_SSL ? 2 : 0);
     
     if ($method === 'POST') {
         curl_setopt($ch, CURLOPT_POST, true);
@@ -88,6 +108,7 @@ function apiRequest($endpoint, $method = 'GET', $data = null, $token = null, $fi
     return [
         'success' => $httpCode >= 200 && $httpCode < 300,
         'data' => $decoded,
+        'raw_body' => $decoded === null ? $response : null,
         'http_code' => $httpCode
     ];
 }
