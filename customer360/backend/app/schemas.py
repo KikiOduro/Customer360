@@ -70,6 +70,10 @@ class JobStatus(BaseModel):
     error_message: Optional[str] = None
     created_at: datetime
     completed_at: Optional[datetime] = None
+    storage_provider: Optional[str] = None
+    storage_bucket: Optional[str] = None
+    storage_object_path: Optional[str] = None
+    storage_public_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -85,6 +89,10 @@ class JobSummary(BaseModel):
     total_revenue: Optional[float]
     created_at: datetime
     is_saved: bool
+    storage_provider: Optional[str] = None
+    storage_bucket: Optional[str] = None
+    storage_object_path: Optional[str] = None
+    storage_public_url: Optional[str] = None
 
     class Config:
         from_attributes = True

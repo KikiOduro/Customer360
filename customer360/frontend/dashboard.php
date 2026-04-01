@@ -441,6 +441,7 @@ $currentPage = 'dashboard';
                                         class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
                                         onclick="openUploadModal()"
                                     >
+                                    //TODO: make sure the upload button works when clicked, not just drag and drop,
                                         Upload File
                                         <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
                                     </button>

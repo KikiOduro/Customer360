@@ -36,6 +36,16 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 MAX_FILE_SIZE_MB = 50
 ALLOWED_EXTENSIONS = {".csv"}
 
+# Supabase Storage settings for uploaded source files
+SUPABASE_URL = os.getenv("SUPABASE_URL", "https://bsacwgdxmnuifvhfasof.supabase.co").rstrip("/")
+SUPABASE_STORAGE_BUCKET = os.getenv("SUPABASE_STORAGE_BUCKET", "user_uploads")
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY", "")
+SUPABASE_STORAGE_PUBLIC_BASE = os.getenv(
+    "SUPABASE_STORAGE_PUBLIC_BASE",
+    f"{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_STORAGE_BUCKET}"
+).rstrip("/")
+SUPABASE_STORAGE_OBJECT_BASE = f"{SUPABASE_URL}/storage/v1/object/{SUPABASE_STORAGE_BUCKET}"
+
 # Clustering settings
 DEFAULT_K_RANGE = (2, 10)  # Range of k values to try for K-Means
 RANDOM_STATE = 42

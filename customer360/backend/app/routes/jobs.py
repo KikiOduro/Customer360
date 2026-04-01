@@ -25,6 +25,7 @@ from ..config import UPLOAD_DIR, OUTPUT_DIR, MAX_FILE_SIZE_MB, ALLOWED_EXTENSION
 from ..analytics.preprocessing import get_csv_preview
 from ..analytics.production_pipeline import ProductionPipeline
 from ..report import generate_report
+from ..storage import build_storage_object_path, upload_file_to_supabase, delete_supabase_object
 
 router = APIRouter()
 
@@ -38,6 +39,38 @@ def validate_file(file: UploadFile) -> None:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
         )
+
+
+def store_upload_and_sync_to_supabase(file: UploadFile, user_id: int, job_id: str, upload_dir: Path) -> dict:
+    """
+    Save the uploaded file locally for processing and mirror it to Supabase Storage.
+    """
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    local_path = upload_dir / Path(file.filename).name
+    with open(local_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    object_path = build_storage_object_path(user_id, job_id, file.filename)
+
+    try:
+        storage_meta = upload_file_to_supabase(
+            local_path=local_path,
+            object_path=object_path,
+            content_type=file.content_type or "text/csv",
+        )
+    except Exception as exc:
+        if local_path.exists():
+            local_path.unlink()
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to upload file to Supabase Storage: {str(exc)}"
+        ) from exc
+
+    return {
+        "local_path": str(local_path),
+        **storage_meta,
+    }
 
 
 def run_segmentation_job(
@@ -125,17 +158,24 @@ async def upload_file(
     job_upload_dir.mkdir(parents=True, exist_ok=True)
     job_output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Save uploaded file
-    file_path = job_upload_dir / file.filename
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    stored_upload = store_upload_and_sync_to_supabase(
+        file=file,
+        user_id=current_user.id,
+        job_id=job_id,
+        upload_dir=job_upload_dir,
+    )
     
     # Create job record
     job = Job(
         job_id=job_id,
         user_id=current_user.id,
         original_filename=file.filename,
-        upload_path=str(file_path),
+        upload_path=stored_upload["storage_object_path"],
+        local_upload_path=stored_upload["local_path"],
+        storage_provider=stored_upload["storage_provider"],
+        storage_bucket=stored_upload["storage_bucket"],
+        storage_object_path=stored_upload["storage_object_path"],
+        storage_public_url=stored_upload["storage_public_url"],
         output_path=str(job_output_dir),
         clustering_method=clustering_method,
         include_comparison=include_comparison,
@@ -151,7 +191,7 @@ async def upload_file(
     background_tasks.add_task(
         run_segmentation_job,
         job_id=job_id,
-        file_path=str(file_path),
+        file_path=stored_upload["local_path"],
         output_dir=str(job_output_dir),
         column_mapping=None,
         clustering_method=clustering_method,
@@ -162,7 +202,11 @@ async def upload_file(
     return JobStatus(
         job_id=job.job_id,
         status=job.status,
-        created_at=job.created_at
+        created_at=job.created_at,
+        storage_provider=job.storage_provider,
+        storage_bucket=job.storage_bucket,
+        storage_object_path=job.storage_object_path,
+        storage_public_url=job.storage_public_url,
     )
 
 
@@ -255,17 +299,24 @@ async def upload_with_mapping(
     job_upload_dir.mkdir(parents=True, exist_ok=True)
     job_output_dir.mkdir(parents=True, exist_ok=True)
     
-    # Save file
-    file_path = job_upload_dir / file.filename
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    stored_upload = store_upload_and_sync_to_supabase(
+        file=file,
+        user_id=current_user.id,
+        job_id=job_id,
+        upload_dir=job_upload_dir,
+    )
     
     # Create job
     job = Job(
         job_id=job_id,
         user_id=current_user.id,
         original_filename=file.filename,
-        upload_path=str(file_path),
+        upload_path=stored_upload["storage_object_path"],
+        local_upload_path=stored_upload["local_path"],
+        storage_provider=stored_upload["storage_provider"],
+        storage_bucket=stored_upload["storage_bucket"],
+        storage_object_path=stored_upload["storage_object_path"],
+        storage_public_url=stored_upload["storage_public_url"],
         output_path=str(job_output_dir),
         clustering_method=clustering_method,
         include_comparison=include_comparison,
@@ -282,7 +333,7 @@ async def upload_with_mapping(
     background_tasks.add_task(
         run_segmentation_job,
         job_id=job_id,
-        file_path=str(file_path),
+        file_path=stored_upload["local_path"],
         output_dir=str(job_output_dir),
         column_mapping=column_mapping,
         clustering_method=clustering_method,
@@ -293,7 +344,11 @@ async def upload_with_mapping(
     return JobStatus(
         job_id=job.job_id,
         status=job.status,
-        created_at=job.created_at
+        created_at=job.created_at,
+        storage_provider=job.storage_provider,
+        storage_bucket=job.storage_bucket,
+        storage_object_path=job.storage_object_path,
+        storage_public_url=job.storage_public_url,
     )
 
 
@@ -316,7 +371,11 @@ async def list_jobs(
             num_transactions=job.num_transactions,
             total_revenue=job.total_revenue,
             created_at=job.created_at,
-            is_saved=job.is_saved
+            is_saved=job.is_saved,
+            storage_provider=job.storage_provider,
+            storage_bucket=job.storage_bucket,
+            storage_object_path=job.storage_object_path,
+            storage_public_url=job.storage_public_url,
         )
         for job in jobs
     ]
@@ -347,7 +406,11 @@ async def get_job_status(
         status=job.status,
         error_message=job.error_message,
         created_at=job.created_at,
-        completed_at=job.completed_at
+        completed_at=job.completed_at,
+        storage_provider=job.storage_provider,
+        storage_bucket=job.storage_bucket,
+        storage_object_path=job.storage_object_path,
+        storage_public_url=job.storage_public_url,
     )
 
 
@@ -541,6 +604,8 @@ async def delete_job(
         shutil.rmtree(upload_dir)
     if output_dir.exists():
         shutil.rmtree(output_dir)
+    if job.storage_object_path:
+        delete_supabase_object(job.storage_object_path)
     
     # Delete job record
     db.delete(job)

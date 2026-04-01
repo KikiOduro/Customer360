@@ -177,6 +177,10 @@ if ($httpCode === 200 || $httpCode === 201) {
         'status'     => $decoded['status'] ?? 'pending',
         'created_at' => $decoded['created_at'] ?? date('c'),
         'filename'   => $file['name'],
+        'storage_provider' => $decoded['storage_provider'] ?? null,
+        'storage_bucket' => $decoded['storage_bucket'] ?? null,
+        'storage_object_path' => $decoded['storage_object_path'] ?? null,
+        'storage_public_url' => $decoded['storage_public_url'] ?? null,
         'demo_mode'  => false,
     ];
 
@@ -184,6 +188,10 @@ if ($httpCode === 200 || $httpCode === 201) {
         'success' => true,
         'job_id'  => $jobId,
         'status'  => $decoded['status'] ?? 'pending',
+        'storage_provider' => $decoded['storage_provider'] ?? null,
+        'storage_bucket' => $decoded['storage_bucket'] ?? null,
+        'storage_object_path' => $decoded['storage_object_path'] ?? null,
+        'storage_public_url' => $decoded['storage_public_url'] ?? null,
     ]);
 
 } else {

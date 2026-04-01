@@ -48,6 +48,11 @@ class Job(Base):
     # File information
     original_filename = Column(String(255), nullable=False)
     upload_path = Column(String(500), nullable=False)
+    local_upload_path = Column(String(500), nullable=True)
+    storage_provider = Column(String(50), nullable=True)
+    storage_bucket = Column(String(255), nullable=True)
+    storage_object_path = Column(String(500), nullable=True)
+    storage_public_url = Column(String(1000), nullable=True)
     output_path = Column(String(500), nullable=True)
     
     # Job configuration
