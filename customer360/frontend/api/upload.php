@@ -24,7 +24,6 @@ if (!isset($_FILES['file'])) {
 
 $file      = $_FILES['file'];
 $authToken = $_SESSION['auth_token'] ?? null;
-$isDemoMode = $_SESSION['demo_mode'] ?? false;
 
 // ── VALIDATE FILE ─────────────────────────────────────────────
 $allowedExtensions = ['.csv', '.xlsx', '.xls'];
@@ -42,39 +41,11 @@ if ($file['error'] !== UPLOAD_ERR_OK) {
     jsonResponse(['success' => false, 'error' => 'File upload error. Please try again.'], 400);
 }
 
-// ── DEMO MODE: skip backend, store file locally ───────────────
-if ($isDemoMode || !$authToken) {
-    $uploadDir = sys_get_temp_dir() . '/customer360_uploads/';
-    if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-
-    $tempName = uniqid('demo_') . $ext;
-    $tempPath = $uploadDir . $tempName;
-
-    if (!move_uploaded_file($file['tmp_name'], $tempPath)) {
-        jsonResponse(['success' => false, 'error' => 'Could not save uploaded file.'], 500);
-    }
-
-    // Get CSV preview for column mapping
-    $preview = getFilePreview($tempPath, $ext);
-
-    $jobId = 'demo_' . uniqid();
-    $_SESSION['current_job'] = [
-        'job_id'      => $jobId,
-        'status'      => 'pending',
-        'created_at'  => date('c'),
-        'filename'    => $file['name'],
-        'file_path'   => $tempPath,
-        'demo_mode'   => true,
-    ];
-    $_SESSION['current_upload'] = $preview;
-
+if (!$authToken) {
     jsonResponse([
-        'success'  => true,
-        'job_id'   => $jobId,
-        'status'   => 'pending',
-        'demo_mode'=> true,
-        'preview'  => $preview,
-    ]);
+        'success' => false,
+        'error' => 'Live uploads require an authenticated backend session. Please sign in again and retry.'
+    ], 401);
 }
 
 // ── REAL MODE: forward to FastAPI ─────────────────────────────
@@ -181,7 +152,6 @@ if ($httpCode === 200 || $httpCode === 201) {
         'storage_bucket' => $decoded['storage_bucket'] ?? null,
         'storage_object_path' => $decoded['storage_object_path'] ?? null,
         'storage_public_url' => $decoded['storage_public_url'] ?? null,
-        'demo_mode'  => false,
     ];
 
     jsonResponse([
@@ -202,7 +172,7 @@ if ($httpCode === 200 || $httpCode === 201) {
 // ── HELPERS ───────────────────────────────────────────────────
 
 /**
- * Get a basic preview of the uploaded file (used in demo mode for column mapping)
+ * Get a basic preview of the uploaded file for column mapping
  */
 function getFilePreview(string $filePath, string $ext): array {
     if ($ext === '.csv') {

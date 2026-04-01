@@ -21,7 +21,6 @@ $userName = htmlspecialchars($rawUserName !== '' ? $rawUserName : ($rawUserEmail
 $companyName = htmlspecialchars($rawCompanyName);
 $userEmail = htmlspecialchars($rawUserEmail);
 $authToken = $_SESSION['auth_token'] ?? null;
-$isDemoMode = isset($_SESSION['demo_mode']) && $_SESSION['demo_mode'];
 
 $currentYear = date('Y');
 
@@ -196,30 +195,6 @@ if ($authToken) {
             $recentRuns[] = $run;
         }
     }
-} elseif (!empty($_SESSION['current_job'])) {
-    $currentJob = $_SESSION['current_job'];
-    $demoResults = $_SESSION['demo_results'] ?? null;
-    $recentRuns[] = [
-        'job_id' => $currentJob['job_id'] ?? 'demo-job',
-        'original_filename' => $currentJob['filename'] ?? 'Uploaded file',
-        'status' => $currentJob['status'] ?? 'pending',
-        'num_customers' => $demoResults['num_customers'] ?? null,
-        'num_transactions' => $demoResults['num_transactions'] ?? null,
-        'total_revenue' => $demoResults['total_revenue'] ?? null,
-        'created_at' => $currentJob['created_at'] ?? null,
-        'completed_at' => $currentJob['completed_at'] ?? null,
-        'clustering_method' => $demoResults['clustering_method'] ?? null,
-        'num_clusters' => $demoResults['num_clusters'] ?? null,
-        'silhouette_score' => $demoResults['silhouette_score'] ?? null,
-        'error_message' => null,
-        'visuals' => getRunVisuals($currentJob['status'] ?? 'pending'),
-        'status_label' => getStatusLabel($currentJob['status'] ?? 'pending'),
-        'status_badge_class' => getStatusBadgeClass($currentJob['status'] ?? 'pending'),
-        'action' => buildActionConfig([
-            'job_id' => $currentJob['job_id'] ?? 'demo-job',
-            'status' => $currentJob['status'] ?? 'pending',
-        ]),
-    ];
 }
 
 $showUploadMessage = empty($recentRuns);
@@ -440,8 +415,8 @@ $currentPage = 'dashboard';
                                     <button 
                                         class="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
                                         onclick="openUploadModal()"
+                                        type="button"
                                     >
-                                    //TODO: make sure the upload button works when clicked, not just drag and drop,
                                         Upload File
                                         <span class="material-symbols-outlined text-[18px]">arrow_forward</span>
                                     </button>
@@ -571,9 +546,6 @@ $currentPage = 'dashboard';
                                 Get Started Here
                             </button>
                         </div>
-                        <?php if ($isDemoMode): ?>
-                        <p class="mt-4 text-xs text-slate-400 dark:text-slate-500">Demo mode is active, so runs will appear here from your current browser session.</p>
-                        <?php endif; ?>
                     </div>
                     <?php endif; ?>
                 </div>
@@ -688,7 +660,33 @@ $currentPage = 'dashboard';
                 </button>
             </div>
             
-            <nav class=\"px-4 py-6 space-y-2\">\n                <a class=\"flex items-center gap-3 rounded-lg bg-white/10 px-4 py-3 text-sm font-medium text-white transition-colors\" href=\"dashboard.php\">\n                    <span class=\"material-symbols-outlined\">dashboard</span>\n                    Dashboard\n                </a>\n                <a class=\"flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors\" href=\"upload.php\">\n                    <span class=\"material-symbols-outlined\">upload_file</span>\n                    Upload Data\n                </a>\n                <a class=\"flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors\" href=\"analytics.php\">\n                    <span class=\"material-symbols-outlined\">analytics</span>\n                    Analytics\n                </a>\n                <a class=\"flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors\" href=\"reports.php\">\n                    <span class=\"material-symbols-outlined\">bar_chart</span>\n                    Reports\n                </a>\n                <div class=\"my-4 border-t border-slate-700/50\"></div>\n                <a class=\"flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors\" href=\"help.php\">\n                    <span class=\"material-symbols-outlined\">help</span>\n                    Help & Support\n                </a>\n                <a class=\"flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-red-400 hover:bg-white/5 hover:text-red-300 transition-colors\" href=\"api/auth.php?action=logout\">\n                    <span class=\"material-symbols-outlined\">logout</span>\n                    Sign Out\n                </a>\n            </nav>
+            <nav class="px-4 py-6 space-y-2">
+                <a class="flex items-center gap-3 rounded-lg bg-white/10 px-4 py-3 text-sm font-medium text-white transition-colors" href="dashboard.php">
+                    <span class="material-symbols-outlined">dashboard</span>
+                    Dashboard
+                </a>
+                <a class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors" href="upload.php">
+                    <span class="material-symbols-outlined">upload_file</span>
+                    Upload Data
+                </a>
+                <a class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors" href="analytics.php">
+                    <span class="material-symbols-outlined">analytics</span>
+                    Analytics
+                </a>
+                <a class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors" href="reports.php">
+                    <span class="material-symbols-outlined">bar_chart</span>
+                    Reports
+                </a>
+                <div class="my-4 border-t border-slate-700/50"></div>
+                <a class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white transition-colors" href="help.php">
+                    <span class="material-symbols-outlined">help</span>
+                    Help & Support
+                </a>
+                <a class="flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium text-red-400 hover:bg-white/5 hover:text-red-300 transition-colors" href="api/auth.php?action=logout">
+                    <span class="material-symbols-outlined">logout</span>
+                    Sign Out
+                </a>
+            </nav>
         </aside>
     </div>
 

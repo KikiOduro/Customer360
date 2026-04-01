@@ -8,9 +8,12 @@ if (!isset($_SESSION['user_id'])) {
 }
 
 // User data from session
-$userName = $_SESSION['user_name'] ?? 'User';
-$companyName = $_SESSION['company_name'] ?? 'My Business';
-$userInitials = strtoupper(substr($userName, 0, 1));
+$rawUserName = trim((string) ($_SESSION['user_name'] ?? ''));
+$rawCompanyName = trim((string) ($_SESSION['company_name'] ?? ''));
+$rawUserEmail = trim((string) ($_SESSION['user_email'] ?? ''));
+$profileLabel = $rawUserName !== '' ? $rawUserName : ($rawUserEmail !== '' ? explode('@', $rawUserEmail)[0] : 'Account');
+$companyLabel = $rawCompanyName !== '' ? $rawCompanyName : 'Signed in account';
+$userInitials = strtoupper(substr($profileLabel, 0, 1));
 $currentYear = date('Y');
 $currentPage = 'upload';
 ?>
@@ -99,8 +102,8 @@ $currentPage = 'upload';
                         <?php echo $userInitials; ?>
                     </div>
                     <div class="flex-1 min-w-0">
-                        <p class="text-sm font-medium text-white truncate"><?php echo htmlspecialchars($userName); ?></p>
-                        <p class="text-xs text-slate-400 truncate"><?php echo htmlspecialchars($companyName); ?></p>
+                        <p class="text-sm font-medium text-white truncate"><?php echo htmlspecialchars($profileLabel); ?></p>
+                        <p class="text-xs text-slate-400 truncate"><?php echo htmlspecialchars($companyLabel); ?></p>
                     </div>
                     <span class="material-symbols-outlined text-slate-400 group-hover:text-white transition-colors text-[20px]">expand_more</span>
                 </div>
@@ -160,7 +163,6 @@ $currentPage = 'upload';
                                 </div>
                                 <h3 class="text-xl font-bold text-primary mb-2">Drag & drop your files here</h3>
                                 <p class="text-slate-500 mb-8 max-w-sm">
-                                    //TODO: make sure browse files works when clicked, not just drag and drop
                                     Or <button type="button" onclick="document.getElementById('fileInput').click()" class="text-accent font-semibold hover:underline focus:outline-none">browse files</button> from your computer.
                                 </p>
                                 <div class="flex flex-wrap justify-center gap-4 text-xs text-slate-400 font-medium">

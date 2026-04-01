@@ -110,28 +110,10 @@ function handleSaveMapping() {
         }
     }
     
-    // Fallback: create demo job
-    $jobId = 'demo_' . uniqid();
-    $_SESSION['current_job'] = [
-        'job_id' => $jobId,
-        'status' => 'pending',
-        'filename' => $upload['filename'],
-        'created_at' => date('c'),
-        'demo_mode' => true
-    ];
-    
-    // Store batch ID for processing page
-    $_SESSION['batch_id'] = rand(1000, 9999);
-    $_SESSION['uploaded_file'] = $upload['filename'];
-    $_SESSION['record_count'] = count($upload['sample_rows'] ?? []) * 100; // Estimate
-    
     jsonResponse([
-        'success' => true,
-        'job_id' => $jobId,
-        'status' => 'pending',
-        'redirect' => 'processing.php',
-        'demo_mode' => true
-    ]);
+        'success' => false,
+        'error' => 'Could not start a live analysis job. Re-upload the file and try again.'
+    ], 502);
 }
 
 /**

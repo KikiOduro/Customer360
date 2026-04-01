@@ -143,7 +143,6 @@ function handleRegister() {
             $_SESSION['user_email'] = $email;
             $_SESSION['user_name'] = $name ?: explode('@', $email)[0];
             $_SESSION['company_name'] = $company_name;
-            $_SESSION['demo_mode'] = false;
             
             respondOrRedirect(
                 ['success' => true, 'message' => 'Registration successful', 'redirect' => 'dashboard.php'],
@@ -164,17 +163,10 @@ function handleRegister() {
         );
     }
     
-    // Demo mode: only if backend is truly unreachable (http_code = 0)
-    $_SESSION['user_id'] = rand(1000, 9999);
-    $_SESSION['user_email'] = $email;
-    $_SESSION['user_name'] = $name ?: explode('@', $email)[0];
-    $_SESSION['company_name'] = $company_name ?: 'My Business';
-    $_SESSION['demo_mode'] = true;
-    
     respondOrRedirect(
-        ['success' => true, 'message' => 'Registration successful (demo mode)', 'redirect' => 'dashboard.php'],
-        '../dashboard.php',
-        null
+        ['success' => false, 'error' => 'Could not reach the authentication server. Please try again when the backend is available.'],
+        null,
+        '../register.php'
     );
 }
 
@@ -207,7 +199,6 @@ function handleLogin() {
         $_SESSION['user_email'] = $email;
         $_SESSION['user_name'] = $result['data']['user_name'] ?? explode('@', $email)[0];
         $_SESSION['company_name'] = $result['data']['company_name'] ?? '';
-        $_SESSION['demo_mode'] = false;
         
         respondOrRedirect(
             ['success' => true, 'message' => 'Login successful', 'redirect' => 'dashboard.php'],
@@ -227,17 +218,10 @@ function handleLogin() {
         );
     }
     
-    // Demo mode: only if backend is truly unreachable (http_code = 0)
-    $_SESSION['user_id'] = rand(1000, 9999);
-    $_SESSION['user_email'] = $email;
-    $_SESSION['user_name'] = explode('@', $email)[0];
-    $_SESSION['company_name'] = 'My Business';
-    $_SESSION['demo_mode'] = true;
-    
     respondOrRedirect(
-        ['success' => true, 'message' => 'Login successful (demo mode)', 'redirect' => 'dashboard.php'],
-        '../dashboard.php',
-        null
+        ['success' => false, 'error' => 'Could not reach the authentication server. Please try again when the backend is available.'],
+        null,
+        '../signin.php'
     );
 }
 

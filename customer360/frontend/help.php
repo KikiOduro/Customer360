@@ -9,14 +9,16 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
-$userName = $_SESSION['user_name'] ?? 'User';
-$companyName = $_SESSION['company_name'] ?? 'My Business';
+$rawUserName = trim((string) ($_SESSION['user_name'] ?? ''));
+$rawCompanyName = trim((string) ($_SESSION['company_name'] ?? ''));
+$rawUserEmail = trim((string) ($_SESSION['user_email'] ?? ''));
+$userName = $rawUserName !== '' ? $rawUserName : ($rawUserEmail !== '' ? explode('@', $rawUserEmail)[0] : 'Account');
+$companyName = $rawCompanyName !== '' ? $rawCompanyName : 'Signed in account';
 $userInitials = strtoupper(substr($userName, 0, 1));
 $currentPage = 'help';
-$isDemoMode = isset($_SESSION['demo_mode']) && $_SESSION['demo_mode'];
 $currentYear = date('Y');
 
-$sampleData = [
+$templateRows = [
     ['name' => 'Kwame Mensah', 'phone' => '+233 24 123 4567', 'email' => 'kwame@example.com', 'region' => 'Accra', 'region_color' => 'blue'],
     ['name' => 'Ama Osei', 'phone' => '050 987 6543', 'email' => 'ama.o@store.gh', 'region' => 'Ashanti', 'region_color' => 'amber'],
     ['name' => 'Kofi Boateng', 'phone' => '+233 20 555 1234', 'email' => 'kofi.b@biz.com', 'region' => 'Western', 'region_color' => 'green'],
@@ -122,11 +124,6 @@ $resources = [
                     </div>
                 </div>
                 <div class="flex items-center gap-4">
-                    <?php if($isDemoMode): ?>
-                    <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-1 text-xs font-medium text-amber-700">
-                        <span class="material-symbols-outlined text-[14px]">science</span>Demo
-                    </span>
-                    <?php endif; ?>
                     <button class="relative rounded-full p-2 text-slate-500 hover:bg-slate-100 transition-colors">
                         <span class="material-symbols-outlined">notifications</span>
                     </button>
@@ -167,7 +164,7 @@ $resources = [
                                             </tr>
                                         </thead>
                                         <tbody class="divide-y divide-slate-200">
-                                            <?php foreach ($sampleData as $row): ?>
+                                            <?php foreach ($templateRows as $row): ?>
                                             <tr class="bg-white">
                                                 <td class="px-4 py-3 text-slate-700"><?php echo htmlspecialchars($row['name']); ?></td>
                                                 <td class="px-4 py-3 text-slate-700 font-mono text-xs"><?php echo htmlspecialchars($row['phone']); ?></td>
@@ -302,21 +299,21 @@ $resources = [
                             </ul>
                         </div>
 
-                        <!-- System Status -->
+                        <!-- Support Overview -->
                         <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                            <h3 class="mb-4 text-base font-bold text-primary">System Status</h3>
+                            <h3 class="mb-4 text-base font-bold text-primary">Support Overview</h3>
                             <div class="space-y-3">
                                 <div class="flex items-center justify-between">
-                                    <span class="text-sm text-slate-600">API Service</span>
-                                    <span class="flex items-center gap-1.5 text-xs font-medium text-green-600"><span class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>Operational</span>
+                                    <span class="text-sm text-slate-600">Support Hours</span>
+                                    <span class="text-xs font-medium text-slate-700">Mon-Fri, 8am-5pm</span>
                                 </div>
                                 <div class="flex items-center justify-between">
-                                    <span class="text-sm text-slate-600">File Processing</span>
-                                    <span class="flex items-center gap-1.5 text-xs font-medium text-green-600"><span class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>Operational</span>
+                                    <span class="text-sm text-slate-600">Primary Channel</span>
+                                    <span class="text-xs font-medium text-slate-700">Email and WhatsApp</span>
                                 </div>
                                 <div class="flex items-center justify-between">
-                                    <span class="text-sm text-slate-600">SMS Gateway</span>
-                                    <span class="flex items-center gap-1.5 text-xs font-medium text-green-600"><span class="h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>Operational</span>
+                                    <span class="text-sm text-slate-600">Typical Reply Time</span>
+                                    <span class="text-xs font-medium text-slate-700">Within 2 business hours</span>
                                 </div>
                             </div>
                         </div>
