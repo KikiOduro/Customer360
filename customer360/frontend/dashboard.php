@@ -3,6 +3,7 @@
  * Customer 360 - Dashboard Page
  * Main dashboard with sidebar navigation and recent analysis runs
  */
+require_once __DIR__ . '/api/config.php';
 session_start();
 
 // Check if user is logged in
@@ -15,57 +16,209 @@ if (!isset($_SESSION['user_id'])) {
 $userName = isset($_SESSION['user_name']) ? htmlspecialchars($_SESSION['user_name']) : 'User';
 $companyName = isset($_SESSION['company_name']) ? htmlspecialchars($_SESSION['company_name']) : 'Company';
 $userEmail = isset($_SESSION['user_email']) ? htmlspecialchars($_SESSION['user_email']) : '';
+$authToken = $_SESSION['auth_token'] ?? null;
+$isDemoMode = isset($_SESSION['demo_mode']) && $_SESSION['demo_mode'];
 
 $currentYear = date('Y');
 
-// Sample data for recent runs (in production, this would come from database)
-$recentRuns = [
-    [
-        'id' => 1,
-        'name' => 'Q3 Sales Data Analysis',
-        'date' => 'Oct 24, 2023',
-        'records' => '4,520 Rows',
-        'status' => 'completed',
-        'icon' => 'table_chart',
-        'color' => 'blue'
-    ],
-    [
-        'id' => 2,
-        'name' => 'Kumasi Region Segment',
-        'date' => 'Oct 22, 2023',
-        'records' => '1,205 Rows',
-        'status' => 'completed',
-        'icon' => 'pie_chart',
-        'color' => 'purple'
-    ],
-    [
-        'id' => 3,
-        'name' => 'Holiday Promo Target List',
-        'date' => 'Today, 10:30 AM',
-        'records' => '8,900 Rows',
-        'status' => 'processing',
-        'icon' => 'sync',
-        'color' => 'orange'
-    ],
-    [
-        'id' => 4,
-        'name' => 'Loyalty Members Batch 2',
-        'date' => 'Oct 20, 2023',
-        'records' => '-',
-        'status' => 'failed',
-        'icon' => 'warning',
-        'color' => 'red'
-    ],
-    [
-        'id' => 5,
-        'name' => 'Accra New Signups',
-        'date' => 'Oct 18, 2023',
-        'records' => '340 Rows',
-        'status' => 'completed',
-        'icon' => 'table_chart',
-        'color' => 'blue'
-    ]
-];
+function dashboardApiGet(string $endpoint, ?string $token): ?array {
+    if (!$token) {
+        return null;
+    }
+
+    $result = apiRequest($endpoint, 'GET', null, $token);
+    if (!$result['success'] || !is_array($result['data'])) {
+        return null;
+    }
+
+    return $result['data'];
+}
+
+function formatDashboardDate(?string $value): string {
+    if (!$value) {
+        return 'Not available';
+    }
+
+    $timestamp = strtotime($value);
+    if ($timestamp === false) {
+        return 'Not available';
+    }
+
+    return date('M j, Y g:i A', $timestamp);
+}
+
+function formatCompactNumber($value): string {
+    if ($value === null || $value === '') {
+        return 'Not available';
+    }
+
+    return number_format((float) $value);
+}
+
+function formatCurrencyValue($value): string {
+    if ($value === null || $value === '') {
+        return 'Not available';
+    }
+
+    return 'GH₵ ' . number_format((float) $value, 2);
+}
+
+function getRunVisuals(string $status): array {
+    $map = [
+        'completed' => [
+            'icon' => 'task_alt',
+            'container' => 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
+        ],
+        'processing' => [
+            'icon' => 'sync',
+            'container' => 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
+        ],
+        'pending' => [
+            'icon' => 'schedule',
+            'container' => 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
+        ],
+        'failed' => [
+            'icon' => 'warning',
+            'container' => 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+        ],
+    ];
+
+    return $map[$status] ?? [
+        'icon' => 'description',
+        'container' => 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+    ];
+}
+
+function getStatusBadgeClass(string $status): string {
+    $map = [
+        'completed' => 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400',
+        'processing' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+        'pending' => 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400',
+        'failed' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+    ];
+
+    return $map[$status] ?? 'bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-300';
+}
+
+function getStatusLabel(string $status): string {
+    $map = [
+        'completed' => 'Completed',
+        'processing' => 'Processing',
+        'pending' => 'Pending',
+        'failed' => 'Failed',
+    ];
+
+    return $map[$status] ?? ucfirst($status ?: 'Unknown');
+}
+
+function buildActionConfig(array $run): array {
+    $jobId = urlencode($run['job_id']);
+
+    if ($run['status'] === 'completed') {
+        return [
+            'href' => "analytics.php?job_id={$jobId}",
+            'label' => 'View results',
+            'icon' => 'visibility',
+            'classes' => 'text-primary hover:text-primary-hover dark:text-blue-400 dark:hover:text-blue-300',
+        ];
+    }
+
+    if ($run['status'] === 'failed') {
+        return [
+            'href' => 'upload.php',
+            'label' => 'Retry upload',
+            'icon' => 'refresh',
+            'classes' => 'text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300',
+        ];
+    }
+
+    return [
+        'href' => "processing.php?job_id={$jobId}",
+        'label' => $run['status'] === 'pending' ? 'Track job' : 'Track progress',
+        'icon' => $run['status'] === 'pending' ? 'schedule' : 'hourglass_top',
+        'classes' => 'text-slate-500 hover:text-primary dark:text-slate-400 dark:hover:text-white',
+    ];
+}
+
+$recentRuns = [];
+$jobsLoadError = null;
+
+if ($authToken) {
+    $jobList = dashboardApiGet('/jobs/', $authToken);
+
+    if ($jobList === null) {
+        $jobsLoadError = 'We could not load your recent analysis runs right now.';
+    } else {
+        foreach (array_slice($jobList, 0, 5) as $job) {
+            $run = [
+                'job_id' => $job['job_id'] ?? '',
+                'original_filename' => $job['original_filename'] ?? 'Untitled upload',
+                'status' => $job['status'] ?? 'pending',
+                'num_customers' => $job['num_customers'] ?? null,
+                'num_transactions' => $job['num_transactions'] ?? null,
+                'total_revenue' => $job['total_revenue'] ?? null,
+                'created_at' => $job['created_at'] ?? null,
+                'completed_at' => null,
+                'clustering_method' => null,
+                'num_clusters' => null,
+                'silhouette_score' => null,
+                'error_message' => null,
+            ];
+
+            $statusData = dashboardApiGet('/jobs/status/' . rawurlencode($run['job_id']), $authToken);
+            if ($statusData) {
+                $run['completed_at'] = $statusData['completed_at'] ?? null;
+                $run['error_message'] = $statusData['error_message'] ?? null;
+                $run['status'] = $statusData['status'] ?? $run['status'];
+            }
+
+            if ($run['status'] === 'completed') {
+                $resultsData = dashboardApiGet('/jobs/results/' . rawurlencode($run['job_id']), $authToken);
+                if ($resultsData) {
+                    $meta = is_array($resultsData['meta'] ?? null) ? $resultsData['meta'] : $resultsData;
+                    $run['clustering_method'] = $meta['clustering_method'] ?? null;
+                    $run['num_clusters'] = $meta['num_clusters'] ?? null;
+                    $run['silhouette_score'] = $meta['silhouette_score'] ?? null;
+                    $run['num_customers'] = $meta['num_customers'] ?? $run['num_customers'];
+                    $run['num_transactions'] = $meta['num_transactions'] ?? $run['num_transactions'];
+                    $run['total_revenue'] = $meta['total_revenue'] ?? $run['total_revenue'];
+                }
+            }
+
+            $run['visuals'] = getRunVisuals($run['status']);
+            $run['status_label'] = getStatusLabel($run['status']);
+            $run['status_badge_class'] = getStatusBadgeClass($run['status']);
+            $run['action'] = buildActionConfig($run);
+            $recentRuns[] = $run;
+        }
+    }
+} elseif (!empty($_SESSION['current_job'])) {
+    $currentJob = $_SESSION['current_job'];
+    $demoResults = $_SESSION['demo_results'] ?? null;
+    $recentRuns[] = [
+        'job_id' => $currentJob['job_id'] ?? 'demo-job',
+        'original_filename' => $currentJob['filename'] ?? 'Uploaded file',
+        'status' => $currentJob['status'] ?? 'pending',
+        'num_customers' => $demoResults['num_customers'] ?? null,
+        'num_transactions' => $demoResults['num_transactions'] ?? null,
+        'total_revenue' => $demoResults['total_revenue'] ?? null,
+        'created_at' => $currentJob['created_at'] ?? null,
+        'completed_at' => $currentJob['completed_at'] ?? null,
+        'clustering_method' => $demoResults['clustering_method'] ?? null,
+        'num_clusters' => $demoResults['num_clusters'] ?? null,
+        'silhouette_score' => $demoResults['silhouette_score'] ?? null,
+        'error_message' => null,
+        'visuals' => getRunVisuals($currentJob['status'] ?? 'pending'),
+        'status_label' => getStatusLabel($currentJob['status'] ?? 'pending'),
+        'status_badge_class' => getStatusBadgeClass($currentJob['status'] ?? 'pending'),
+        'action' => buildActionConfig([
+            'job_id' => $currentJob['job_id'] ?? 'demo-job',
+            'status' => $currentJob['status'] ?? 'pending',
+        ]),
+    ];
+}
+
+$showUploadMessage = empty($recentRuns);
 
 // Current page for navigation highlighting
 $currentPage = 'dashboard';
@@ -310,20 +463,20 @@ $currentPage = 'dashboard';
                     </div>
                 </div>
 
-                <!-- Recent Runs Table -->
                 <div class="rounded-xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 overflow-hidden">
                     <div class="flex items-center justify-between border-b border-slate-200 bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900">
                         <h3 class="text-base font-semibold text-slate-900 dark:text-white">Recent Analysis Runs</h3>
                         <a class="text-sm font-medium text-primary hover:text-primary-hover dark:text-blue-400 dark:hover:text-blue-300 transition-colors" href="reports.php">View All</a>
                     </div>
-                    
+
+                    <?php if (!$showUploadMessage): ?>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-sm">
                             <thead class="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-slate-800/50 dark:text-slate-400">
                                 <tr>
-                                    <th class="px-6 py-4 font-medium">Job Name</th>
+                                    <th class="px-6 py-4 font-medium">File & Run Details</th>
                                     <th class="px-6 py-4 font-medium">Date Run</th>
-                                    <th class="px-6 py-4 font-medium">Records Processed</th>
+                                    <th class="px-6 py-4 font-medium">Job Summary</th>
                                     <th class="px-6 py-4 font-medium">Status</th>
                                     <th class="px-6 py-4 font-medium text-right">Actions</th>
                                 </tr>
@@ -333,63 +486,84 @@ $currentPage = 'dashboard';
                                 <tr class="group hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                                     <td class="px-6 py-4">
                                         <div class="flex items-center gap-3">
-                                            <div class="h-8 w-8 rounded bg-<?php echo $run['color']; ?>-100 flex items-center justify-center text-<?php echo $run['color']; ?>-700 dark:bg-<?php echo $run['color']; ?>-900/30 dark:text-<?php echo $run['color']; ?>-400">
-                                                <span class="material-symbols-outlined text-[18px]"><?php echo $run['icon']; ?></span>
+                                            <div class="flex h-9 w-9 items-center justify-center rounded-lg <?php echo $run['visuals']['container']; ?>">
+                                                <span class="material-symbols-outlined text-[18px] <?php echo $run['status'] === 'processing' ? 'animate-spin' : ''; ?>"><?php echo $run['visuals']['icon']; ?></span>
                                             </div>
-                                            <span class="font-medium text-slate-900 dark:text-white"><?php echo htmlspecialchars($run['name']); ?></span>
+                                            <div class="min-w-0">
+                                                <p class="font-medium text-slate-900 dark:text-white truncate"><?php echo htmlspecialchars($run['original_filename']); ?></p>
+                                                <p class="mt-1 text-xs text-slate-500 dark:text-slate-400 truncate">Job ID: <?php echo htmlspecialchars($run['job_id']); ?></p>
+                                                <div class="mt-2 flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
+                                                    <span class="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">Method: <?php echo htmlspecialchars($run['clustering_method'] ? strtoupper($run['clustering_method']) : 'Pending'); ?></span>
+                                                    <span class="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">Clusters: <?php echo $run['num_clusters'] !== null ? number_format((int) $run['num_clusters']) : 'Not available'; ?></span>
+                                                </div>
+                                            </div>
                                         </div>
                                     </td>
-                                    <td class="px-6 py-4 text-slate-500 dark:text-slate-400"><?php echo $run['date']; ?></td>
-                                    <td class="px-6 py-4 text-slate-500 dark:text-slate-400"><?php echo $run['records']; ?></td>
+                                    <td class="px-6 py-4 text-slate-500 dark:text-slate-400">
+                                        <div class="space-y-1">
+                                            <p class="text-slate-900 dark:text-white">Created: <?php echo formatDashboardDate($run['created_at']); ?></p>
+                                            <p>Completed: <?php echo formatDashboardDate($run['completed_at']); ?></p>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4 text-slate-500 dark:text-slate-400">
+                                        <div class="space-y-1">
+                                            <p>Customers: <span class="text-slate-900 dark:text-white"><?php echo formatCompactNumber($run['num_customers']); ?></span></p>
+                                            <p>Transactions: <span class="text-slate-900 dark:text-white"><?php echo formatCompactNumber($run['num_transactions']); ?></span></p>
+                                            <p>Revenue: <span class="text-slate-900 dark:text-white"><?php echo formatCurrencyValue($run['total_revenue']); ?></span></p>
+                                            <p>Silhouette: <span class="text-slate-900 dark:text-white"><?php echo $run['silhouette_score'] !== null ? number_format((float) $run['silhouette_score'], 3) : 'Not available'; ?></span></p>
+                                        </div>
+                                    </td>
                                     <td class="px-6 py-4">
-                                        <?php if ($run['status'] === 'completed'): ?>
-                                        <span class="inline-flex items-center rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-medium text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-400">
-                                            Completed
+                                        <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium <?php echo $run['status_badge_class']; ?>">
+                                            <?php echo htmlspecialchars($run['status_label']); ?>
                                         </span>
-                                        <?php elseif ($run['status'] === 'processing'): ?>
-                                        <span class="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">
-                                            Processing
-                                        </span>
-                                        <?php elseif ($run['status'] === 'failed'): ?>
-                                        <span class="inline-flex items-center rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-800 dark:bg-red-900/30 dark:text-red-400">
-                                            Failed
-                                        </span>
+                                        <?php if (!empty($run['error_message'])): ?>
+                                        <p class="mt-2 max-w-xs text-xs text-red-600 dark:text-red-400"><?php echo htmlspecialchars($run['error_message']); ?></p>
                                         <?php endif; ?>
                                     </td>
                                     <td class="px-6 py-4 text-right">
-                                        <?php if ($run['status'] === 'completed'): ?>
-                                        <button class="text-slate-400 hover:text-primary dark:hover:text-white transition-colors" title="View Results">
-                                            <span class="material-symbols-outlined">visibility</span>
-                                        </button>
-                                        <?php elseif ($run['status'] === 'processing'): ?>
-                                        <button class="text-slate-400 cursor-not-allowed" disabled title="Processing...">
-                                            <span class="material-symbols-outlined animate-spin">hourglass_empty</span>
-                                        </button>
-                                        <?php elseif ($run['status'] === 'failed'): ?>
-                                        <button class="text-slate-400 hover:text-primary dark:hover:text-white transition-colors" title="Retry">
-                                            <span class="material-symbols-outlined">refresh</span>
-                                        </button>
-                                        <?php endif; ?>
+                                        <a class="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors <?php echo $run['action']['classes']; ?>" href="<?php echo htmlspecialchars($run['action']['href']); ?>" title="<?php echo htmlspecialchars($run['action']['label']); ?>">
+                                            <span class="material-symbols-outlined text-[18px]"><?php echo htmlspecialchars($run['action']['icon']); ?></span>
+                                            <span><?php echo htmlspecialchars($run['action']['label']); ?></span>
+                                        </a>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
                         </table>
                     </div>
-                    
-                    <!-- Empty State (hidden when there are runs) -->
-                    <div id="emptyState" class="hidden py-12 text-center">
-                        <span class="material-symbols-outlined text-6xl text-slate-300 dark:text-slate-600">folder_open</span>
-                        <h3 class="mt-4 text-lg font-medium text-slate-900 dark:text-white">No analysis runs yet</h3>
-                        <p class="mt-2 text-sm text-slate-500 dark:text-slate-400">Upload your first CSV file to get started with customer segmentation.</p>
-                        <button 
-                            class="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
-                            onclick="openUploadModal()"
-                        >
-                            <span class="material-symbols-outlined text-[18px]">add</span>
-                            New Segmentation
-                        </button>
+                    <?php else: ?>
+                    <div id="emptyState" class="py-14 text-center">
+                        <span class="material-symbols-outlined text-6xl text-slate-300 dark:text-slate-600">cloud_upload</span>
+                        <h3 class="mt-4 text-xl font-semibold text-slate-900 dark:text-white">Upload your first customer file to start tracking analysis runs</h3>
+                        <p class="mx-auto mt-3 max-w-2xl text-sm text-slate-500 dark:text-slate-400">
+                            Once you upload a CSV and launch a segmentation job, this dashboard becomes your tracking space for pending, processing, completed, or failed runs.
+                        </p>
+                        <?php if ($jobsLoadError): ?>
+                        <p class="mx-auto mt-3 max-w-xl text-sm text-amber-700 dark:text-amber-400"><?php echo htmlspecialchars($jobsLoadError); ?></p>
+                        <?php endif; ?>
+                        <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+                            <a
+                                class="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
+                                href="upload.php"
+                            >
+                                <span class="material-symbols-outlined text-[18px]">upload_file</span>
+                                Upload Your First File
+                            </a>
+                            <button
+                                class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                                onclick="openUploadModal()"
+                                type="button"
+                            >
+                                <span class="material-symbols-outlined text-[18px]">bolt</span>
+                                Get Started Here
+                            </button>
+                        </div>
+                        <?php if ($isDemoMode): ?>
+                        <p class="mt-4 text-xs text-slate-400 dark:text-slate-500">Demo mode is active, so runs will appear here from your current browser session.</p>
+                        <?php endif; ?>
                     </div>
+                    <?php endif; ?>
                 </div>
 
                 <!-- Footer -->

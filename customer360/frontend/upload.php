@@ -160,6 +160,7 @@ $currentPage = 'upload';
                                 </div>
                                 <h3 class="text-xl font-bold text-primary mb-2">Drag & drop your files here</h3>
                                 <p class="text-slate-500 mb-8 max-w-sm">
+                                    //TODO: make sure browse files works when clicked, not just drag and drop
                                     Or <button type="button" onclick="document.getElementById('fileInput').click()" class="text-accent font-semibold hover:underline focus:outline-none">browse files</button> from your computer.
                                 </p>
                                 <div class="flex flex-wrap justify-center gap-4 text-xs text-slate-400 font-medium">
