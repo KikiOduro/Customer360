@@ -21,7 +21,10 @@ function isHttpsRequest(): bool {
 }
 
 // Python FastAPI backend URL
-$backendApiUrl = rtrim(envValue('BACKEND_API_URL', 'http://localhost:8000/api'), '/');
+$backendApiUrl = rtrim(envValue('BACKEND_API_URL', 'https://customer360-w3vy.onrender.com'), '/');
+if (!str_ends_with($backendApiUrl, '/api')) {
+    $backendApiUrl .= '/api';
+}
 define('BACKEND_API_URL', $backendApiUrl);
 define('BACKEND_VERIFY_SSL', filter_var(envValue('BACKEND_VERIFY_SSL', 'true'), FILTER_VALIDATE_BOOLEAN));
 

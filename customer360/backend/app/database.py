@@ -22,7 +22,7 @@ if "mysql" in database_url.lower():
     try:
         # Try to create a test connection
         from sqlalchemy import text
-        test_engine = create_engine(database_url, pool_pre_ping=True, connect_args={"timeout": 2})
+        test_engine = create_engine(database_url, pool_pre_ping=True, connect_args={"connect_timeout": 2})
         with test_engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         logger.info("✅ MySQL connection successful")
