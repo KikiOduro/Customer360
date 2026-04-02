@@ -343,6 +343,18 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
                 const response = await fetch(`api/process.php?action=status&job_id=${encodeURIComponent(jobId)}`);
                 const data = await response.json();
                 if (!data.success) {
+                    if (response.status === 401 || data.reauth_required) {
+                        setNarration(
+                            'warning',
+                            'Session expired',
+                            data.error || 'Please sign in again to continue tracking this analysis job.',
+                            'Redirecting you to sign in now.'
+                        );
+                        setTimeout(() => {
+                            window.location.href = data.redirect || 'signin.php?error=' + encodeURIComponent(data.error || 'Please sign in again.');
+                        }, 1200);
+                        return;
+                    }
                     throw new Error(data.error || 'Failed to get job status');
                 }
 

@@ -49,6 +49,17 @@ function requireToken(): string {
     return $token;
 }
 
+function jsonAuthExpired(string $message = 'Your session has expired. Please sign in again.'): void {
+    unset($_SESSION['auth_token'], $_SESSION['user_id'], $_SESSION['user_email'], $_SESSION['user_name'], $_SESSION['company_name'], $_SESSION['current_job'], $_SESSION['analysis_results']);
+
+    jsonResponse([
+        'success' => false,
+        'error' => $message,
+        'reauth_required' => true,
+        'redirect' => 'signin.php?error=' . rawurlencode($message),
+    ], 401);
+}
+
 function handleStatus($jobId) {
     if (!$jobId) {
         jsonResponse(['error' => 'No job ID provided'], 400);
@@ -58,6 +69,9 @@ function handleStatus($jobId) {
     $result = apiRequest("/jobs/status/$jobId", 'GET', null, $token);
 
     if (!$result['success']) {
+        if (($result['http_code'] ?? 0) === 401) {
+            jsonAuthExpired($result['data']['detail'] ?? 'Your session has expired. Please sign in again.');
+        }
         jsonResponse(['error' => $result['data']['detail'] ?? 'Failed to get job status'], $result['http_code'] ?: 502);
     }
 
@@ -85,6 +99,9 @@ function handleResults($jobId) {
     $result = apiRequest("/jobs/results/$jobId", 'GET', null, $token);
 
     if (!$result['success']) {
+        if (($result['http_code'] ?? 0) === 401) {
+            jsonAuthExpired($result['data']['detail'] ?? 'Your session has expired. Please sign in again.');
+        }
         jsonResponse(['error' => $result['data']['detail'] ?? 'Failed to get results'], $result['http_code'] ?: 502);
     }
 
@@ -101,6 +118,9 @@ function handleList() {
     $result = apiRequest('/jobs/', 'GET', null, $token);
 
     if (!$result['success']) {
+        if (($result['http_code'] ?? 0) === 401) {
+            jsonAuthExpired($result['data']['detail'] ?? 'Your session has expired. Please sign in again.');
+        }
         jsonResponse(['error' => $result['data']['detail'] ?? 'Failed to list jobs'], $result['http_code'] ?: 502);
     }
 
@@ -212,6 +232,9 @@ function handleDelete($jobId) {
     $result = apiRequest("/jobs/$jobId", 'DELETE', null, $token);
 
     if (!$result['success']) {
+        if (($result['http_code'] ?? 0) === 401) {
+            jsonAuthExpired($result['data']['detail'] ?? 'Your session has expired. Please sign in again.');
+        }
         jsonResponse(['error' => $result['data']['detail'] ?? 'Failed to delete report'], $result['http_code'] ?: 502);
     }
 
@@ -234,6 +257,9 @@ function handleCancel($jobId) {
     $result = apiRequest("/jobs/$jobId/cancel", 'POST', null, $token);
 
     if (!$result['success']) {
+        if (($result['http_code'] ?? 0) === 401) {
+            jsonAuthExpired($result['data']['detail'] ?? 'Your session has expired. Please sign in again.');
+        }
         jsonResponse(['error' => $result['data']['detail'] ?? 'Failed to cancel job'], $result['http_code'] ?: 502);
     }
 
@@ -257,6 +283,9 @@ function handleHistory() {
     $result = apiRequest('/jobs/', 'GET', null, $token);
 
     if (!$result['success'] || !is_array($result['data'])) {
+        if (($result['http_code'] ?? 0) === 401) {
+            jsonAuthExpired($result['data']['detail'] ?? 'Your session has expired. Please sign in again.');
+        }
         jsonResponse(['error' => $result['data']['detail'] ?? 'Failed to load job history'], $result['http_code'] ?: 502);
     }
 

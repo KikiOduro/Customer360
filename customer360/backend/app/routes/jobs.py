@@ -91,9 +91,13 @@ def run_segmentation_job(
     """
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
-    
+
+    engine_kwargs = {"pool_pre_ping": True}
+    if db_url.lower().startswith("sqlite"):
+        engine_kwargs["connect_args"] = {"check_same_thread": False}
+
     # Create a new database session for background task
-    engine = create_engine(db_url, connect_args={"check_same_thread": False})
+    engine = create_engine(db_url, **engine_kwargs)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
     db = SessionLocal()
     
