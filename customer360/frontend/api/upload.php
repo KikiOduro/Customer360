@@ -196,6 +196,7 @@ if ($httpCode === 200 || $httpCode === 201) {
         'storage_bucket' => $decoded['storage_bucket'] ?? null,
         'storage_object_path' => $decoded['storage_object_path'] ?? null,
         'storage_public_url' => $decoded['storage_public_url'] ?? null,
+        'storage_warning' => $decoded['storage_warning'] ?? null,
     ];
 
     jsonResponse([
@@ -206,6 +207,7 @@ if ($httpCode === 200 || $httpCode === 201) {
         'storage_bucket' => $decoded['storage_bucket'] ?? null,
         'storage_object_path' => $decoded['storage_object_path'] ?? null,
         'storage_public_url' => $decoded['storage_public_url'] ?? null,
+        'storage_warning' => $decoded['storage_warning'] ?? null,
     ]);
 
 } else {

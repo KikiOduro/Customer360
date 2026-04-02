@@ -41,17 +41,28 @@ def upload_file_to_supabase(local_path: Path, object_path: str, content_type: st
     with local_path.open("rb") as file_handle:
         response = httpx.post(
             upload_url,
-            content=file_handle.read(),
+            files={
+                "file": (
+                    Path(object_path).name,
+                    file_handle,
+                    content_type or "application/octet-stream",
+                )
+            },
             headers={
                 "Authorization": f"Bearer {SUPABASE_SERVICE_ROLE_KEY}",
                 "apikey": SUPABASE_SERVICE_ROLE_KEY,
-                "Content-Type": content_type or "application/octet-stream",
                 "x-upsert": "true",
             },
             timeout=60.0,
         )
 
-    response.raise_for_status()
+    try:
+        response.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        detail = response.text.strip()
+        if detail:
+            raise RuntimeError(f"Supabase upload failed ({response.status_code}): {detail}") from exc
+        raise RuntimeError(f"Supabase upload failed ({response.status_code})") from exc
 
     return {
         "storage_provider": "supabase",

@@ -53,6 +53,8 @@ def store_upload_and_sync_to_supabase(file: UploadFile, user_id: int, job_id: st
 
     object_path = build_storage_object_path(user_id, job_id, file.filename)
 
+    storage_warning = None
+
     try:
         storage_meta = upload_file_to_supabase(
             local_path=local_path,
@@ -60,15 +62,17 @@ def store_upload_and_sync_to_supabase(file: UploadFile, user_id: int, job_id: st
             content_type=file.content_type or "text/csv",
         )
     except Exception as exc:
-        if local_path.exists():
-            local_path.unlink()
-        raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Failed to upload file to Supabase Storage: {str(exc)}"
-        ) from exc
+        storage_meta = {
+            "storage_provider": None,
+            "storage_bucket": None,
+            "storage_object_path": None,
+            "storage_public_url": None,
+        }
+        storage_warning = f"Supabase sync failed: {str(exc)}"
 
     return {
         "local_path": str(local_path),
+        "storage_warning": storage_warning,
         **storage_meta,
     }
 
@@ -228,6 +232,7 @@ async def upload_file(
         storage_bucket=job.storage_bucket,
         storage_object_path=job.storage_object_path,
         storage_public_url=job.storage_public_url,
+        storage_warning=stored_upload.get("storage_warning"),
     )
 
 

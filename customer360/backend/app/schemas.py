@@ -77,6 +77,7 @@ class JobStatus(BaseModel):
     storage_bucket: Optional[str] = None
     storage_object_path: Optional[str] = None
     storage_public_url: Optional[str] = None
+    storage_warning: Optional[str] = None
 
     class Config:
         from_attributes = True
