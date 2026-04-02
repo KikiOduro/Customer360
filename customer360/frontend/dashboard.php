@@ -631,7 +631,7 @@ $currentPage = 'dashboard';
                             <p class="mt-2 text-sm font-medium text-slate-700 dark:text-slate-300" id="fileLabel">
                                 Click to upload or drag and drop
                             </p>
-                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">CSV files only (max 10MB)</p>
+                            <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">CSV files only (max 25MB)</p>
                         </div>
                     </div>
                     

@@ -19,6 +19,18 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonResponse(['success' => false, 'error' => 'Method not allowed'], 405);
 }
 
+// When the request body exceeds post_max_size, PHP discards the multipart payload
+// before populating $_FILES/$_POST. Surface that real cause instead of "No file provided".
+$contentLength = isset($_SERVER['CONTENT_LENGTH']) ? (int) $_SERVER['CONTENT_LENGTH'] : 0;
+$postMaxSizeBytes = parseIniSize(ini_get('post_max_size'));
+if ($contentLength > 0 && empty($_FILES) && empty($_POST) && $postMaxSizeBytes > 0 && $contentLength > $postMaxSizeBytes) {
+    $limitMb = round($postMaxSizeBytes / (1024 * 1024), 1);
+    jsonResponse([
+        'success' => false,
+        'error' => "File too large for the server upload limit ({$limitMb} MB). Increase PHP post_max_size/upload_max_filesize or choose a smaller file."
+    ], 413);
+}
+
 if (!isset($_FILES['file']) && !isset($_FILES['csv_file'])) {
     jsonResponse(['success' => false, 'error' => 'No file provided'], 400);
 }
@@ -259,4 +271,29 @@ function suggestMapping(array $columns): array {
     }
 
     return $mapping;
+}
+
+function parseIniSize($value): int {
+    if ($value === false || $value === null) {
+        return 0;
+    }
+
+    $value = trim((string) $value);
+    if ($value === '') {
+        return 0;
+    }
+
+    $unit = strtolower(substr($value, -1));
+    $number = (float) $value;
+
+    switch ($unit) {
+        case 'g':
+            return (int) round($number * 1024 * 1024 * 1024);
+        case 'm':
+            return (int) round($number * 1024 * 1024);
+        case 'k':
+            return (int) round($number * 1024);
+        default:
+            return (int) round($number);
+    }
 }
