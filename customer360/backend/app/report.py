@@ -69,7 +69,7 @@ class ReportGenerator:
         ))
         
         self.styles.add(ParagraphStyle(
-            name='BodyText',
+            name='ReportBodyText',
             parent=self.styles['Normal'],
             fontSize=10,
             spaceAfter=8,
@@ -213,7 +213,7 @@ class ReportGenerator:
         {'good' if meta.get('silhouette_score', 0) > 0.5 else 'moderate'} cluster separation.
         """
         
-        elements.append(Paragraph(summary_text, self.styles['BodyText']))
+        elements.append(Paragraph(summary_text, self.styles['ReportBodyText']))
         elements.append(Spacer(1, 0.3*inch))
         
         # Key findings
@@ -230,7 +230,7 @@ class ReportGenerator:
             ]
             
             for finding in findings:
-                elements.append(Paragraph(finding, self.styles['BodyText']))
+                elements.append(Paragraph(finding, self.styles['ReportBodyText']))
         
         elements.append(Spacer(1, 0.3*inch))
         
@@ -288,7 +288,7 @@ class ReportGenerator:
         elements.append(Paragraph(
             """<b>RFM</b> (Recency, Frequency, Monetary) is a proven customer segmentation 
             technique that analyzes three key behaviors:""",
-            self.styles['BodyText']
+            self.styles['ReportBodyText']
         ))
         
         rfm_explanation = [
@@ -298,7 +298,7 @@ class ReportGenerator:
         ]
         
         for item in rfm_explanation:
-            elements.append(Paragraph(f"• {item}", self.styles['BodyText']))
+            elements.append(Paragraph(f"• {item}", self.styles['ReportBodyText']))
         
         elements.append(Spacer(1, 0.2*inch))
         
@@ -351,7 +351,7 @@ class ReportGenerator:
         elements.append(Paragraph(
             f"""The {clustering.get('method', 'K-Means').upper()} algorithm identified 
             <b>{clustering.get('n_clusters', 0)}</b> distinct customer segments.""",
-            self.styles['BodyText']
+            self.styles['ReportBodyText']
         ))
         
         elements.append(Spacer(1, 0.2*inch))
@@ -415,7 +415,7 @@ class ReportGenerator:
             <b>Frequency:</b> {seg['avg_frequency']:.1f} transactions (range: {seg['min_frequency']}-{seg['max_frequency']})<br/>
             <b>Monetary:</b> GH₵{seg['avg_monetary']:,.2f} (range: GH₵{seg['min_monetary']:,.2f}-GH₵{seg['max_monetary']:,.2f})
             """
-            elements.append(Paragraph(metrics_text, self.styles['BodyText']))
+            elements.append(Paragraph(metrics_text, self.styles['ReportBodyText']))
             
             elements.append(Spacer(1, 0.1*inch))
         
@@ -439,7 +439,7 @@ class ReportGenerator:
             ))
             
             for action in seg.get('recommended_actions', [])[:3]:  # Top 3 actions
-                elements.append(Paragraph(f"• {action}", self.styles['BodyText']))
+                elements.append(Paragraph(f"• {action}", self.styles['ReportBodyText']))
             
             elements.append(Spacer(1, 0.2*inch))
         
