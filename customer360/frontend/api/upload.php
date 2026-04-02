@@ -110,7 +110,7 @@ if (function_exists('curl_init')) {
         CURLOPT_POST           => true,
         CURLOPT_POSTFIELDS     => $postFields,
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_TIMEOUT        => 30,
+        CURLOPT_TIMEOUT        => 120,
         CURLOPT_HTTPHEADER     => [
             'Authorization: Bearer ' . $authToken,
             'Accept: application/json',
@@ -177,41 +177,46 @@ if ($curlError) {
 }
 
 $decoded = json_decode($response, true);
+$payload = extractUploadPayload($decoded);
 
 if ($httpCode === 200 || $httpCode === 201) {
-    // FastAPI returns {job_id, status, created_at}
-    $jobId = $decoded['job_id'] ?? null;
+    $jobId = $payload['job_id'] ?? null;
 
     if (!$jobId) {
-        jsonResponse(['success' => false, 'error' => 'Backend did not return a job ID.'], 500);
+        $backendSnippet = summarizeBackendResponse($response);
+        jsonResponse([
+            'success' => false,
+            'error' => 'Backend returned success but did not include a job ID.',
+            'backend_response' => $backendSnippet,
+        ], 502);
     }
 
     // Store in session so processing.php polling can use it
     $_SESSION['current_job'] = [
         'job_id'     => $jobId,
-        'status'     => $decoded['status'] ?? 'pending',
-        'created_at' => $decoded['created_at'] ?? date('c'),
+        'status'     => $payload['status'] ?? 'pending',
+        'created_at' => $payload['created_at'] ?? date('c'),
         'filename'   => $file['name'],
-        'storage_provider' => $decoded['storage_provider'] ?? null,
-        'storage_bucket' => $decoded['storage_bucket'] ?? null,
-        'storage_object_path' => $decoded['storage_object_path'] ?? null,
-        'storage_public_url' => $decoded['storage_public_url'] ?? null,
-        'storage_warning' => $decoded['storage_warning'] ?? null,
+        'storage_provider' => $payload['storage_provider'] ?? null,
+        'storage_bucket' => $payload['storage_bucket'] ?? null,
+        'storage_object_path' => $payload['storage_object_path'] ?? null,
+        'storage_public_url' => $payload['storage_public_url'] ?? null,
+        'storage_warning' => $payload['storage_warning'] ?? null,
     ];
 
     jsonResponse([
         'success' => true,
         'job_id'  => $jobId,
-        'status'  => $decoded['status'] ?? 'pending',
-        'storage_provider' => $decoded['storage_provider'] ?? null,
-        'storage_bucket' => $decoded['storage_bucket'] ?? null,
-        'storage_object_path' => $decoded['storage_object_path'] ?? null,
-        'storage_public_url' => $decoded['storage_public_url'] ?? null,
-        'storage_warning' => $decoded['storage_warning'] ?? null,
+        'status'  => $payload['status'] ?? 'pending',
+        'storage_provider' => $payload['storage_provider'] ?? null,
+        'storage_bucket' => $payload['storage_bucket'] ?? null,
+        'storage_object_path' => $payload['storage_object_path'] ?? null,
+        'storage_public_url' => $payload['storage_public_url'] ?? null,
+        'storage_warning' => $payload['storage_warning'] ?? null,
     ]);
 
 } else {
-    $detail = $decoded['detail'] ?? $decoded['error'] ?? 'Upload failed (HTTP ' . $httpCode . ')';
+    $detail = $payload['detail'] ?? $payload['error'] ?? summarizeBackendResponse($response) ?? ('Upload failed (HTTP ' . $httpCode . ')');
     jsonResponse(['success' => false, 'error' => $detail], $httpCode ?: 500);
 }
 
@@ -273,6 +278,43 @@ function suggestMapping(array $columns): array {
     }
 
     return $mapping;
+}
+
+function extractUploadPayload($decoded): array {
+    if (!is_array($decoded)) {
+        return [];
+    }
+
+    if (isset($decoded['job_id']) || isset($decoded['status']) || isset($decoded['detail']) || isset($decoded['error'])) {
+        return $decoded;
+    }
+
+    if (isset($decoded['data']) && is_array($decoded['data'])) {
+        return $decoded['data'];
+    }
+
+    if (isset($decoded['result']) && is_array($decoded['result'])) {
+        return $decoded['result'];
+    }
+
+    return $decoded;
+}
+
+function summarizeBackendResponse($response): ?string {
+    if (!is_string($response)) {
+        return null;
+    }
+
+    $response = trim($response);
+    if ($response === '') {
+        return null;
+    }
+
+    if (strlen($response) > 300) {
+        return substr($response, 0, 300) . '...';
+    }
+
+    return $response;
 }
 
 function parseIniSize($value): int {

@@ -72,6 +72,7 @@ uvicorn app.main:app --host 0.0.0.0 --port $PORT
 
 Set these Render environment variables:
 
+- `PYTHON_VERSION=3.11.11`
 - `ENVIRONMENT=production`
 - `DEBUG=false`
 - `DATABASE_URL=<your mysql connection string>`
@@ -82,6 +83,15 @@ Set these Render environment variables:
 - `SUPABASE_SERVICE_ROLE_KEY=<your supabase service role key>`
 - `ALLOWED_ORIGINS=<comma-separated frontend origins>`
 - `ALLOW_CREDENTIALS=true`
+
+Important deployment note:
+
+- Push and redeploy whenever backend response contracts change, especially these files:
+  - `app/routes/jobs.py`
+  - `app/storage.py`
+  - `app/schemas.py`
+- If uploads still fail after deploy, inspect the response from `POST /api/jobs/upload` directly in Render logs or `/docs`.
+- The PHP proxy expects a JSON body containing `job_id` on success. If Render serves stale code or returns a wrapped/non-JSON body, the frontend upload will fail even when HTTP status is `200`.
 
 ## Frontend deployment note
 
