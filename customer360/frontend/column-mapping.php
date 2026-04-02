@@ -441,20 +441,47 @@ $optionalFields = [
     <script>
         let validationReady = false;
 
+        function getUiNode(id) {
+            return document.getElementById(id);
+        }
+
+        function setNodeText(id, value) {
+            const node = getUiNode(id);
+            if (node) {
+                node.textContent = value;
+            }
+        }
+
+        function setNodeHtml(id, value) {
+            const node = getUiNode(id);
+            if (node) {
+                node.innerHTML = value;
+            }
+        }
+
+        function setNodeHidden(id, hidden) {
+            const node = getUiNode(id);
+            if (node) {
+                node.classList.toggle('hidden', hidden);
+            }
+        }
+
         function openFieldHelp(title, text, sample, required) {
-            document.getElementById('fieldHelpTitle').textContent = title || 'Field details';
-            document.getElementById('fieldHelpText').textContent = text || 'No extra description was provided for this field.';
-            document.getElementById('fieldHelpSample').textContent = sample || 'Not available';
-            const badge = document.getElementById('fieldHelpBadge');
-            badge.textContent = required ? 'Required Field' : 'Optional Field';
-            badge.className = required
-                ? 'text-xs font-black uppercase tracking-[0.2em] text-red-600'
-                : 'text-xs font-black uppercase tracking-[0.2em] text-[#536e93]';
-            document.getElementById('fieldHelpModal').classList.remove('hidden');
+            setNodeText('fieldHelpTitle', title || 'Field details');
+            setNodeText('fieldHelpText', text || 'No extra description was provided for this field.');
+            setNodeText('fieldHelpSample', sample || 'Not available');
+            const badge = getUiNode('fieldHelpBadge');
+            if (badge) {
+                badge.textContent = required ? 'Required Field' : 'Optional Field';
+                badge.className = required
+                    ? 'text-xs font-black uppercase tracking-[0.2em] text-red-600'
+                    : 'text-xs font-black uppercase tracking-[0.2em] text-[#536e93]';
+            }
+            setNodeHidden('fieldHelpModal', false);
         }
 
         function closeFieldHelp() {
-            document.getElementById('fieldHelpModal').classList.add('hidden');
+            setNodeHidden('fieldHelpModal', true);
         }
 
         function escapeHtml(value) {
@@ -489,7 +516,7 @@ $optionalFields = [
 
         function resetValidationState() {
             validationReady = false;
-            document.getElementById('validationReportBody').classList.add('hidden');
+            setNodeHidden('validationReportBody', true);
         }
 
         function renderFieldsCounter(mappedCount, state = 'progress') {
@@ -605,11 +632,19 @@ $optionalFields = [
                 loading: ['bg-slate-100 text-slate-700', 'progress_activity']
             };
             const [classes, iconName] = styles[type] || styles.info;
-            card.classList.remove('hidden');
-            icon.className = `mt-0.5 flex h-9 w-9 items-center justify-center rounded-full ${classes}`;
-            icon.innerHTML = `<span class="material-symbols-outlined ${type === 'loading' ? 'animate-spin' : ''}">${iconName}</span>`;
-            titleEl.textContent = title;
-            messageEl.textContent = message;
+            if (card) {
+                card.classList.remove('hidden');
+            }
+            if (icon) {
+                icon.className = `mt-0.5 flex h-9 w-9 items-center justify-center rounded-full ${classes}`;
+                icon.innerHTML = `<span class="material-symbols-outlined ${type === 'loading' ? 'animate-spin' : ''}">${iconName}</span>`;
+            }
+            if (titleEl) {
+                titleEl.textContent = title;
+            }
+            if (messageEl) {
+                messageEl.textContent = message;
+            }
         }
 
         function dismissWarning() {
@@ -666,33 +701,33 @@ $optionalFields = [
             const previewRows = validation?.canonical_preview || [];
             const previewColumns = previewRows.length > 0 ? Object.keys(previewRows[0]) : [];
 
-            document.getElementById('metricRowsUsable').textContent = Number(rowsUsable).toLocaleString();
-            document.getElementById('metricCustomerCount').textContent = Number(customerCount).toLocaleString();
-            document.getElementById('metricInvoiceCount').textContent = Number(invoiceCount).toLocaleString();
-            document.getElementById('metricTotalRevenue').textContent = Number(totalRevenue).toLocaleString(undefined, { maximumFractionDigits: 2 });
+            setNodeText('metricRowsUsable', Number(rowsUsable).toLocaleString());
+            setNodeText('metricCustomerCount', Number(customerCount).toLocaleString());
+            setNodeText('metricInvoiceCount', Number(invoiceCount).toLocaleString());
+            setNodeText('metricTotalRevenue', Number(totalRevenue).toLocaleString(undefined, { maximumFractionDigits: 2 }));
 
-            document.getElementById('validationNotices').innerHTML = notices.length
+            setNodeHtml('validationNotices', notices.length
                 ? notices.map((notice) => `
                     <div class="flex items-start gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-800">
                         <span class="material-symbols-outlined text-sm">info</span>
                         <span>${escapeHtml(notice)}</span>
                     </div>
                 `).join('')
-                : '<div class="rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">No validation warnings detected.</div>';
+                : '<div class="rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700">No validation warnings detected.</div>');
 
-            document.getElementById('canonicalPreviewHead').innerHTML = previewColumns.length
+            setNodeHtml('canonicalPreviewHead', previewColumns.length
                 ? `<tr>${previewColumns.map((col) => `<th class="px-4 py-3 border-b border-border-subtle">${escapeHtml(col)}</th>`).join('')}</tr>`
-                : '<tr><th class="px-4 py-3 border-b border-border-subtle">No preview rows</th></tr>';
+                : '<tr><th class="px-4 py-3 border-b border-border-subtle">No preview rows</th></tr>');
 
-            document.getElementById('canonicalPreviewBody').innerHTML = previewRows.length
+            setNodeHtml('canonicalPreviewBody', previewRows.length
                 ? previewRows.map((row) => `
                     <tr class="hover:bg-slate-50">
                         ${previewColumns.map((col) => `<td class="px-4 py-3">${escapeHtml(row[col])}</td>`).join('')}
                     </tr>
                 `).join('')
-                : '<tr><td class="px-4 py-3 text-slate-500">No canonical preview rows were returned.</td></tr>';
+                : '<tr><td class="px-4 py-3 text-slate-500">No canonical preview rows were returned.</td></tr>');
 
-            document.getElementById('validationReportBody').classList.remove('hidden');
+            setNodeHidden('validationReportBody', false);
         }
 
         async function runValidation() {
@@ -717,7 +752,7 @@ $optionalFields = [
                 updateMappingStatus();
             } catch (error) {
                 validationReady = false;
-                document.getElementById('validationReportBody').classList.add('hidden');
+                setNodeHidden('validationReportBody', true);
                 setMappingStatus('error', 'Validation failed', error.message || 'Could not validate this mapping.');
             } finally {
                 validateBtn.disabled = false;
