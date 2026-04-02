@@ -28,11 +28,21 @@ Required values to review in `.env`:
 - `GROQ_API_KEY`
 - `DATABASE_URL` or `DB_*`
 - `SUPABASE_SERVICE_ROLE_KEY`
+- `API_HOST` and `API_PORT` if another machine must reach the API
+
+Recommended if the deployed frontend at `http://64.23.248.187:8080/` should call this backend directly:
+
+```bash
+API_HOST=0.0.0.0
+API_PORT=8000
+ALLOWED_ORIGINS=http://64.23.248.187:8080
+```
 
 4. Run the API:
 
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+source .env
+uvicorn app.main:app --reload --host "${API_HOST:-0.0.0.0}" --port "${API_PORT:-8000}"
 ```
 
 5. Verify the API:
@@ -54,11 +64,38 @@ Set this before starting your web server if the backend is not on `http://localh
 export BACKEND_API_URL="http://localhost:8000/api"
 ```
 
+If the frontend hosted at `64.23.248.187:8080` should connect to your local machine, point it at your public IP instead:
+
+```bash
+export BACKEND_API_URL="http://<your-public-ip>:8000/api"
+```
+
+Or configure it in parts:
+
+```bash
+export BACKEND_API_SCHEME="http"
+export BACKEND_API_HOST="<your-public-ip>"
+export BACKEND_API_PORT="8000"
+```
+
 Optional for self-signed HTTPS during development:
 
 ```bash
 export BACKEND_VERIFY_SSL=false
 ```
+
+## External access requirement
+
+`--host 0.0.0.0` only makes FastAPI listen on your machine. It does not bypass NAT, router, or firewall rules.
+
+For `http://64.23.248.187:8080/` to reach your local backend, you still need all of the following:
+
+1. Inbound access to port `8000` allowed on your computer.
+2. Router port forwarding from public port `8000` to this machine if you are behind NAT.
+3. The deployed PHP app configured with your actual public IP, not `localhost` or a LAN IP.
+4. External verification with `curl http://<your-public-ip>:8000/health` from a different network.
+
+If inbound port forwarding is not possible, you will need a tunnel or reverse proxy. That part is outside the app code.
 
 ## Render deployment
 

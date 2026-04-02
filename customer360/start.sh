@@ -30,11 +30,16 @@ source venv/bin/activate
 echo "📦 Installing dependencies..."
 pip install -r requirements.txt --quiet
 
+API_HOST="${API_HOST:-0.0.0.0}"
+API_PORT="${API_PORT:-8000}"
+
 # Run the server
 echo ""
 echo "🌐 Starting Customer360 Backend..."
-echo "   API: http://localhost:8000"
-echo "   Docs: http://localhost:8000/docs"
+echo "   Bind: ${API_HOST}:${API_PORT}"
+echo "   Local API: http://localhost:${API_PORT}"
+echo "   Docs: http://localhost:${API_PORT}/docs"
+echo "   External URL example: http://<your-public-ip>:${API_PORT}"
 echo ""
 echo "📱 To view the frontend, open a new terminal and run:"
 echo "   cd frontend && python3 -m http.server 3000"
@@ -43,4 +48,4 @@ echo ""
 echo "Press Ctrl+C to stop the server"
 echo ""
 
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host "${API_HOST}" --port "${API_PORT}"

@@ -20,8 +20,21 @@ function isHttpsRequest(): bool {
     return strtolower($forwardedProto) === 'https';
 }
 
+function backendBaseUrl(): string {
+    $explicitUrl = envValue('BACKEND_API_URL');
+    if ($explicitUrl !== null) {
+        return rtrim($explicitUrl, '/');
+    }
+
+    $scheme = envValue('BACKEND_API_SCHEME', 'http');
+    $host = envValue('BACKEND_API_HOST', '127.0.0.1');
+    $port = envValue('BACKEND_API_PORT', '8000');
+
+    return rtrim(sprintf('%s://%s:%s', $scheme, $host, $port), '/');
+}
+
 // Python FastAPI backend URL
-$backendApiUrl = rtrim(envValue('BACKEND_API_URL', 'https://customer360-w3vy.onrender.com'), '/');
+$backendApiUrl = backendBaseUrl();
 if (!str_ends_with($backendApiUrl, '/api')) {
     $backendApiUrl .= '/api';
 }

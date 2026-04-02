@@ -40,12 +40,16 @@ fi
 
 # Step 5: Start backend
 echo -e "\n🚀 Step 5: Starting backend server..."
-echo "Server will be available at: http://localhost:8000"
-echo "API Documentation: http://localhost:8000/docs"
-echo "Health check: http://localhost:8000/health"
+API_HOST="${API_HOST:-0.0.0.0}"
+API_PORT="${API_PORT:-8000}"
+echo "Bind address: ${API_HOST}:${API_PORT}"
+echo "Server will be available locally at: http://localhost:${API_PORT}"
+echo "API Documentation: http://localhost:${API_PORT}/docs"
+echo "Health check: http://localhost:${API_PORT}/health"
+echo "Public URL example: http://<your-public-ip>:${API_PORT}"
 echo ""
 echo "Press Ctrl+C to stop the server"
 echo ""
 
 cd /Users/akuaoduro/Desktop/Capstone/customer360/backend
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host "${API_HOST}" --port "${API_PORT}"
