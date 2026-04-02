@@ -43,9 +43,83 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
         body { font-family: 'Inter', sans-serif; }
         .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
         .material-symbols-outlined.filled { font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .processing-shell {
+            background:
+                radial-gradient(circle at top left, rgba(232,176,49,.18), transparent 35%),
+                radial-gradient(circle at top right, rgba(11,32,60,.18), transparent 35%),
+                #f6f7f8;
+        }
+        .dark .processing-shell {
+            background:
+                radial-gradient(circle at top left, rgba(232,176,49,.1), transparent 35%),
+                radial-gradient(circle at top right, rgba(59,130,246,.15), transparent 35%),
+                #121820;
+        }
+        .processing-orbit {
+            position: relative;
+            width: 8.5rem;
+            height: 8.5rem;
+            border-radius: 9999px;
+            background: conic-gradient(from 0deg, #e8b031, #3b82f6, #0b203c, #e8b031);
+            animation: processing-spin 2.4s linear infinite;
+            display: grid;
+            place-items: center;
+        }
+        .processing-orbit::before {
+            content: '';
+            position: absolute;
+            inset: 10px;
+            border-radius: inherit;
+            background: #f8fafc;
+        }
+        .dark .processing-orbit::before {
+            background: #1e2837;
+        }
+        .processing-orbit-icon {
+            position: relative;
+            z-index: 1;
+            color: #0b203c;
+            animation: processing-breathe 1.8s ease-in-out infinite;
+        }
+        .processing-bar {
+            position: relative;
+            overflow: hidden;
+        }
+        .processing-bar::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+            transform: translateX(-100%);
+            animation: processing-shimmer 1.6s ease-in-out infinite;
+        }
+        .processing-card {
+            animation: processing-rise .45s ease-out both;
+        }
+        .processing-step-active {
+            animation: processing-pulse 1.4s ease-in-out infinite;
+        }
+        @keyframes processing-spin {
+            to { transform: rotate(360deg); }
+        }
+        @keyframes processing-breathe {
+            0%, 100% { transform: scale(1); opacity: .9; }
+            50% { transform: scale(1.08); opacity: 1; }
+        }
+        @keyframes processing-shimmer {
+            100% { transform: translateX(100%); }
+        }
+        @keyframes processing-rise {
+            from { opacity: 0; transform: translateY(14px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes processing-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(11,32,60,.35); }
+            50% { box-shadow: 0 0 0 12px rgba(11,32,60,0); }
+        }
     </style>
 </head>
-<body class="bg-background-light dark:bg-background-dark text-primary dark:text-white antialiased overflow-x-hidden">
+<body class="processing-shell text-primary dark:text-white antialiased overflow-x-hidden">
     <div class="relative flex min-h-screen w-full flex-col">
         <header class="sticky top-0 z-50 flex items-center justify-between border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1a222e] px-6 md:px-10 py-3 shadow-sm">
             <div class="flex items-center gap-4 text-primary dark:text-white">
@@ -81,7 +155,7 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
                     <p class="text-slate-500 dark:text-slate-400 text-base leading-relaxed max-w-2xl mx-auto">We are tracking your live analysis job and will unlock the results as soon as the backend marks it complete.</p>
                 </div>
 
-                <div class="bg-white dark:bg-[#1a222e] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
+                <div class="processing-card bg-white dark:bg-[#1a222e] rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden">
                     <div class="p-6 md:p-8 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-[#1e2837]">
                         <div class="flex justify-between items-end mb-3">
                             <div>
@@ -91,14 +165,14 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
                             <span id="progressPercent" class="text-2xl font-bold">0%</span>
                         </div>
                         <div class="relative w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                            <div id="progressBar" class="absolute top-0 left-0 h-full bg-primary transition-all duration-500 ease-out rounded-full" style="width: 0%;"></div>
+                            <div id="progressBar" class="processing-bar absolute top-0 left-0 h-full bg-gradient-to-r from-primary via-blue-500 to-accent transition-all duration-500 ease-out rounded-full" style="width: 0%;"></div>
                         </div>
                     </div>
 
                     <div class="p-6 md:p-8 flex flex-col md:flex-row gap-8">
                         <div class="hidden md:flex w-1/3 flex-col justify-center items-center p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
-                            <div class="w-full aspect-square bg-gradient-to-br from-primary/20 via-blue-500/20 to-purple-500/20 rounded-lg mb-4 relative overflow-hidden flex items-center justify-center">
-                                <span class="material-symbols-outlined text-6xl text-primary/60">query_stats</span>
+                            <div class="processing-orbit mb-4">
+                                <span class="processing-orbit-icon material-symbols-outlined text-6xl">query_stats</span>
                             </div>
                             <p class="text-center text-sm font-medium text-slate-600 dark:text-slate-300"><?php echo htmlspecialchars($uploadedFile); ?></p>
                         </div>
@@ -149,7 +223,7 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
                     </div>
                 </div>
 
-                <div id="jobNarrationCard" class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1a222e] p-5 shadow-sm">
+                <div id="jobNarrationCard" class="processing-card rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1a222e] p-5 shadow-sm">
                     <div class="flex items-start gap-4">
                         <div id="jobNarrationIcon" class="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
                             <span class="material-symbols-outlined animate-spin">progress_activity</span>
@@ -209,7 +283,7 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
             const line = step.querySelector('.step-line');
 
             if (status === 'active') {
-                icon.className = 'step-icon absolute left-0 top-0 flex size-8 -ml-4 items-center justify-center rounded-full bg-primary text-white ring-4 ring-white dark:ring-[#1a222e] shadow-md shadow-primary/20';
+                icon.className = 'step-icon processing-step-active absolute left-0 top-0 flex size-8 -ml-4 items-center justify-center rounded-full bg-primary text-white ring-4 ring-white dark:ring-[#1a222e] shadow-md shadow-primary/20';
                 icon.innerHTML = '<span class="material-symbols-outlined text-lg animate-spin">progress_activity</span>';
                 content.classList.remove('opacity-60');
                 text.className = 'step-text text-sm text-primary/80 dark:text-blue-300 font-medium';

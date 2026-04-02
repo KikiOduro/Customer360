@@ -261,6 +261,39 @@ $currentPage = 'dashboard';
         .material-symbols-outlined {
             font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
         }
+        .upload-spinner {
+            width: 1rem;
+            height: 1rem;
+            border-radius: 9999px;
+            border: 2px solid rgba(255,255,255,.35);
+            border-top-color: #fff;
+            animation: upload-spin .8s linear infinite;
+        }
+        .upload-progress-shimmer {
+            position: relative;
+            overflow: hidden;
+        }
+        .upload-progress-shimmer::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,.45), transparent);
+            transform: translateX(-100%);
+            animation: upload-shimmer 1.4s ease-in-out infinite;
+        }
+        .upload-float-in {
+            animation: upload-float-in .35s ease-out both;
+        }
+        @keyframes upload-spin {
+            to { transform: rotate(360deg); }
+        }
+        @keyframes upload-shimmer {
+            100% { transform: translateX(100%); }
+        }
+        @keyframes upload-float-in {
+            from { opacity: 0; transform: translateY(12px) scale(.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
         /* Custom scrollbar */
         ::-webkit-scrollbar {
             width: 6px;
@@ -584,7 +617,7 @@ $currentPage = 'dashboard';
             <div class="fixed inset-0 bg-black/50 transition-opacity" onclick="closeUploadModal()"></div>
             
             <!-- Modal Content -->
-            <div class="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900">
+            <div class="relative w-full max-w-lg rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-900 upload-float-in">
                 <div class="flex items-center justify-between mb-6">
                     <h3 class="text-xl font-bold text-slate-900 dark:text-white">Upload Customer Data</h3>
                     <button class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors" onclick="closeUploadModal()">
@@ -634,6 +667,19 @@ $currentPage = 'dashboard';
                             <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">CSV files only (max 25MB)</p>
                         </div>
                     </div>
+
+                    <div id="uploadProgressPanel" class="mb-6 hidden rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">
+                        <div class="flex items-start justify-between gap-4">
+                            <div class="min-w-0 flex-1">
+                                <p id="uploadProgressTitle" class="text-sm font-bold text-slate-900 dark:text-white">Preparing upload</p>
+                                <p id="uploadProgressMessage" class="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-300">Waiting for your dataset...</p>
+                            </div>
+                            <p id="uploadProgressPercent" class="text-sm font-bold text-primary dark:text-white">0%</p>
+                        </div>
+                        <div class="mt-3 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                            <div id="uploadProgressBar" class="h-full w-0 rounded-full bg-primary transition-all duration-300"></div>
+                        </div>
+                    </div>
                     
                     <!-- Actions -->
                     <div class="flex gap-3">
@@ -646,13 +692,37 @@ $currentPage = 'dashboard';
                         </button>
                         <button 
                             type="submit"
-                            class="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            class="flex-1 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-white hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
                             id="uploadBtn"
                         >
-                            Start Analysis
+                            <span id="uploadBtnSpinner" class="upload-spinner hidden"></span>
+                            <span id="uploadBtnText">Start Analysis</span>
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Success Modal -->
+    <div id="uploadSuccessModal" class="fixed inset-0 z-[60] hidden overflow-y-auto">
+        <div class="flex min-h-screen items-center justify-center p-4">
+            <div class="fixed inset-0 bg-black/60 transition-opacity"></div>
+            <div class="relative w-full max-w-md rounded-2xl bg-white p-8 text-center shadow-2xl dark:bg-slate-900 upload-float-in">
+                <div class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-700">
+                    <span class="material-symbols-outlined text-4xl">check_circle</span>
+                </div>
+                <h3 class="mt-5 text-2xl font-bold text-slate-900 dark:text-white">Upload successful</h3>
+                <p id="uploadSuccessMessage" class="mt-3 text-sm leading-6 text-slate-600 dark:text-slate-300">
+                    Your file was uploaded and the analysis job has started.
+                </p>
+                <div class="mt-6 rounded-xl bg-slate-50 px-4 py-3 text-left text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                    <p class="font-semibold text-slate-800 dark:text-white">Redirecting to job processing...</p>
+                    <p id="uploadSuccessJobId" class="mt-1 break-all"></p>
+                </div>
+                <div class="mt-6 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
+                    <div id="uploadSuccessProgress" class="upload-progress-shimmer h-full w-1/3 rounded-full bg-primary transition-all duration-500"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -706,6 +776,8 @@ $currentPage = 'dashboard';
     </div>
 
     <script>
+        let uploadProgressTimer = null;
+
         // Toggle user dropdown menu
         function toggleUserMenu() {
             const menu = document.getElementById('userMenu');
@@ -731,6 +803,15 @@ $currentPage = 'dashboard';
             // Reset form
             document.getElementById('uploadForm').reset();
             document.getElementById('fileLabel').textContent = 'Click to upload or drag and drop';
+            clearInterval(uploadProgressTimer);
+            setUploadProgressState({
+                show: false,
+                title: 'Preparing upload',
+                message: 'Waiting for your dataset...',
+                percent: 0,
+                animated: false
+            });
+            resetUploadButton();
         }
 
         // Handle file selection
@@ -784,11 +865,132 @@ $currentPage = 'dashboard';
             }
         }
 
-        // Form submission
-        document.getElementById('uploadForm').addEventListener('submit', function(e) {
+        function setUploadProgressState({ show = true, title, message, percent = 0, animated = true }) {
+            const panel = document.getElementById('uploadProgressPanel');
+            const titleEl = document.getElementById('uploadProgressTitle');
+            const messageEl = document.getElementById('uploadProgressMessage');
+            const percentEl = document.getElementById('uploadProgressPercent');
+            const bar = document.getElementById('uploadProgressBar');
+            const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
+
+            panel.classList.toggle('hidden', !show);
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            percentEl.textContent = `${Math.round(safePercent)}%`;
+            bar.style.width = `${safePercent}%`;
+            bar.classList.toggle('upload-progress-shimmer', animated);
+        }
+
+        function openUploadSuccessModal(jobId, fileName) {
+            closeUploadModal();
+            document.getElementById('uploadSuccessMessage').textContent =
+                `${fileName} was uploaded successfully. Your customer segmentation job is now queued.`;
+            document.getElementById('uploadSuccessJobId').textContent = `Job ID: ${jobId}`;
+            document.getElementById('uploadSuccessModal').classList.remove('hidden');
+
+            const progressBar = document.getElementById('uploadSuccessProgress');
+            progressBar.style.width = '35%';
+            setTimeout(() => { progressBar.style.width = '70%'; }, 250);
+            setTimeout(() => { progressBar.style.width = '100%'; }, 800);
+            setTimeout(() => {
+                window.location.href = `processing.php?job_id=${encodeURIComponent(jobId)}`;
+            }, 1300);
+        }
+
+        function resetUploadButton() {
             const uploadBtn = document.getElementById('uploadBtn');
+            const uploadBtnSpinner = document.getElementById('uploadBtnSpinner');
+            const uploadBtnText = document.getElementById('uploadBtnText');
+            uploadBtn.disabled = false;
+            uploadBtnSpinner.classList.add('hidden');
+            uploadBtnText.textContent = 'Start Analysis';
+        }
+
+        function showUploadFailure(message) {
+            clearInterval(uploadProgressTimer);
+            resetUploadButton();
+            setUploadProgressState({
+                show: true,
+                title: 'Upload failed',
+                message: message || 'Upload failed. Please try again.',
+                percent: 100,
+                animated: false
+            });
+        }
+
+        // Form submission
+        document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            const uploadBtn = document.getElementById('uploadBtn');
+            const uploadBtnSpinner = document.getElementById('uploadBtnSpinner');
+            const uploadBtnText = document.getElementById('uploadBtnText');
+            const form = e.currentTarget;
+            const fileInput = document.getElementById('csvFile');
+            const selectedFile = fileInput.files[0];
+
+            if (!selectedFile) {
+                showUploadFailure('Please choose a CSV file before starting the analysis.');
+                return;
+            }
+
             uploadBtn.disabled = true;
-            uploadBtn.textContent = 'Uploading...';
+            uploadBtnSpinner.classList.remove('hidden');
+            uploadBtnText.textContent = 'Uploading...';
+            setUploadProgressState({
+                show: true,
+                title: 'Uploading dataset',
+                message: `Sending ${selectedFile.name} to the analysis server...`,
+                percent: 12,
+                animated: true
+            });
+            clearInterval(uploadProgressTimer);
+            uploadProgressTimer = setInterval(() => {
+                const progressBar = document.getElementById('uploadProgressBar');
+                const currentWidth = Number(progressBar.style.width.replace('%', '')) || 12;
+                const nextValue = Math.min(currentWidth + 8, 88);
+                setUploadProgressState({
+                    show: true,
+                    title: 'Uploading dataset',
+                    message: nextValue >= 72
+                        ? 'Finalizing storage metadata and creating your analysis job...'
+                        : 'Uploading your CSV and validating the request...',
+                    percent: nextValue,
+                    animated: true
+                });
+            }, 700);
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    body: new FormData(form),
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    credentials: 'same-origin'
+                });
+
+                clearInterval(uploadProgressTimer);
+                const payload = await response.json().catch(() => null);
+
+                if (!response.ok || !payload?.success || !payload?.job_id) {
+                    showUploadFailure(payload?.error || `Upload failed with status ${response.status}.`);
+                    return;
+                }
+
+                setUploadProgressState({
+                    show: true,
+                    title: 'Upload complete',
+                    message: 'Job created successfully. Opening the processing view...',
+                    percent: 100,
+                    animated: false
+                });
+                sessionStorage.setItem('current_job_id', payload.job_id);
+                openUploadSuccessModal(payload.job_id, selectedFile.name);
+            } catch (error) {
+                showUploadFailure('Could not reach the upload API. Please check the backend service and try again.');
+            }
         });
 
         // Close dropdowns when clicking outside
