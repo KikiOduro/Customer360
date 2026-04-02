@@ -492,6 +492,23 @@ $optionalFields = [
             document.getElementById('validationReportBody').classList.add('hidden');
         }
 
+        function renderFieldsCounter(mappedCount, state = 'progress') {
+            const counter = document.getElementById('fieldsCounter');
+            if (!counter) return;
+
+            if (state === 'complete') {
+                counter.innerHTML = '<span class="text-green-600"><span class="material-symbols-outlined text-sm align-middle">check_circle</span> All Fields Mapped</span>';
+                return;
+            }
+
+            if (state === 'duplicate') {
+                counter.innerHTML = '<span class="text-red-600"><span class="material-symbols-outlined text-sm align-middle">error</span> Duplicate mappings detected</span>';
+                return;
+            }
+
+            counter.innerHTML = '<span id="mappedCount">' + mappedCount + '</span> of 4 Fields Mapped';
+        }
+
         function updateMappingStatus() {
             const selects = document.querySelectorAll('.mapping-select');
             const allSelects = document.querySelectorAll('.mapping-select, .optional-mapping-select');
@@ -516,7 +533,6 @@ $optionalFields = [
                 }
             });
 
-            document.getElementById('mappedCount').textContent = mappedCount;
             const hasDuplicates = selectedValues.length !== new Set(selectedValues).size;
             const continueBtn = document.getElementById('continueBtn');
             const requiredMap = {};
@@ -528,14 +544,13 @@ $optionalFields = [
             const unitPriceValue = document.querySelector('select[name="mapping[unit_price]"]')?.value || '';
             const hasFormulaInputs = quantityValue !== '' && unitPriceValue !== '';
             const amountValid = amountMode === 'direct' ? requiredMap.amount : hasFormulaInputs;
-            const requiredCoreCount = 4;
 
             const customerValid = syntheticCustomerAllowed || requiredMap.customer_id;
             const dateValid = syntheticDateAllowed || requiredMap.date;
 
             if (customerValid && dateValid && requiredMap.invoice_id && amountValid && !hasDuplicates) {
                 continueBtn.disabled = !validationReady;
-                document.getElementById('fieldsCounter').innerHTML = '<span class="text-green-600"><span class="material-symbols-outlined text-sm align-middle">check_circle</span> All Fields Mapped</span>';
+                renderFieldsCounter(mappedCount, 'complete');
                 const amountMessage = amountMode === 'formula'
                     ? 'Amount will be computed as Quantity × Unit Price during preprocessing.'
                     : 'Amount will be read directly from the selected Amount column.';
@@ -548,11 +563,11 @@ $optionalFields = [
                 );
             } else if (hasDuplicates) {
                 continueBtn.disabled = true;
-                document.getElementById('fieldsCounter').innerHTML = '<span class="text-red-600"><span class="material-symbols-outlined text-sm align-middle">error</span> Duplicate mappings detected</span>';
+                renderFieldsCounter(mappedCount, 'duplicate');
                 setMappingStatus('error', 'Duplicate columns selected', 'Each required field must point to a different source column.');
             } else {
                 continueBtn.disabled = true;
-                document.getElementById('fieldsCounter').innerHTML = '<span id="mappedCount">' + mappedCount + '</span> of ' + requiredCoreCount + ' Fields Mapped';
+                renderFieldsCounter(mappedCount, 'progress');
                 setMappingStatus('info', 'Mapping in progress', 'Map Customer ID, Date, Invoice ID, and either Amount or Quantity + Unit Price.');
             }
         }
