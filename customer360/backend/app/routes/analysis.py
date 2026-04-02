@@ -23,7 +23,6 @@ from ..auth import get_current_user
 from ..config import OUTPUT_DIR, UPLOAD_DIR
 from ..models import Job, User
 from ..report import generate_report
-from ..storage import build_storage_object_path, supabase_storage_enabled, upload_file_to_supabase
 from .jobs import validate_file
 from ..database import get_db
 
@@ -68,28 +67,12 @@ def normalize_mapping(mapping: Dict[str, str]) -> Dict[str, str]:
 
 
 def maybe_sync_upload_to_supabase(local_path: Path, file: UploadFile, user_id: int, job_id: str) -> Dict[str, Optional[str]]:
-    if not supabase_storage_enabled():
-        return {
-            "storage_provider": None,
-            "storage_bucket": None,
-            "storage_object_path": None,
-            "storage_public_url": None,
-        }
-
-    try:
-        object_path = build_storage_object_path(user_id, job_id, file.filename)
-        return upload_file_to_supabase(
-            local_path=local_path,
-            object_path=object_path,
-            content_type=file.content_type or "text/csv",
-        )
-    except Exception:
-        return {
-            "storage_provider": None,
-            "storage_bucket": None,
-            "storage_object_path": None,
-            "storage_public_url": None,
-        }
+    return {
+        "storage_provider": None,
+        "storage_bucket": None,
+        "storage_object_path": None,
+        "storage_public_url": None,
+    }
 
 
 def _anova_metric(values: pd.Series, groups: np.ndarray) -> Dict[str, Any]:

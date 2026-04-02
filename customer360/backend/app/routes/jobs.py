@@ -25,8 +25,6 @@ from ..config import UPLOAD_DIR, OUTPUT_DIR, MAX_FILE_SIZE_MB, ALLOWED_EXTENSION
 from ..analytics.preprocessing import get_csv_preview
 from ..analytics.pipeline import run_pipeline
 from ..report import generate_report
-from ..storage import build_storage_object_path, upload_file_to_supabase, delete_supabase_object
-
 router = APIRouter()
 
 
@@ -41,9 +39,9 @@ def validate_file(file: UploadFile) -> None:
         )
 
 
-def store_upload_and_sync_to_supabase(file: UploadFile, user_id: int, job_id: str, upload_dir: Path) -> dict:
+def store_upload_locally(file: UploadFile, upload_dir: Path) -> dict:
     """
-    Save the uploaded file locally for processing and mirror it to Supabase Storage.
+    Save the uploaded file locally for processing.
     """
     upload_dir.mkdir(parents=True, exist_ok=True)
 
@@ -51,29 +49,13 @@ def store_upload_and_sync_to_supabase(file: UploadFile, user_id: int, job_id: st
     with open(local_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    object_path = build_storage_object_path(user_id, job_id, file.filename)
-
-    storage_warning = None
-
-    try:
-        storage_meta = upload_file_to_supabase(
-            local_path=local_path,
-            object_path=object_path,
-            content_type=file.content_type or "text/csv",
-        )
-    except Exception as exc:
-        storage_meta = {
-            "storage_provider": None,
-            "storage_bucket": None,
-            "storage_object_path": None,
-            "storage_public_url": None,
-        }
-        storage_warning = f"Supabase sync failed: {str(exc)}"
-
     return {
         "local_path": str(local_path),
-        "storage_warning": storage_warning,
-        **storage_meta,
+        "storage_warning": None,
+        "storage_provider": None,
+        "storage_bucket": None,
+        "storage_object_path": None,
+        "storage_public_url": None,
     }
 
 
@@ -187,10 +169,8 @@ async def upload_file(
     job_upload_dir.mkdir(parents=True, exist_ok=True)
     job_output_dir.mkdir(parents=True, exist_ok=True)
     
-    stored_upload = store_upload_and_sync_to_supabase(
+    stored_upload = store_upload_locally(
         file=file,
-        user_id=current_user.id,
-        job_id=job_id,
         upload_dir=job_upload_dir,
     )
     
@@ -329,10 +309,8 @@ async def upload_with_mapping(
     job_upload_dir.mkdir(parents=True, exist_ok=True)
     job_output_dir.mkdir(parents=True, exist_ok=True)
     
-    stored_upload = store_upload_and_sync_to_supabase(
+    stored_upload = store_upload_locally(
         file=file,
-        user_id=current_user.id,
-        job_id=job_id,
         upload_dir=job_upload_dir,
     )
     
@@ -634,9 +612,7 @@ async def delete_job(
         shutil.rmtree(upload_dir)
     if output_dir.exists():
         shutil.rmtree(output_dir)
-    if job.storage_object_path:
-        delete_supabase_object(job.storage_object_path)
-    
+
     # Delete job record
     db.delete(job)
     db.commit()
