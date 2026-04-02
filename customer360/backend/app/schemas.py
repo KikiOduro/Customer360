@@ -51,10 +51,12 @@ class TokenData(BaseModel):
 
 class ColumnMapping(BaseModel):
     """Schema for mapping CSV columns to required fields."""
-    customer_id: str
-    invoice_date: str
-    invoice_id: str
-    amount: str
+    customer_id: Optional[str] = None
+    invoice_date: Optional[str] = None
+    invoice_id: Optional[str] = None
+    amount: Optional[str] = None
+    quantity: Optional[str] = None
+    unit_price: Optional[str] = None
     product: Optional[str] = None
     category: Optional[str] = None
 
@@ -70,6 +72,9 @@ class JobStatus(BaseModel):
     """Schema for job status response."""
     job_id: str
     status: str
+    progress_percent: Optional[int] = 0
+    progress_stage: Optional[str] = None
+    progress_message: Optional[str] = None
     error_message: Optional[str] = None
     created_at: datetime
     completed_at: Optional[datetime] = None
@@ -88,6 +93,9 @@ class JobSummary(BaseModel):
     job_id: str
     original_filename: str
     status: str
+    progress_percent: Optional[int] = 0
+    progress_stage: Optional[str] = None
+    progress_message: Optional[str] = None
     num_customers: Optional[int]
     num_transactions: Optional[int]
     total_revenue: Optional[float]
@@ -156,6 +164,10 @@ class CSVPreview(BaseModel):
     columns: List[str]
     sample_rows: List[Dict[str, Any]]
     suggested_mapping: Optional[ColumnMapping] = None
+    column_profiles: Optional[List[Dict[str, Any]]] = None
+    total_rows: Optional[int] = None
+    raw_rows: Optional[int] = None
+    removed_blank_rows: Optional[int] = None
 
 
 # ============== Report Schemas ==============

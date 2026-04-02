@@ -9,6 +9,7 @@ session_start();
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 $action = $_GET['action'] ?? $_POST['action'] ?? 'upload';
+$jobName = trim((string) ($_POST['job_name'] ?? $_POST['jobName'] ?? ''));
 
 // Require authentication
 if (!isset($_SESSION['user_id'])) {
@@ -55,6 +56,20 @@ if ($file['error'] !== UPLOAD_ERR_OK) {
 }
 
 if ($action === 'preview') {
+    if ($ext !== '.csv') {
+        jsonResponse([
+            'success' => false,
+            'error' => 'The preview and column-mapping flow currently supports CSV files only. Please upload a .csv export.'
+        ], 400);
+    }
+
+    if (!$authToken) {
+        jsonResponse([
+            'success' => false,
+            'error' => 'Preview requires an authenticated backend session. Please sign in again and retry.'
+        ], 401);
+    }
+
     $previewDir = rtrim(UPLOAD_DIR, DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'preview' . DIRECTORY_SEPARATOR;
     if (!is_dir($previewDir)) {
         mkdir($previewDir, 0755, true);
@@ -68,12 +83,24 @@ if ($action === 'preview') {
     }
 
     $preview = getFilePreview($tempPath, $ext);
+    $backendPreview = apiRequest('/jobs/upload/preview', 'POST', null, $authToken, [
+        'file' => $tempPath
+    ]);
+    if ($backendPreview['success'] && is_array($backendPreview['data'])) {
+        $preview = array_merge($preview, $backendPreview['data']);
+    }
+
     $_SESSION['current_upload'] = [
+        'job_name' => $jobName,
         'filename' => $file['name'],
         'filepath' => $tempPath,
         'columns' => $preview['columns'] ?? [],
         'sample_rows' => $preview['sample_rows'] ?? [],
         'suggested_mapping' => $preview['suggested_mapping'] ?? null,
+        'column_profiles' => $preview['column_profiles'] ?? [],
+        'total_rows' => $preview['total_rows'] ?? null,
+        'raw_rows' => $preview['raw_rows'] ?? null,
+        'removed_blank_rows' => $preview['removed_blank_rows'] ?? null,
     ];
 
     jsonResponse([
@@ -82,6 +109,10 @@ if ($action === 'preview') {
         'columns' => $preview['columns'] ?? [],
         'sample_rows' => $preview['sample_rows'] ?? [],
         'suggested_mapping' => $preview['suggested_mapping'] ?? null,
+        'column_profiles' => $preview['column_profiles'] ?? [],
+        'total_rows' => $preview['total_rows'] ?? null,
+        'raw_rows' => $preview['raw_rows'] ?? null,
+        'removed_blank_rows' => $preview['removed_blank_rows'] ?? null,
     ]);
 }
 
@@ -261,7 +292,9 @@ function suggestMapping(array $columns): array {
         'customer_id'  => ['customer_id','customerid','customer','cust_id','client_id','user_id','buyer_id','member_id'],
         'invoice_date' => ['invoice_date','invoicedate','date','transaction_date','order_date','purchase_date','txn_date'],
         'invoice_id'   => ['invoice_id','invoiceid','invoice_no','transaction_id','order_id','receipt_no','txn_id'],
-        'amount'       => ['total line amount','total_line_amount','amount','total','revenue','sales','price','value','payment','sum'],
+        'amount'       => ['total line amount','total_line_amount','line_total','order_total','invoice_total','amount','total_amount','revenue','sales','value','sum'],
+        'quantity'     => ['quantity','qty','units','order_qty','item_qty'],
+        'unit_price'   => ['unit_price','unitprice','unit price','item_price','selling_price','price','rate'],
         'product'      => ['product_name','product name','productname','item_name','item name','sku','description'],
         'category'     => ['categor','product_type','department','item_type','class','group'],
     ];

@@ -580,10 +580,10 @@ $currentPage = 'dashboard';
                         <div class="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
                             <a
                                 class="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
-                                href="analysis.php"
+                                href="upload.php"
                             >
                                 <span class="material-symbols-outlined text-[18px]">upload_file</span>
-                                Upload Your First File
+                                Upload & Map Columns
                             </a>
                             <button
                                 class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
@@ -696,7 +696,7 @@ $currentPage = 'dashboard';
                             id="uploadBtn"
                         >
                             <span id="uploadBtnSpinner" class="upload-spinner hidden"></span>
-                            <span id="uploadBtnText">Start Analysis</span>
+                            <span id="uploadBtnText">Preview & Map Columns</span>
                         </button>
                     </div>
                 </form>
@@ -717,7 +717,7 @@ $currentPage = 'dashboard';
                     Your file was uploaded and the analysis job has started.
                 </p>
                 <div class="mt-6 rounded-xl bg-slate-50 px-4 py-3 text-left text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                    <p class="font-semibold text-slate-800 dark:text-white">Redirecting to job processing...</p>
+                    <p class="font-semibold text-slate-800 dark:text-white">Redirecting to column mapping and validation...</p>
                     <p id="uploadSuccessJobId" class="mt-1 break-all"></p>
                 </div>
                 <div class="mt-6 h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-700">
@@ -881,11 +881,11 @@ $currentPage = 'dashboard';
             bar.classList.toggle('upload-progress-shimmer', animated);
         }
 
-        function openUploadSuccessModal(jobId, fileName) {
+        function openUploadSuccessModal(previewName, fileName) {
             closeUploadModal();
             document.getElementById('uploadSuccessMessage').textContent =
-                `${fileName} was uploaded successfully. Your customer segmentation job is now queued.`;
-            document.getElementById('uploadSuccessJobId').textContent = `Job ID: ${jobId}`;
+                `${fileName} was uploaded successfully. Opening the mapping workspace so you can confirm field assignments and parsing rules.`;
+            document.getElementById('uploadSuccessJobId').textContent = `Preview source: ${previewName}`;
             document.getElementById('uploadSuccessModal').classList.remove('hidden');
 
             const progressBar = document.getElementById('uploadSuccessProgress');
@@ -893,7 +893,7 @@ $currentPage = 'dashboard';
             setTimeout(() => { progressBar.style.width = '70%'; }, 250);
             setTimeout(() => { progressBar.style.width = '100%'; }, 800);
             setTimeout(() => {
-                window.location.href = `processing.php?job_id=${encodeURIComponent(jobId)}`;
+                window.location.href = 'column-mapping.php';
             }, 1300);
         }
 
@@ -903,7 +903,7 @@ $currentPage = 'dashboard';
             const uploadBtnText = document.getElementById('uploadBtnText');
             uploadBtn.disabled = false;
             uploadBtnSpinner.classList.add('hidden');
-            uploadBtnText.textContent = 'Start Analysis';
+            uploadBtnText.textContent = 'Preview & Map Columns';
         }
 
         function showUploadFailure(message) {
@@ -939,8 +939,8 @@ $currentPage = 'dashboard';
             uploadBtnText.textContent = 'Uploading...';
             setUploadProgressState({
                 show: true,
-                title: 'Uploading dataset',
-                message: `Sending ${selectedFile.name} to the analysis server...`,
+                        title: 'Uploading dataset',
+                        message: `Uploading ${selectedFile.name} and preparing a schema preview...`,
                 percent: 12,
                 animated: true
             });
@@ -952,16 +952,16 @@ $currentPage = 'dashboard';
                 setUploadProgressState({
                     show: true,
                     title: 'Uploading dataset',
-                    message: nextValue >= 72
-                        ? 'Finalizing storage metadata and creating your analysis job...'
-                        : 'Uploading your CSV and validating the request...',
+                        message: nextValue >= 72
+                            ? 'Profiling your dataset and opening the mapping workspace...'
+                            : 'Uploading your CSV and preparing a backend preview...',
                     percent: nextValue,
                     animated: true
                 });
             }, 700);
 
             try {
-                const response = await fetch(form.action, {
+                const response = await fetch('api/upload.php?action=preview', {
                     method: 'POST',
                     body: new FormData(form),
                     headers: {
@@ -974,20 +974,19 @@ $currentPage = 'dashboard';
                 clearInterval(uploadProgressTimer);
                 const payload = await response.json().catch(() => null);
 
-                if (!response.ok || !payload?.success || !payload?.job_id) {
+                if (!response.ok || !payload?.success) {
                     showUploadFailure(payload?.error || `Upload failed with status ${response.status}.`);
                     return;
                 }
 
                 setUploadProgressState({
                     show: true,
-                    title: 'Upload complete',
-                    message: 'Job created successfully. Opening the processing view...',
+                    title: 'Preview ready',
+                    message: 'Upload complete. Opening column mapping and validation...',
                     percent: 100,
                     animated: false
                 });
-                sessionStorage.setItem('current_job_id', payload.job_id);
-                openUploadSuccessModal(payload.job_id, selectedFile.name);
+                openUploadSuccessModal(payload.filename || selectedFile.name, selectedFile.name);
             } catch (error) {
                 showUploadFailure('Could not reach the upload API. Please check the backend service and try again.');
             }

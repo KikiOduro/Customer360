@@ -10,7 +10,7 @@ warnings.filterwarnings('ignore')
 
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Callable, Dict, Optional
 import pandas as pd
 import numpy as np
 import logging
@@ -51,7 +51,8 @@ class SegmentationPipeline:
         job_id: str,
         column_mapping: Optional[Dict[str, str]] = None,
         clustering_method: str = 'kmeans',
-        include_comparison: bool = False
+        include_comparison: bool = False,
+        progress_callback: Optional[Callable[[int, str, str], None]] = None
     ):
         self.file_path      = file_path
         self.output_dir     = Path(output_dir)
@@ -59,6 +60,7 @@ class SegmentationPipeline:
         self.column_mapping = column_mapping
         self.clustering_method   = clustering_method
         self.include_comparison  = include_comparison
+        self.progress_callback = progress_callback
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -79,6 +81,7 @@ class SegmentationPipeline:
 
         try:
             # 1. Preprocess
+            self._emit_progress(12, 'validating', 'Validating your file structure and preparing mapped columns.')
             logger.info("Step 1: Preprocessing data...")
             self.df, preprocessing_meta = preprocess_transaction_data(
                 self.file_path, self.column_mapping
@@ -88,17 +91,20 @@ class SegmentationPipeline:
             self.results['preprocessing'] = preprocessing_meta
 
             # 2. Outlier treatment (IQR Winsorization on the amount column)
+            self._emit_progress(22, 'cleaning', 'Cleaning transaction values and reducing the effect of outliers.')
             logger.info("Step 2: Outlier treatment...")
             self.df, outlier_meta = self._winsorise(self.df)
             self.results['outlier_treatment'] = outlier_meta
 
             # 3. RFM
+            self._emit_progress(34, 'rfm', 'Computing recency, frequency, and monetary features for each customer.')
             logger.info("Step 3: Computing RFM metrics...")
             self.rfm = compute_rfm(self.df)
             self.results['rfm_statistics']   = get_rfm_statistics(self.rfm)
             self.results['rfm_distributions'] = get_rfm_distributions(self.rfm)
 
             # 4. Normalise
+            self._emit_progress(46, 'normalizing', 'Scaling RFM features so customers can be compared fairly before clustering.')
             logger.info("Step 4: Normalising RFM features...")
             scaler_override = self._get_compatible_scaler()
             rfm_normalised, scaler = normalize_rfm(self.rfm, scaler_override=scaler_override)
@@ -106,16 +112,19 @@ class SegmentationPipeline:
             X = rfm_normalised[feature_cols].values
 
             # 5. PCA (for visualisation only — clustering uses the 3 RFM features)
+            self._emit_progress(54, 'projection', 'Projecting customer patterns into PCA space for chart generation.')
             logger.info("Step 5: PCA projection...")
             pca_result = self._run_pca(X)
             self.results['pca'] = pca_result
 
             # 6. Optimal K — majority vote across 4 metrics
+            self._emit_progress(62, 'selecting_k', 'Evaluating the best number of customer segments for this dataset.')
             logger.info("Step 6: Finding optimal K...")
             optimal_k, k_meta = self._find_optimal_k_majority_vote(X)
             self.results['optimal_k'] = k_meta
 
             # 7. Clustering
+            self._emit_progress(72, 'clustering', f'Running clustering models and comparing segment quality with k={optimal_k}.')
             logger.info(f"Step 7: Running {self.clustering_method} clustering (k={optimal_k})...")
             logger.info("Step 7b: Running clustering comparison...")
             comparison_results = run_comparison(X, n_clusters=optimal_k)
@@ -128,6 +137,7 @@ class SegmentationPipeline:
             self.results['clustering'] = clustering_info
 
             # 8. Segmentation
+            self._emit_progress(82, 'segmenting', 'Building segment profiles and generating recommended actions.')
             logger.info("Step 8: Analysing segments...")
             self.segments = analyze_clusters(self.rfm, self.labels)
             self._apply_artifact_segment_labels()
@@ -136,21 +146,25 @@ class SegmentationPipeline:
             self.results['segment_summary'] = get_segment_summary(self.segments)
 
             # 9. Customer-level output
+            self._emit_progress(88, 'customer_output', 'Preparing customer-level output tables and recent customer snapshots.')
             logger.info("Step 9: Preparing customer output...")
             customer_output = self._prepare_customer_output(rfm_normalised)
             self.results['recent_customers'] = self._build_recent_customers(customer_output)
 
             # 10. SHAP explainability
+            self._emit_progress(92, 'explainability', 'Estimating which RFM features most strongly drive segment assignment.')
             logger.info("Step 10: SHAP explainability...")
             shap_meta = self._run_shap(X, self.labels, feature_cols)
             self.results['shap'] = shap_meta
 
             # 11. Charts
+            self._emit_progress(96, 'charts', 'Rendering segment charts and visual summaries.')
             logger.info("Step 11: Generating charts...")
             chart_paths = self._generate_charts(rfm_normalised, pca_result)
             self.results['charts'] = chart_paths
 
             # 12. Save outputs
+            self._emit_progress(98, 'saving_outputs', 'Saving analysis JSON, chart outputs, and customer exports to the server.')
             logger.info("Step 12: Saving outputs...")
             self._save_outputs(customer_output)
 
@@ -174,6 +188,7 @@ class SegmentationPipeline:
             logger.info(
                 f"Pipeline completed in {self.results['meta']['duration_seconds']:.1f}s"
             )
+            self._emit_progress(100, 'completed', 'Analysis completed successfully. Your report and segment dashboard are ready.')
             return self.results
 
         except Exception as e:
@@ -184,6 +199,17 @@ class SegmentationPipeline:
                 'error':  str(e)
             }
             raise
+
+    def _emit_progress(self, percent: int, stage: str, message: str) -> None:
+        """Send live stage telemetry to the jobs table."""
+        if self.progress_callback is None:
+            return
+
+        try:
+            safe_percent = max(0, min(100, int(percent)))
+            self.progress_callback(safe_percent, stage, message)
+        except Exception as exc:
+            logger.warning("Progress callback failed for job %s: %s", self.job_id, exc)
 
     def _load_model_artifacts(self) -> Dict[str, Any]:
         assets = {
@@ -863,7 +889,8 @@ def run_pipeline(
     job_id: str,
     column_mapping: Optional[Dict[str, str]] = None,
     clustering_method: str = 'kmeans',
-    include_comparison: bool = True
+    include_comparison: bool = True,
+    progress_callback: Optional[Callable[[int, str, str], None]] = None
 ) -> Dict[str, Any]:
     """
     Convenience function to run the segmentation pipeline.
@@ -875,6 +902,7 @@ def run_pipeline(
         job_id=job_id,
         column_mapping=column_mapping,
         clustering_method=clustering_method,
-        include_comparison=include_comparison
+        include_comparison=include_comparison,
+        progress_callback=progress_callback
     )
     return pipeline.run()

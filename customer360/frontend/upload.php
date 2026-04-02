@@ -168,11 +168,11 @@ $missingPreview = isset($_GET['missing_preview']) && $_GET['missing_preview'] ==
                                 </p>
                                 <div class="flex flex-wrap justify-center gap-4 text-xs text-slate-400 font-medium">
                                     <span class="flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full">CSV</span>
-                                    <span class="flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full">XLSX</span>
+                                    <span class="flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full">Preview + Mapping</span>
                                     <span class="flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full">Max 25MB</span>
                                 </div>
                             </div>
-                            <input type="file" id="fileInput" class="hidden" accept=".csv,.xlsx,.xls" multiple />
+                            <input type="file" id="fileInput" class="hidden" accept=".csv" multiple />
                         </div>
                         
                         <div id="uploadsList" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 hidden">
@@ -186,7 +186,7 @@ $missingPreview = isset($_GET['missing_preview']) && $_GET['missing_preview'] ==
                                 Data is encrypted & secure
                             </div>
                             <button id="uploadBtn" onclick="uploadFiles()" class="bg-primary hover:bg-primary-hover text-white px-8 py-3 rounded-lg font-bold shadow-lg transition-all flex items-center gap-2 disabled:opacity-50">
-                                <span>Upload & Analyze</span>
+                                <span>Preview & Map Columns</span>
                                 <span class="material-symbols-outlined text-sm">arrow_forward</span>
                             </button>
                         </div>
@@ -227,7 +227,7 @@ $missingPreview = isset($_GET['missing_preview']) && $_GET['missing_preview'] ==
                                     </div>
                                     <div>
                                         <h5 class="text-sm font-bold text-primary">Supported Formats</h5>
-                                        <p class="text-xs text-slate-500 mt-0.5">CSV and XLSX files only.</p>
+                                        <p class="text-xs text-slate-500 mt-0.5">CSV files only for the mapping + validation flow.</p>
                                     </div>
                                 </li>
                                 <li class="flex gap-3">
@@ -300,9 +300,9 @@ $missingPreview = isset($_GET['missing_preview']) && $_GET['missing_preview'] ==
         let uploadStageIndex = 0;
         const uploadStages = [
             'Checking the file before upload...',
-            'Sending your dataset to the analysis API...',
-            'Preparing your job and storage metadata...',
-            'Finalizing the analysis run setup...'
+            'Building a preview so you can confirm your column mapping...',
+            'Profiling columns, sample values, and parse quality...',
+            'Opening the mapping workspace for validation...'
         ];
 
         function setUploadStatus({ type = 'info', title, message, percent = null, meta = '', show = true }) {
@@ -402,13 +402,13 @@ $missingPreview = isset($_GET['missing_preview']) && $_GET['missing_preview'] ==
         fileInput.addEventListener('change', (e) => handleFiles(Array.from(e.target.files)));
         
         function handleFiles(files) {
-            const validExtensions = ['.csv', '.xlsx', '.xls'];
+            const validExtensions = ['.csv'];
             const maxSize = 25 * 1024 * 1024;
             
             files.forEach(file => {
                 const ext = '.' + file.name.split('.').pop().toLowerCase();
                 if (!validExtensions.includes(ext)) {
-                    showInlineError(`"${file.name}" is not supported. Upload a CSV or Excel file.`);
+                    showInlineError(`"${file.name}" is not supported. Upload a CSV file for the mapping + validation flow.`);
                     return;
                 }
                 if (file.size > maxSize) {
@@ -422,7 +422,7 @@ $missingPreview = isset($_GET['missing_preview']) && $_GET['missing_preview'] ==
                         title: 'File ready',
                         message: `${file.name} is queued and ready for upload.`,
                         percent: 0,
-                        meta: 'When you continue, we will create a live job and move you to the processing page.'
+                        meta: 'When you continue, we will generate a preview first so you can validate column mapping before launching the job.'
                     });
                 }
             });
@@ -495,7 +495,7 @@ $missingPreview = isset($_GET['missing_preview']) && $_GET['missing_preview'] ==
             startUploadNarration(fileData.name);
 
             const xhr = new XMLHttpRequest();
-            xhr.open('POST', 'api/upload.php');
+            xhr.open('POST', 'api/upload.php?action=preview');
             xhr.responseType = 'json';
 
             xhr.upload.addEventListener('progress', (event) => {
@@ -515,17 +515,14 @@ $missingPreview = isset($_GET['missing_preview']) && $_GET['missing_preview'] ==
 
                 if (xhr.status >= 200 && xhr.status < 300 && data?.success) {
                     setUploadStatus({
-                        type: data.storage_warning ? 'warning' : 'success',
-                        title: data.storage_warning ? 'Upload complete with warning' : 'Upload complete',
-                        message: data.storage_warning
-                            ? 'The analysis job was created, but cloud storage sync reported a warning.'
-                            : 'Your dataset is ready. Redirecting you to the live processing view...',
+                        type: 'success',
+                        title: 'Preview ready',
+                        message: 'Your dataset was uploaded to a temporary preview area. Opening column mapping and validation...',
                         percent: 100,
-                        meta: data.storage_warning || ''
+                        meta: `${data.filename || fileData.name} is ready for field mapping.`
                     });
-                    sessionStorage.setItem('current_job_id', data.job_id);
                     setTimeout(() => {
-                        window.location.href = 'processing.php?job_id=' + encodeURIComponent(data.job_id);
+                        window.location.href = 'column-mapping.php';
                     }, 900);
                     return;
                 }
@@ -533,14 +530,14 @@ $missingPreview = isset($_GET['missing_preview']) && $_GET['missing_preview'] ==
                 const backendResponse = data?.backend_response ? ` Backend says: ${data.backend_response}` : '';
                 showInlineError((data?.error || `Upload failed with status ${xhr.status}.`) + backendResponse);
                 uploadBtn.disabled = false;
-                btnText.textContent = 'Upload & Analyze';
+                btnText.textContent = 'Preview & Map Columns';
             };
 
             xhr.onerror = () => {
                 stopUploadNarration();
                 showInlineError('Network error while contacting the upload API. Please check the backend connection and retry.');
                 uploadBtn.disabled = false;
-                btnText.textContent = 'Upload & Analyze';
+                btnText.textContent = 'Preview & Map Columns';
             };
 
             xhr.send(formData);

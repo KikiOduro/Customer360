@@ -43,6 +43,9 @@ class Job(Base):
     
     # Job status: pending, processing, completed, failed
     status = Column(String(50), default="pending")
+    progress_percent = Column(Integer, default=0)
+    progress_stage = Column(String(100), nullable=True)
+    progress_message = Column(Text, nullable=True)
     error_message = Column(Text, nullable=True)
     
     # File information

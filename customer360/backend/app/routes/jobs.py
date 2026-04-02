@@ -22,10 +22,18 @@ from ..schemas import (
 )
 from ..auth import get_current_user
 from ..config import UPLOAD_DIR, OUTPUT_DIR, MAX_FILE_SIZE_MB, ALLOWED_EXTENSIONS
-from ..analytics.preprocessing import get_csv_preview
+from ..analytics.preprocessing import build_mapping_validation_report, get_csv_preview
 from ..analytics.pipeline import run_pipeline
 from ..report import generate_report
 router = APIRouter()
+
+
+def update_job_progress(db: Session, job: Job, percent: int, stage: str, message: str) -> None:
+    """Persist job progress telemetry for the processing page."""
+    job.progress_percent = max(0, min(100, int(percent)))
+    job.progress_stage = stage
+    job.progress_message = message
+    db.commit()
 
 
 def validate_file(file: UploadFile) -> None:
@@ -94,7 +102,20 @@ def run_segmentation_job(
         
         # Update status to processing
         job.status = "processing"
-        db.commit()
+        update_job_progress(
+            db=db,
+            job=job,
+            percent=8,
+            stage="starting",
+            message="Backend worker started. Initializing the segmentation pipeline."
+        )
+
+        def progress_callback(percent: int, stage: str, message: str) -> None:
+            tracked_job = db.query(Job).filter(Job.job_id == job_id).first()
+            if not tracked_job or tracked_job.status == "cancelled":
+                return
+            tracked_job.status = "processing"
+            update_job_progress(db, tracked_job, percent, stage, message)
         
         results = run_pipeline(
             file_path=file_path,
@@ -103,6 +124,7 @@ def run_segmentation_job(
             column_mapping=column_mapping,
             clustering_method=clustering_method,
             include_comparison=include_comparison,
+            progress_callback=progress_callback,
         )
 
         # Respect cancellation if it happened while the job was running.
@@ -120,6 +142,9 @@ def run_segmentation_job(
         job.num_clusters = meta.get('num_clusters', 0)
         job.silhouette_score = meta.get('silhouette_score', 0)
         job.output_path = output_dir
+        job.progress_percent = 100
+        job.progress_stage = "completed"
+        job.progress_message = "Analysis completed successfully. Opening results is now available."
 
         pdf_path = Path(output_dir) / f"{job_id}_report.pdf"
         generate_report(
@@ -136,6 +161,9 @@ def run_segmentation_job(
         if job and job.status != "cancelled":
             job.status = "failed"
             job.error_message = str(e)
+            job.progress_percent = 100
+            job.progress_stage = "failed"
+            job.progress_message = "Analysis failed. Please inspect the error message and retry with corrected data."
             db.commit()
     finally:
         db.close()
@@ -188,7 +216,10 @@ async def upload_file(
         output_path=str(job_output_dir),
         clustering_method=clustering_method,
         include_comparison=include_comparison,
-        status="pending"
+        status="pending",
+        progress_percent=5,
+        progress_stage="queued",
+        progress_message="Upload received. Your analysis job is queued and waiting to start."
     )
 
     db.add(job)
@@ -211,6 +242,9 @@ async def upload_file(
     return JobStatus(
         job_id=job.job_id,
         status=job.status,
+        progress_percent=job.progress_percent,
+        progress_stage=job.progress_stage,
+        progress_message=job.progress_message,
         created_at=job.created_at,
         storage_provider=job.storage_provider,
         storage_bucket=job.storage_bucket,
@@ -246,12 +280,17 @@ async def preview_upload(
         suggested = preview.get('suggested_mapping', {})
         suggested_mapping = None
         
-        if all(suggested.get(k) for k in ['customer_id', 'invoice_date', 'invoice_id', 'amount']):
+        has_direct_amount = bool(suggested.get('amount'))
+        has_derived_amount = bool(suggested.get('quantity') and suggested.get('unit_price'))
+
+        if suggested.get('customer_id') and suggested.get('invoice_date') and suggested.get('invoice_id') and (has_direct_amount or has_derived_amount):
             suggested_mapping = ColumnMapping(
                 customer_id=suggested['customer_id'],
                 invoice_date=suggested['invoice_date'],
                 invoice_id=suggested['invoice_id'],
-                amount=suggested['amount'],
+                amount=suggested.get('amount'),
+                quantity=suggested.get('quantity'),
+                unit_price=suggested.get('unit_price'),
                 product=suggested.get('product'),
                 category=suggested.get('category')
             )
@@ -259,7 +298,11 @@ async def preview_upload(
         return CSVPreview(
             columns=preview['columns'],
             sample_rows=preview['sample_rows'],
-            suggested_mapping=suggested_mapping
+            suggested_mapping=suggested_mapping,
+            column_profiles=preview.get('column_profiles'),
+            total_rows=preview.get('total_rows'),
+            raw_rows=preview.get('raw_rows'),
+            removed_blank_rows=preview.get('removed_blank_rows'),
         )
         
     finally:
@@ -272,14 +315,25 @@ async def preview_upload(
 async def upload_with_mapping(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    customer_id_col: str = Form(...),
-    invoice_date_col: str = Form(...),
+    customer_id_col: Optional[str] = Form(default=None),
+    invoice_date_col: Optional[str] = Form(default=None),
     invoice_id_col: str = Form(...),
-    amount_col: str = Form(...),
+    amount_col: str = Form(default=""),
+    quantity_col: Optional[str] = Form(default=None),
+    unit_price_col: Optional[str] = Form(default=None),
     product_col: Optional[str] = Form(default=None),
     category_col: Optional[str] = Form(default=None),
     clustering_method: str = Form(default="kmeans"),
     include_comparison: bool = Form(default=True),
+    amount_source_mode: str = Form(default="direct"),
+    invoice_date_format: str = Form(default=""),
+    dayfirst: bool = Form(default=False),
+    decimal_separator: str = Form(default="."),
+    thousands_separator: str = Form(default=","),
+    currency_symbol: str = Form(default=""),
+    negative_amount_policy: str = Form(default="exclude"),
+    allow_synthetic_customer_id: bool = Form(default=False),
+    allow_synthetic_invoice_date: bool = Form(default=False),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
@@ -293,7 +347,18 @@ async def upload_with_mapping(
         'customer_id': customer_id_col,
         'invoice_date': invoice_date_col,
         'invoice_id': invoice_id_col,
-        'amount': amount_col
+        'amount': amount_col or None,
+        'quantity': quantity_col,
+        'unit_price': unit_price_col,
+        'amount_source_mode': amount_source_mode,
+        'invoice_date_format': invoice_date_format,
+        'dayfirst': dayfirst,
+        'decimal_separator': decimal_separator,
+        'thousands_separator': thousands_separator,
+        'currency_symbol': currency_symbol,
+        'negative_amount_policy': negative_amount_policy,
+        'allow_synthetic_customer_id': allow_synthetic_customer_id,
+        'allow_synthetic_invoice_date': allow_synthetic_invoice_date,
     }
     if product_col:
         column_mapping['product'] = product_col
@@ -329,7 +394,10 @@ async def upload_with_mapping(
         clustering_method=clustering_method,
         include_comparison=include_comparison,
         column_mapping=json.dumps(column_mapping),
-        status="pending"
+        status="pending",
+        progress_percent=5,
+        progress_stage="queued",
+        progress_message="Mapped upload received. Your analysis job is queued and waiting to start."
     )
     
     db.add(job)
@@ -352,12 +420,77 @@ async def upload_with_mapping(
     return JobStatus(
         job_id=job.job_id,
         status=job.status,
+        progress_percent=job.progress_percent,
+        progress_stage=job.progress_stage,
+        progress_message=job.progress_message,
         created_at=job.created_at,
         storage_provider=job.storage_provider,
         storage_bucket=job.storage_bucket,
         storage_object_path=job.storage_object_path,
         storage_public_url=job.storage_public_url,
     )
+
+
+@router.post("/upload/validate-mapping")
+async def validate_upload_mapping(
+    file: UploadFile = File(...),
+    customer_id_col: Optional[str] = Form(default=None),
+    invoice_date_col: Optional[str] = Form(default=None),
+    invoice_id_col: Optional[str] = Form(default=None),
+    amount_col: Optional[str] = Form(default=None),
+    quantity_col: Optional[str] = Form(default=None),
+    unit_price_col: Optional[str] = Form(default=None),
+    product_col: Optional[str] = Form(default=None),
+    category_col: Optional[str] = Form(default=None),
+    amount_source_mode: str = Form(default="direct"),
+    invoice_date_format: str = Form(default=""),
+    dayfirst: bool = Form(default=False),
+    decimal_separator: str = Form(default="."),
+    thousands_separator: str = Form(default=","),
+    currency_symbol: str = Form(default=""),
+    negative_amount_policy: str = Form(default="exclude"),
+    allow_synthetic_customer_id: bool = Form(default=False),
+    allow_synthetic_invoice_date: bool = Form(default=False),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Validate a mapping and parsing configuration without creating an analysis job.
+    """
+    _ = current_user
+    validate_file(file)
+
+    temp_path = UPLOAD_DIR / f"validate_{uuid.uuid4()}_{Path(file.filename).name}"
+    temp_path.parent.mkdir(parents=True, exist_ok=True)
+
+    column_mapping = {
+        "customer_id": customer_id_col,
+        "invoice_date": invoice_date_col,
+        "invoice_id": invoice_id_col,
+        "amount": amount_col,
+        "quantity": quantity_col,
+        "unit_price": unit_price_col,
+        "product": product_col,
+        "category": category_col,
+        "amount_source_mode": amount_source_mode,
+        "invoice_date_format": invoice_date_format,
+        "dayfirst": dayfirst,
+        "decimal_separator": decimal_separator,
+        "thousands_separator": thousands_separator,
+        "currency_symbol": currency_symbol,
+        "negative_amount_policy": negative_amount_policy,
+        "allow_synthetic_customer_id": allow_synthetic_customer_id,
+        "allow_synthetic_invoice_date": allow_synthetic_invoice_date,
+    }
+
+    try:
+        with open(temp_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+        return build_mapping_validation_report(str(temp_path), column_mapping)
+    except Exception as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    finally:
+        if temp_path.exists():
+            os.remove(temp_path)
 
 
 @router.get("/", response_model=List[JobSummary])
@@ -375,6 +508,9 @@ async def list_jobs(
             job_id=job.job_id,
             original_filename=job.original_filename,
             status=job.status,
+            progress_percent=job.progress_percent,
+            progress_stage=job.progress_stage,
+            progress_message=job.progress_message,
             num_customers=job.num_customers,
             num_transactions=job.num_transactions,
             total_revenue=job.total_revenue,
@@ -412,6 +548,9 @@ async def get_job_status(
     return JobStatus(
         job_id=job.job_id,
         status=job.status,
+        progress_percent=job.progress_percent,
+        progress_stage=job.progress_stage,
+        progress_message=job.progress_message,
         error_message=job.error_message,
         created_at=job.created_at,
         completed_at=job.completed_at,
@@ -657,6 +796,9 @@ async def cancel_job(
 
     job.status = "cancelled"
     job.error_message = "Cancelled by user"
+    job.progress_percent = 100
+    job.progress_stage = "cancelled"
+    job.progress_message = "This analysis job was cancelled by the user."
     job.completed_at = datetime.utcnow()
     db.commit()
 

@@ -248,6 +248,8 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
             { id: 'step5', activeText: 'Preparing results and recommendations...', completeText: 'Analysis complete!' }
         ];
         let pollAttempts = 0;
+        let lastProgressValue = 8;
+        let fallbackCreatedAt = Date.now();
 
         function setNarration(type, title, message, meta = '') {
             const icon = document.getElementById('jobNarrationIcon');
@@ -298,9 +300,81 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
             }
         }
 
+        function formatEta(secondsLeft) {
+            if (!Number.isFinite(secondsLeft) || secondsLeft <= 0) {
+                return 'Finalizing now...';
+            }
+            if (secondsLeft < 60) {
+                return `Estimated time left: about ${Math.max(5, Math.round(secondsLeft / 5) * 5)} seconds`;
+            }
+            const minutes = Math.max(1, Math.round(secondsLeft / 60));
+            return `Estimated time left: about ${minutes} minute${minutes === 1 ? '' : 's'}`;
+        }
+
+        function getElapsedSeconds(createdAt) {
+            const createdMs = createdAt ? Date.parse(createdAt) : NaN;
+            const startedAt = Number.isFinite(createdMs) ? createdMs : fallbackCreatedAt;
+            return Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+        }
+
+        function getBackendStageIndex(stageName, fallbackIndex) {
+            const stageMap = {
+                queued: 0,
+                starting: 0,
+                validating: 0,
+                cleaning: 1,
+                rfm: 2,
+                normalizing: 2,
+                projection: 2,
+                selecting_k: 3,
+                clustering: 3,
+                segmenting: 3,
+                customer_output: 4,
+                explainability: 4,
+                charts: 4,
+                saving_outputs: 4,
+                completed: 4,
+                failed: 0,
+                cancelled: 0
+            };
+            if (typeof stageName === 'string' && stageName in stageMap) {
+                return stageMap[stageName];
+            }
+            return fallbackIndex;
+        }
+
+        function estimateProgress(status, createdAt) {
+            const elapsedSeconds = getElapsedSeconds(createdAt);
+            const profiles = {
+                pending: { floor: 12, ceiling: 34, duration: 25, activeStep: 0, message: 'Queued and waiting for the backend worker to start.' },
+                processing: { floor: 35, ceiling: 94, duration: 110, activeStep: 3, message: 'Backend analysis is running: cleaning, RFM computation, clustering, and report generation.' },
+                completed: { floor: 100, ceiling: 100, duration: 1, activeStep: 4, message: 'Analysis finished successfully.' },
+                cancelled: { floor: 100, ceiling: 100, duration: 1, activeStep: 0, message: 'This analysis job was cancelled.' },
+                failed: { floor: 100, ceiling: 100, duration: 1, activeStep: 0, message: 'Analysis failed.' }
+            };
+            const profile = profiles[status] || profiles.pending;
+            const span = Math.max(0, profile.ceiling - profile.floor);
+            const ratio = Math.min(elapsedSeconds / profile.duration, 1);
+            const rawPercent = profile.floor + (span * ratio);
+            const nextProgress = status === 'completed' || status === 'failed' || status === 'cancelled'
+                ? profile.ceiling
+                : Math.max(lastProgressValue, Math.min(rawPercent, profile.ceiling));
+            lastProgressValue = nextProgress;
+            const etaSeconds = status === 'completed' || status === 'failed' || status === 'cancelled'
+                ? 0
+                : Math.max(0, Math.round(profile.duration - elapsedSeconds));
+
+            return {
+                progress: nextProgress,
+                activeStep: profile.activeStep,
+                message: `${profile.message} ${formatEta(etaSeconds)}`
+            };
+        }
+
         function updateProgress(percent, message) {
-            document.getElementById('progressBar').style.width = percent + '%';
-            document.getElementById('progressPercent').textContent = Math.round(percent) + '%';
+            const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
+            document.getElementById('progressBar').style.width = safePercent + '%';
+            document.getElementById('progressPercent').textContent = Math.round(safePercent) + '%';
             document.getElementById('timeRemaining').textContent = message;
         }
 
@@ -315,24 +389,35 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
             window.location.href = 'analysis.php?job_id=' + encodeURIComponent(jobId);
         }
 
-        function applyJobState(status) {
+        function applyJobState(status, createdAt, backendProgress = null) {
             const statusConfig = {
-                pending: { progress: 15, activeStep: 0, message: 'Your file has been received and queued for analysis.', narration: ['info', 'Job queued', 'Your dataset is in line for processing. We will move through validation and segmentation automatically.', 'This stage usually lasts only a few moments.'] },
-                processing: { progress: 70, activeStep: 3, message: 'Analysis is running on the backend now.', narration: ['info', 'Segmentation is running', 'We are cleaning the data, computing RFM features, and generating your customer segments now.', 'Keep this page open if you want to watch progress update live.'] },
+                pending: { narration: ['info', 'Job queued', 'Your dataset is in line for processing. We will move through validation and segmentation automatically.', 'This stage usually lasts only a few moments.'] },
+                processing: { narration: ['info', 'Segmentation is running', 'We are cleaning the data, computing RFM features, and generating your customer segments now.', 'Progress and ETA are estimated from the job runtime and may adjust while the backend works.'] },
                 completed: { progress: 100, activeStep: 4, message: 'Analysis finished successfully.', narration: ['success', 'Analysis complete', 'Your results are ready. You can now open the analytics dashboard for this job.', 'The report and segment outputs have been generated.'] },
                 cancelled: { progress: 100, activeStep: 0, message: 'This analysis job was cancelled.', narration: ['warning', 'Analysis cancelled', 'This job was cancelled before completion.', 'Start a new upload when you are ready to try again.'] }
             };
             const config = statusConfig[status] || statusConfig.pending;
+            const progressEstimate = estimateProgress(status, createdAt);
+            const backendPercent = Number(backendProgress?.progress_percent);
+            const activeStep = getBackendStageIndex(
+                backendProgress?.progress_stage,
+                progressEstimate.activeStep
+            );
+            const progressValue = Number.isFinite(backendPercent)
+                ? Math.max(lastProgressValue, Math.max(0, Math.min(100, backendPercent)))
+                : progressEstimate.progress;
+            lastProgressValue = progressValue;
+            const progressMessage = backendProgress?.progress_message || progressEstimate.message;
 
             steps.forEach((step, index) => {
-                if (status === 'completed' || index < config.activeStep) {
+                if (status === 'completed' || index < activeStep) {
                     updateStep(index, 'completed');
-                } else if (index === config.activeStep) {
+                } else if (index === activeStep) {
                     updateStep(index, 'active');
                 }
             });
 
-            updateProgress(config.progress, config.message);
+            updateProgress(progressValue, progressMessage);
             setNarration(...config.narration);
         }
 
@@ -381,7 +466,11 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
                 }
 
                 pollAttempts = 0;
-                applyJobState(data.status);
+                applyJobState(data.status, data.created_at, {
+                    progress_percent: data.progress_percent,
+                    progress_stage: data.progress_stage,
+                    progress_message: data.progress_message
+                });
 
                 if (data.status === 'completed') {
                     enableResultsButton();
@@ -406,7 +495,7 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            applyJobState('pending');
+            applyJobState('pending', null);
             pollJobStatus();
         });
     </script>

@@ -13,7 +13,12 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
 $profileSubLabel = $companyName !== '' ? $companyName : 'Signed in account';
 $userInitials = strtoupper(substr($profileLabel ?: 'A', 0, 1));
 $currentPage = 'analysis';
-$initialJobId = $_GET['job_id'] ?? '';
+$initialJobId = $_GET['job_id'] ?? ($_SESSION['current_job']['job_id'] ?? '');
+
+if ($initialJobId === '') {
+    header('Location: upload.php');
+    exit;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -708,12 +713,21 @@ async function loadAiProfile(serializedSegment, targetId) {
 }
 
 async function loadExistingJob(jobId) {
+    showLoadingOverlay();
     try {
         const response = await fetch(`api/process.php?action=results&job_id=${encodeURIComponent(jobId)}`);
         const payload = await response.json();
-        if (!payload.success || !payload.results) return;
+        if (!payload.success || !payload.results) {
+            hideLoadingOverlay(false);
+            window.location.href = `processing.php?job_id=${encodeURIComponent(jobId)}`;
+            return;
+        }
         const results = payload.results;
-        if (!results.meta) return;
+        if (!results.meta) {
+            hideLoadingOverlay(false);
+            window.location.href = `processing.php?job_id=${encodeURIComponent(jobId)}`;
+            return;
+        }
         currentAnalysis = {
             ...results,
             job_id: jobId,
@@ -729,21 +743,16 @@ async function loadExistingJob(jobId) {
         }
         renderDashboard(currentAnalysis);
         switchState('dashboard');
+        hideLoadingOverlay(true);
     } catch (error) {
         console.error(error);
+        hideLoadingOverlay(false);
+        window.location.href = `processing.php?job_id=${encodeURIComponent(jobId)}`;
     }
 }
 
 function resetAnalysisPage() {
-    selectedFile = null;
-    fileRows = [];
-    fileHeaders = [];
-    mappingState = {};
-    currentAnalysis = null;
-    csvInput.value = '';
-    document.getElementById('fileMeta').classList.add('hidden');
-    switchState('upload');
-    history.replaceState({}, '', 'analysis.php');
+    window.location.href = 'upload.php';
 }
 
 function metricBadge(label, value) {
