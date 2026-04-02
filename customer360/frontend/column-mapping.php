@@ -22,10 +22,34 @@ if (!$hasUploadPreview) {
 }
 
 $requiredFields = [
-    ['id' => 'customer_id', 'label' => 'Customer ID', 'hint' => null, 'sample' => 'CUST-001', 'tooltip' => 'Unique identifier for the customer'],
-    ['id' => 'date', 'label' => 'Date', 'hint' => '(DD/MM/YYYY)', 'sample' => '12/10/2023', 'tooltip' => null],
-    ['id' => 'invoice_id', 'label' => 'Invoice ID', 'hint' => null, 'sample' => 'INV-2023-884', 'tooltip' => null],
-    ['id' => 'amount', 'label' => 'Amount', 'hint' => '(direct total)', 'sample' => '2,450.00', 'tooltip' => null],
+    [
+        'id' => 'customer_id',
+        'label' => 'Customer ID',
+        'hint' => null,
+        'sample' => 'CUST-001',
+        'tooltip' => 'Pick the column that identifies the same customer across multiple purchases. If this is missing, Customer 360 cannot compute true repeat-customer Frequency unless you explicitly enable synthetic IDs.'
+    ],
+    [
+        'id' => 'date',
+        'label' => 'Date',
+        'hint' => '(DD/MM/YYYY)',
+        'sample' => '12/10/2023',
+        'tooltip' => 'Pick the transaction date column used to calculate Recency. If day/month order is ambiguous, set the exact format in the parsing rules section.'
+    ],
+    [
+        'id' => 'invoice_id',
+        'label' => 'Invoice ID',
+        'hint' => null,
+        'sample' => 'INV-2023-884',
+        'tooltip' => 'Pick the order or invoice identifier so Frequency counts purchases correctly. If your CSV is line-item level, multiple rows can share the same Invoice ID.'
+    ],
+    [
+        'id' => 'amount',
+        'label' => 'Amount',
+        'hint' => '(direct total)',
+        'sample' => '2,450.00',
+        'tooltip' => 'Pick the transaction total if your file already has one amount column. If not, switch Amount Source to Formula and map Quantity + Unit Price so the backend derives Amount = Quantity × Unit Price.'
+    ],
 ];
 
 $optionalFields = [
@@ -68,6 +92,27 @@ $optionalFields = [
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
         select.mapped { border-color: #22c55e; background-color: #f0fdf4; }
+        .required-star { color: #dc2626; font-weight: 900; }
+        .field-help-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 18px;
+            height: 18px;
+            border-radius: 9999px;
+            border: 1px solid #cbd5e1;
+            color: #536e93;
+            background: #f8fafc;
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1;
+            transition: all .2s ease;
+        }
+        .field-help-btn:hover {
+            border-color: #0b203c;
+            background: #eef2f6;
+            color: #0b203c;
+        }
     </style>
 </head>
 <body class="bg-background-light dark:bg-background-dark text-primary dark:text-white font-display min-h-screen flex flex-col overflow-x-hidden">
@@ -148,9 +193,13 @@ $optionalFields = [
                         <div class="flex flex-col gap-2">
                             <label class="flex items-center gap-1.5 text-sm font-semibold">
                                 <?php echo htmlspecialchars($field['label']); ?>
-                                <?php if ($field['tooltip']): ?>
-                                <span class="material-symbols-outlined text-[16px] text-[#536e93] cursor-help" title="<?php echo htmlspecialchars($field['tooltip']); ?>">info</span>
-                                <?php endif; ?>
+                                <span class="required-star">*</span>
+                                <button
+                                    type="button"
+                                    class="field-help-btn"
+                                    onclick="openFieldHelp('<?php echo htmlspecialchars($field['label'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars($field['tooltip'] ?? '', ENT_QUOTES); ?>', '<?php echo htmlspecialchars($field['sample'], ENT_QUOTES); ?>', true)"
+                                    aria-label="Learn more about <?php echo htmlspecialchars($field['label']); ?>"
+                                >?</button>
                                 <?php if ($field['hint']): ?>
                                 <span class="text-xs font-normal text-[#536e93]"><?php echo htmlspecialchars($field['hint']); ?></span>
                                 <?php endif; ?>
@@ -237,7 +286,12 @@ $optionalFields = [
                             <div class="flex flex-col gap-2">
                                 <label class="flex items-center gap-1.5 text-sm font-semibold">
                                     <?php echo htmlspecialchars($field['label']); ?>
-                                    <span class="material-symbols-outlined text-[16px] text-[#536e93] cursor-help" title="<?php echo htmlspecialchars($field['tooltip']); ?>">info</span>
+                                    <button
+                                        type="button"
+                                        class="field-help-btn"
+                                        onclick="openFieldHelp('<?php echo htmlspecialchars($field['label'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars($field['tooltip'], ENT_QUOTES); ?>', '<?php echo htmlspecialchars($field['sample'], ENT_QUOTES); ?>', false)"
+                                        aria-label="Learn more about <?php echo htmlspecialchars($field['label']); ?>"
+                                    >?</button>
                                 </label>
                                 <select name="mapping[<?php echo $field['id']; ?>]" class="optional-mapping-select rounded-lg border border-border-subtle bg-white py-2.5 px-3 text-sm dark:bg-background-dark" onchange="updateMappingStatus()">
                                     <option value="">Not mapped</option>
@@ -364,8 +418,44 @@ $optionalFields = [
         </div>
     </main>
 
+    <div id="fieldHelpModal" class="fixed inset-0 z-[70] hidden">
+        <div class="absolute inset-0 bg-slate-900/55" onclick="closeFieldHelp()"></div>
+        <div class="relative mx-auto mt-24 w-[92%] max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl dark:border-slate-700 dark:bg-[#1a222c]">
+            <div class="flex items-start justify-between gap-4">
+                <div>
+                    <p id="fieldHelpBadge" class="text-xs font-black uppercase tracking-[0.2em] text-red-600">Required Field</p>
+                    <h3 id="fieldHelpTitle" class="mt-2 text-2xl font-black text-primary dark:text-white">Field details</h3>
+                </div>
+                <button type="button" onclick="closeFieldHelp()" class="rounded-full p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-800">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <p id="fieldHelpText" class="mt-4 text-sm leading-6 text-slate-600 dark:text-slate-300"></p>
+            <div class="mt-5 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                <p class="text-xs font-bold uppercase tracking-[0.16em] text-[#536e93]">Example value</p>
+                <p id="fieldHelpSample" class="mt-2 font-mono text-base font-bold text-primary dark:text-white"></p>
+            </div>
+        </div>
+    </div>
+
     <script>
         let validationReady = false;
+
+        function openFieldHelp(title, text, sample, required) {
+            document.getElementById('fieldHelpTitle').textContent = title || 'Field details';
+            document.getElementById('fieldHelpText').textContent = text || 'No extra description was provided for this field.';
+            document.getElementById('fieldHelpSample').textContent = sample || 'Not available';
+            const badge = document.getElementById('fieldHelpBadge');
+            badge.textContent = required ? 'Required Field' : 'Optional Field';
+            badge.className = required
+                ? 'text-xs font-black uppercase tracking-[0.2em] text-red-600'
+                : 'text-xs font-black uppercase tracking-[0.2em] text-[#536e93]';
+            document.getElementById('fieldHelpModal').classList.remove('hidden');
+        }
+
+        function closeFieldHelp() {
+            document.getElementById('fieldHelpModal').classList.add('hidden');
+        }
 
         function escapeHtml(value) {
             return String(value ?? '')
