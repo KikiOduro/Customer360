@@ -117,6 +117,7 @@ def ensure_job_storage_columns():
             "progress_percent": "INTEGER",
             "progress_stage": "TEXT",
             "progress_message": "TEXT",
+            "result_json": "TEXT",
         }
     else:
         column_types = {
@@ -128,6 +129,7 @@ def ensure_job_storage_columns():
             "progress_percent": "INT",
             "progress_stage": "VARCHAR(100)",
             "progress_message": "TEXT",
+            "result_json": "LONGTEXT",
         }
 
     with engine.begin() as connection:
