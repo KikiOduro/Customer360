@@ -125,7 +125,7 @@ function buildActionConfig(array $run): array {
 
     if ($run['status'] === 'completed') {
         return [
-            'href' => "analytics.php?job_id={$jobId}",
+            'href' => "analysis.php?job_id={$jobId}",
             'label' => 'View results',
             'icon' => 'visibility',
             'classes' => 'text-primary hover:text-primary-hover dark:text-blue-400 dark:hover:text-blue-300',

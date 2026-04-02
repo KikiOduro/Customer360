@@ -119,6 +119,14 @@ def ensure_venv(backend_dir: Path, python_bin: str) -> Path:
     venv_dir = backend_dir / ".venv"
     venv_python = venv_dir / "bin" / "python"
     venv_pip = venv_dir / "bin" / "pip"
+    legacy_venv_python = backend_dir / "app" / "venv" / "bin" / "python3"
+    legacy_venv_pip = backend_dir / "app" / "venv" / "bin" / "pip"
+
+    if not venv_python.exists() and legacy_venv_python.exists() and legacy_venv_pip.exists():
+        print(f"WARNING: {venv_python} is missing, using legacy interpreter {legacy_venv_python}")
+        run_command([str(legacy_venv_pip), "install", "--upgrade", "pip"], cwd=backend_dir)
+        run_command([str(legacy_venv_pip), "install", "-r", "requirements.txt"], cwd=backend_dir)
+        return legacy_venv_python
 
     if not venv_python.exists():
         run_command([python_bin, "-m", "venv", str(venv_dir)], cwd=backend_dir)

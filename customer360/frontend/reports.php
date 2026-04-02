@@ -233,7 +233,7 @@ function getStatusBadge(string $status): string {
                                     <td class="whitespace-nowrap px-6 py-4 text-right">
                                         <div class="flex items-center justify-end gap-2">
                                             <?php if ($report['status'] === 'completed'): ?>
-                                            <a href="analytics.php?job_id=<?php echo urlencode($report['id']); ?>" class="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-primary" title="View Report"><span class="material-symbols-outlined text-[20px]">visibility</span></a>
+                                            <a href="analysis.php?job_id=<?php echo urlencode($report['id']); ?>" class="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-primary" title="View Report"><span class="material-symbols-outlined text-[20px]">visibility</span></a>
                                             <?php else: ?>
                                             <a href="processing.php?job_id=<?php echo urlencode($report['id']); ?>" class="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-primary" title="Track Job"><span class="material-symbols-outlined text-[20px]">schedule</span></a>
                                             <?php endif; ?>

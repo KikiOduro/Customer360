@@ -312,7 +312,7 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
         }
 
         function goToResults() {
-            window.location.href = 'analytics.php?job_id=' + encodeURIComponent(jobId);
+            window.location.href = 'analysis.php?job_id=' + encodeURIComponent(jobId);
         }
 
         function applyJobState(status) {
