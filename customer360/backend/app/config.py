@@ -71,5 +71,12 @@ SUPABASE_STORAGE_OBJECT_BASE = f"{SUPABASE_URL}/storage/v1/object/{SUPABASE_STOR
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 
 # Clustering settings
-DEFAULT_K_RANGE = (2, 10)  # Range of k values to try for K-Means
+DEFAULT_K_RANGE = (2, 8)  # Range of k values to try for K-Means (reduced from 10 for speed)
 RANDOM_STATE = 42
+
+# Pipeline performance settings (tuneable via environment variables)
+MAX_ROWS = int(os.getenv("MAX_ROWS", "100000"))  # Reject files above this row count
+PIPELINE_TIMEOUT_SECONDS = int(os.getenv("PIPELINE_TIMEOUT_SECONDS", "600"))  # 10 min default
+OPTIMAL_K_SUBSAMPLE = int(os.getenv("OPTIMAL_K_SUBSAMPLE", "5000"))  # Subsample for k-sweep
+SHAP_MAX_SAMPLES = int(os.getenv("SHAP_MAX_SAMPLES", "2000"))  # Subsample for SHAP
+CHART_DPI = int(os.getenv("CHART_DPI", "96"))  # Lower DPI = faster chart generation

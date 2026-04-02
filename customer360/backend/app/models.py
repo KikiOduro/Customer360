@@ -69,6 +69,9 @@ class Job(Base):
     num_clusters = Column(Integer, nullable=True)
     silhouette_score = Column(Float, nullable=True)
     
+    # Cached analysis results (JSON) — populated by background tasks
+    result_json = Column(Text, nullable=True)
+    
     # Timestamps
     created_at = Column(TIMESTAMP, server_default=func.now())
     completed_at = Column(TIMESTAMP, nullable=True)

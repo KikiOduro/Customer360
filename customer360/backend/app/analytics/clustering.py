@@ -5,12 +5,12 @@ Implements K-Means, GMM, and Hierarchical clustering with evaluation metrics.
 import numpy as np
 import pandas as pd
 from typing import Tuple, Dict, Any, List, Optional
-from sklearn.cluster import KMeans, AgglomerativeClustering
+from sklearn.cluster import KMeans, MiniBatchKMeans, AgglomerativeClustering
 from sklearn.mixture import GaussianMixture
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
 import logging
 
-from ..config import DEFAULT_K_RANGE, RANDOM_STATE
+from ..config import DEFAULT_K_RANGE, RANDOM_STATE, OPTIMAL_K_SUBSAMPLE
 
 logger = logging.getLogger(__name__)
 
@@ -42,8 +42,14 @@ def find_optimal_k(
     
     for k in k_values:
         if method == 'kmeans':
-            model = KMeans(n_clusters=k, random_state=RANDOM_STATE, n_init=10)
-            labels = model.fit_predict(X)
+            # Use MiniBatchKMeans with subsampling for speed on large N
+            if len(X) > OPTIMAL_K_SUBSAMPLE:
+                idx = np.random.RandomState(RANDOM_STATE).choice(len(X), OPTIMAL_K_SUBSAMPLE, replace=False)
+                X_fit = X[idx]
+            else:
+                X_fit = X
+            model = MiniBatchKMeans(n_clusters=k, random_state=RANDOM_STATE, n_init=3, batch_size=1024)
+            labels = model.fit_predict(X_fit)
             inertias.append(model.inertia_)
         elif method == 'gmm':
             model = GaussianMixture(n_components=k, random_state=RANDOM_STATE)
@@ -54,9 +60,10 @@ def find_optimal_k(
         
         # Calculate clustering quality metrics
         if len(set(labels)) > 1:  # Need at least 2 clusters for silhouette
-            silhouette_scores.append(silhouette_score(X, labels))
-            calinski_scores.append(calinski_harabasz_score(X, labels))
-            davies_scores.append(davies_bouldin_score(X, labels))
+            X_score = X_fit if method == 'kmeans' else X
+            silhouette_scores.append(silhouette_score(X_score, labels))
+            calinski_scores.append(calinski_harabasz_score(X_score, labels))
+            davies_scores.append(davies_bouldin_score(X_score, labels))
         else:
             silhouette_scores.append(0)
             calinski_scores.append(0)
@@ -289,11 +296,13 @@ def run_comparison(
     """
     results = {}
     
-    # Find optimal k using K-Means analysis
-    k_analysis = find_optimal_k(X, method='kmeans')
-    optimal_k = n_clusters or k_analysis['optimal_k']
-    
-    results['k_analysis'] = k_analysis
+    # Find optimal k using K-Means analysis only if n_clusters not given
+    if n_clusters is None:
+        k_analysis = find_optimal_k(X, method='kmeans')
+        optimal_k = k_analysis['optimal_k']
+        results['k_analysis'] = k_analysis
+    else:
+        optimal_k = n_clusters
     
     # Run each method
     for method in ['kmeans', 'gmm', 'hierarchical']:

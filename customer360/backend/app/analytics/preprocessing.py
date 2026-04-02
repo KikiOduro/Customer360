@@ -8,6 +8,8 @@ from datetime import datetime
 from typing import Tuple, List, Dict, Optional, Any
 import logging
 
+from ..config import MAX_ROWS
+
 logger = logging.getLogger(__name__)
 
 # Common date formats to try when parsing dates
@@ -58,7 +60,13 @@ def load_csv(file_path: str) -> pd.DataFrame:
         if df.empty:
             raise ValueError("The uploaded file is empty")
 
-        logger.info(f"Loaded CSV with {len(df)} rows and {len(df.columns)} columns")
+        if len(df) > MAX_ROWS:
+            raise ValueError(
+                f"File has {len(df):,} rows which exceeds the maximum of {MAX_ROWS:,}. "
+                f"Please reduce the file size or contact support."
+            )
+
+        logger.info(f"Loaded CSV with {len(df):,} rows and {len(df.columns)} columns")
         return df
 
     except pd.errors.EmptyDataError:

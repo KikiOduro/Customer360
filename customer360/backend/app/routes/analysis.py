@@ -1,6 +1,7 @@
 """
 Analysis API routes.
-Provides a synchronous analysis workflow for the new frontend analysis page.
+Provides an async analysis workflow — the heavy ML pipeline runs in a
+FastAPI BackgroundTask so the HTTP response returns immediately.
 """
 import json
 import shutil
@@ -11,7 +12,9 @@ from typing import Any, Dict, Optional
 
 import numpy as np
 import pandas as pd
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+import logging
+import traceback
+from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -275,6 +278,7 @@ def build_analysis_response(job: Job, pipeline: SegmentationPipeline, results: D
 @router.post("/analyze")
 async def analyze_file(
     request: Request,
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     mapping: str = Form(...),
     clustering_method: str = Form(default="kmeans"),
@@ -282,6 +286,11 @@ async def analyze_file(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
+    """
+    Upload a file and start analysis as a background task.
+    Returns immediately with job_id and status='processing'.
+    The frontend should poll GET /api/analysis/status/{job_id} for results.
+    """
     validate_file(file)
 
     try:
@@ -327,21 +336,69 @@ async def analyze_file(
     db.commit()
     db.refresh(job)
 
+    # Offload the heavy pipeline to a background task
+    background_tasks.add_task(
+        _run_analysis_background,
+        job_id=job_id,
+        local_path=str(local_path),
+        output_dir=str(job_output_dir),
+        normalized_mapping=normalized_mapping,
+        clustering_method=clustering_method,
+        include_comparison=include_comparison,
+        user_id=current_user.id,
+        company_name=current_user.company_name or "",
+    )
+
+    return {
+        "status": "processing",
+        "job_id": job_id,
+        "message": "Analysis started. Poll GET /api/analysis/status/{job_id} for results.",
+    }
+
+
+_analysis_logger = logging.getLogger(__name__ + ".background")
+
+
+def _run_analysis_background(
+    *,
+    job_id: str,
+    local_path: str,
+    output_dir: str,
+    normalized_mapping: dict,
+    clustering_method: str,
+    include_comparison: bool,
+    user_id: int,
+    company_name: str,
+):
+    """
+    Runs the full segmentation pipeline + report generation in a background thread.
+    Updates the Job row in the database on completion or failure.
+    """
+    from ..database import SessionLocal
+
+    db = SessionLocal()
     try:
+        job = db.query(Job).filter(Job.job_id == job_id).first()
+        if not job:
+            _analysis_logger.error("Job %s not found in database", job_id)
+            return
+
+        _analysis_logger.info("Starting background analysis for job %s", job_id)
+
         pipeline = SegmentationPipeline(
-            file_path=str(local_path),
-            output_dir=str(job_output_dir),
+            file_path=local_path,
+            output_dir=output_dir,
             job_id=job_id,
             column_mapping=normalized_mapping,
             clustering_method=clustering_method,
             include_comparison=include_comparison,
         )
         results = pipeline.run()
-        report_path = Path(job_output_dir) / f"{job_id}_report.pdf"
+        report_path = Path(output_dir) / f"{job_id}_report.pdf"
         generate_report(
             results=results,
             output_path=str(report_path),
-            company_name=current_user.company_name or "",
+            company_name=company_name,
         )
 
         meta = results.get("meta", {})
@@ -352,17 +409,71 @@ async def analyze_file(
         job.total_revenue = meta.get("total_revenue")
         job.num_clusters = meta.get("num_clusters")
         job.silhouette_score = meta.get("silhouette_score")
-        db.commit()
 
-        return build_analysis_response(job, pipeline, results)
-    except Exception as exc:
-        job.status = "failed"
-        job.error_message = str(exc)
+        # Persist serialised results so the status endpoint can return them
+        try:
+            import json as _json
+            job.result_json = _json.dumps(
+                _build_results_snapshot(job, pipeline, results),
+                default=str,
+            )
+        except Exception:
+            _analysis_logger.warning("Could not serialise results for job %s", job_id, exc_info=True)
+
         db.commit()
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
-        ) from exc
+        _analysis_logger.info("Background analysis completed for job %s", job_id)
+
+    except Exception as exc:
+        _analysis_logger.error("Background analysis FAILED for job %s: %s", job_id, exc, exc_info=True)
+        try:
+            job = db.query(Job).filter(Job.job_id == job_id).first()
+            if job:
+                job.status = "failed"
+                job.error_message = f"{type(exc).__name__}: {exc}"
+                db.commit()
+        except Exception:
+            _analysis_logger.error("Could not update job status after failure", exc_info=True)
+    finally:
+        db.close()
+
+
+def _build_results_snapshot(job: Job, pipeline, results: dict) -> dict:
+    """Build a serialisable snapshot of the analysis results."""
+    return build_analysis_response(job, pipeline, results)
+
+
+@router.get("/status/{job_id}")
+async def get_analysis_status(
+    job_id: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Poll for analysis results.  Returns immediately with current status.
+    When status == 'completed', the full results payload is included.
+    """
+    job = db.query(Job).filter(Job.job_id == job_id, Job.user_id == current_user.id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Analysis job not found")
+
+    response: Dict[str, Any] = {
+        "status": job.status,
+        "job_id": job.job_id,
+    }
+
+    if job.status == "failed":
+        response["error"] = job.error_message
+    elif job.status == "completed":
+        # Return cached results if available
+        if hasattr(job, "result_json") and job.result_json:
+            try:
+                import json as _json
+                response["results"] = _json.loads(job.result_json)
+            except Exception:
+                response["results"] = None
+        response["report_url"] = f"/api/analysis/report/{job.job_id}"
+
+    return response
 
 
 def _get_owned_job(job_id: str, current_user: User, db: Session) -> Job:

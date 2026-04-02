@@ -20,7 +20,7 @@ from .preprocessing import preprocess_transaction_data, get_csv_preview
 from .rfm import compute_rfm, normalize_rfm, get_rfm_statistics, get_rfm_distributions
 from .clustering import run_clustering, run_comparison
 from .segmentation import analyze_clusters, get_cluster_sizes, get_segment_summary
-from ..config import MODELS_DIR
+from ..config import MODELS_DIR, OPTIMAL_K_SUBSAMPLE, SHAP_MAX_SAMPLES, CHART_DPI
 
 logger = logging.getLogger(__name__)
 
@@ -416,7 +416,7 @@ class SegmentationPipeline:
             return {}
 
     def _find_optimal_k_majority_vote(
-        self, X: np.ndarray, k_min: int = 2, k_max: int = 10
+        self, X: np.ndarray, k_min: int = 2, k_max: int = 8
     ) -> tuple:
         """
         Majority vote across 4 metrics to choose optimal K:
@@ -425,24 +425,34 @@ class SegmentationPipeline:
           - Calinski-Harabasz (highest score)
           - Davies-Bouldin (lowest score)
         Falls back to 4 if vote is inconclusive.
+
+        Uses MiniBatchKMeans and subsampling for speed on large datasets.
         """
-        from sklearn.cluster import KMeans
+        from sklearn.cluster import MiniBatchKMeans
         from sklearn.metrics import (
             silhouette_score, calinski_harabasz_score, davies_bouldin_score
         )
+
+        # Subsample for speed — optimal K is stable at ~5k points
+        if len(X) > OPTIMAL_K_SUBSAMPLE:
+            idx = np.random.RandomState(42).choice(len(X), OPTIMAL_K_SUBSAMPLE, replace=False)
+            X_sample = X[idx]
+            logger.info(f"Subsampled {len(X)} → {OPTIMAL_K_SUBSAMPLE} for optimal-K search")
+        else:
+            X_sample = X
 
         k_range   = range(k_min, k_max + 1)
         inertias  = []
         sil_scores, ch_scores, db_scores = [], [], []
 
         for k in k_range:
-            km     = KMeans(n_clusters=k, random_state=42, n_init=10)
-            labels = km.fit_predict(X)
+            km     = MiniBatchKMeans(n_clusters=k, random_state=42, n_init=3, batch_size=1024)
+            labels = km.fit_predict(X_sample)
             inertias.append(km.inertia_)
             if len(set(labels)) > 1:
-                sil_scores.append(silhouette_score(X, labels))
-                ch_scores.append(calinski_harabasz_score(X, labels))
-                db_scores.append(davies_bouldin_score(X, labels))
+                sil_scores.append(silhouette_score(X_sample, labels))
+                ch_scores.append(calinski_harabasz_score(X_sample, labels))
+                db_scores.append(davies_bouldin_score(X_sample, labels))
             else:
                 sil_scores.append(0)
                 ch_scores.append(0)
@@ -488,6 +498,7 @@ class SegmentationPipeline:
         """
         Train a lightweight Random Forest to predict cluster labels,
         then compute SHAP values to explain feature importance.
+        Uses subsampling for speed on large datasets.
         """
         shap = _try_import('shap')
         if shap is None:
@@ -496,11 +507,19 @@ class SegmentationPipeline:
         try:
             from sklearn.ensemble import RandomForestClassifier
 
-            clf = RandomForestClassifier(n_estimators=50, random_state=42, n_jobs=-1)
-            clf.fit(X, labels)
+            # Subsample for SHAP — feature importance is stable at ~2k points
+            if len(X) > SHAP_MAX_SAMPLES:
+                idx = np.random.RandomState(42).choice(len(X), SHAP_MAX_SAMPLES, replace=False)
+                X_shap, labels_shap = X[idx], labels[idx]
+                logger.info(f"Subsampled {len(X)} → {SHAP_MAX_SAMPLES} for SHAP")
+            else:
+                X_shap, labels_shap = X, labels
+
+            clf = RandomForestClassifier(n_estimators=30, random_state=42, n_jobs=1)
+            clf.fit(X_shap, labels_shap)
 
             explainer   = shap.TreeExplainer(clf)
-            shap_values = explainer.shap_values(X)
+            shap_values = explainer.shap_values(X_shap)
 
             # Mean absolute SHAP per feature (average across classes)
             if isinstance(shap_values, list):
@@ -570,7 +589,7 @@ class SegmentationPipeline:
                 ax.set_title('Customer Segments — PCA Projection')
                 ax.legend(loc='best', fontsize=8)
                 path = self.output_dir / f"{self.job_id}_chart_pca.png"
-                fig.savefig(path, dpi=120, bbox_inches='tight')
+                fig.savefig(path, dpi=CHART_DPI, bbox_inches='tight')
                 plt.close(fig)
                 charts['pca_scatter'] = str(path)
             except Exception as e:
@@ -587,7 +606,7 @@ class SegmentationPipeline:
             ax.set_title('Segment Sizes')
             ax.invert_yaxis()
             path = self.output_dir / f"{self.job_id}_chart_segments.png"
-            fig.savefig(path, dpi=120, bbox_inches='tight')
+            fig.savefig(path, dpi=CHART_DPI, bbox_inches='tight')
             plt.close(fig)
             charts['segment_sizes'] = str(path)
         except Exception as e:
