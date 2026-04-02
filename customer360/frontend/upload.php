@@ -16,6 +16,7 @@ $companyLabel = $rawCompanyName !== '' ? $rawCompanyName : 'Signed in account';
 $userInitials = strtoupper(substr($profileLabel, 0, 1));
 $currentYear = date('Y');
 $currentPage = 'upload';
+$missingPreview = isset($_GET['missing_preview']) && $_GET['missing_preview'] === '1';
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -189,6 +190,28 @@ $currentPage = 'upload';
                                 <span class="material-symbols-outlined text-sm">arrow_forward</span>
                             </button>
                         </div>
+
+                        <div id="uploadStatusCard" class="<?php echo $missingPreview ? '' : 'hidden '; ?>rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                            <div class="flex items-start gap-4">
+                                <div id="uploadStatusIcon" class="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                                    <span class="material-symbols-outlined"><?php echo $missingPreview ? 'info' : 'cloud_upload'; ?></span>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex flex-col gap-1">
+                                        <p id="uploadStatusTitle" class="text-sm font-bold text-primary"><?php echo $missingPreview ? 'Upload preview expired' : 'Ready to upload'; ?></p>
+                                        <p id="uploadStatusMessage" class="text-sm text-slate-500"><?php echo $missingPreview ? 'We could not find the temporary preview data needed for column mapping. Please upload the file again to continue.' : 'Choose a file to begin a new segmentation run.'; ?></p>
+                                    </div>
+                                    <div class="mt-4 h-2 overflow-hidden rounded-full bg-slate-200">
+                                        <div id="uploadProgressBar" class="h-full w-0 rounded-full bg-primary transition-all duration-300 ease-out"></div>
+                                    </div>
+                                    <div class="mt-2 flex items-center justify-between text-xs text-slate-500">
+                                        <span id="uploadProgressLabel"><?php echo $missingPreview ? 'Upload required' : 'Waiting for your file'; ?></span>
+                                        <span id="uploadProgressPercent">0%</span>
+                                    </div>
+                                    <div id="uploadStatusMeta" class="mt-3 <?php echo $missingPreview ? '' : 'hidden '; ?>rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800"><?php echo $missingPreview ? 'This usually happens when the session was cleared or the temporary preview file was removed.' : ''; ?></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="space-y-6">
@@ -273,6 +296,92 @@ $currentPage = 'upload';
     
     <script>
         let filesToUpload = [];
+        let uploadStageTimer = null;
+        let uploadStageIndex = 0;
+        const uploadStages = [
+            'Checking the file before upload...',
+            'Sending your dataset to the analysis API...',
+            'Preparing your job and storage metadata...',
+            'Finalizing the analysis run setup...'
+        ];
+
+        function setUploadStatus({ type = 'info', title, message, percent = null, meta = '', show = true }) {
+            const card = document.getElementById('uploadStatusCard');
+            const icon = document.getElementById('uploadStatusIcon');
+            const titleEl = document.getElementById('uploadStatusTitle');
+            const messageEl = document.getElementById('uploadStatusMessage');
+            const bar = document.getElementById('uploadProgressBar');
+            const label = document.getElementById('uploadProgressLabel');
+            const percentEl = document.getElementById('uploadProgressPercent');
+            const metaEl = document.getElementById('uploadStatusMeta');
+
+            const styles = {
+                info: ['bg-slate-100', 'text-slate-600', 'cloud_upload'],
+                uploading: ['bg-blue-100', 'text-blue-700', 'progress_activity'],
+                success: ['bg-green-100', 'text-green-700', 'check_circle'],
+                warning: ['bg-amber-100', 'text-amber-700', 'warning'],
+                error: ['bg-red-100', 'text-red-700', 'error']
+            };
+            const [bgClass, textClass, iconName] = styles[type] || styles.info;
+
+            card.classList.toggle('hidden', !show);
+            icon.className = `mt-0.5 flex h-10 w-10 items-center justify-center rounded-full ${bgClass} ${textClass}`;
+            icon.innerHTML = `<span class="material-symbols-outlined ${type === 'uploading' ? 'animate-spin' : ''}">${iconName}</span>`;
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+
+            if (percent !== null) {
+                const boundedPercent = Math.max(0, Math.min(100, percent));
+                bar.style.width = `${boundedPercent}%`;
+                percentEl.textContent = `${Math.round(boundedPercent)}%`;
+                label.textContent = boundedPercent >= 100 ? 'Complete' : 'In progress';
+            }
+
+            if (meta) {
+                metaEl.textContent = meta;
+                metaEl.classList.remove('hidden');
+            } else {
+                metaEl.textContent = '';
+                metaEl.classList.add('hidden');
+            }
+        }
+
+        function showInlineError(message) {
+            setUploadStatus({
+                type: 'error',
+                title: 'Upload could not continue',
+                message,
+                meta: 'You can adjust the file or retry once the backend issue is resolved.',
+                percent: 0
+            });
+        }
+
+        function startUploadNarration(fileName) {
+            clearInterval(uploadStageTimer);
+            uploadStageIndex = 0;
+            setUploadStatus({
+                type: 'uploading',
+                title: 'Uploading your dataset',
+                message: `${uploadStages[uploadStageIndex]} ${fileName}`,
+                percent: 8
+            });
+
+            uploadStageTimer = setInterval(() => {
+                uploadStageIndex = Math.min(uploadStageIndex + 1, uploadStages.length - 1);
+                const stagedPercent = Math.min(25 + uploadStageIndex * 18, 82);
+                setUploadStatus({
+                    type: 'uploading',
+                    title: 'Uploading your dataset',
+                    message: `${uploadStages[uploadStageIndex]} ${fileName}`,
+                    percent: stagedPercent
+                });
+            }, 1800);
+        }
+
+        function stopUploadNarration() {
+            clearInterval(uploadStageTimer);
+            uploadStageTimer = null;
+        }
         
         function toggleUserMenu() {
             document.getElementById('userMenu').classList.toggle('hidden');
@@ -298,10 +407,23 @@ $currentPage = 'upload';
             
             files.forEach(file => {
                 const ext = '.' + file.name.split('.').pop().toLowerCase();
-                if (!validExtensions.includes(ext)) { alert(`Invalid file type: ${file.name}`); return; }
-                if (file.size > maxSize) { alert(`File too large: ${file.name}`); return; }
+                if (!validExtensions.includes(ext)) {
+                    showInlineError(`"${file.name}" is not supported. Upload a CSV or Excel file.`);
+                    return;
+                }
+                if (file.size > maxSize) {
+                    showInlineError(`"${file.name}" is larger than the 25 MB upload limit.`);
+                    return;
+                }
                 if (!filesToUpload.find(f => f.name === file.name)) {
                     filesToUpload.push({ file, name: file.name, size: file.size, status: 'ready', progress: 0 });
+                    setUploadStatus({
+                        type: 'info',
+                        title: 'File ready',
+                        message: `${file.name} is queued and ready for upload.`,
+                        percent: 0,
+                        meta: 'When you continue, we will create a live job and move you to the processing page.'
+                    });
                 }
             });
             renderFilesList();
@@ -342,10 +464,25 @@ $currentPage = 'upload';
             return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
         }
         
-        function removeFile(index) { filesToUpload.splice(index, 1); renderFilesList(); }
+        function removeFile(index) {
+            filesToUpload.splice(index, 1);
+            renderFilesList();
+            if (filesToUpload.length === 0) {
+                setUploadStatus({
+                    type: 'info',
+                    title: 'Ready to upload',
+                    message: 'Choose a file to begin a new segmentation run.',
+                    percent: 0,
+                    meta: ''
+                });
+            }
+        }
         
         function uploadFiles() {
-            if (filesToUpload.length === 0) { alert('Please select a file.'); return; }
+            if (filesToUpload.length === 0) {
+                showInlineError('Please select a file before starting the upload.');
+                return;
+            }
 
             const uploadBtn = document.getElementById('uploadBtn');
             const btnText   = uploadBtn.querySelector('span:first-child');
@@ -355,26 +492,66 @@ $currentPage = 'upload';
             const fileData = filesToUpload[0];
             const formData = new FormData();
             formData.append('file', fileData.file);
+            startUploadNarration(fileData.name);
 
-            fetch('api/upload.php', { method: 'POST', body: formData })
-                .then(res => res.json())
-                .then(data => {
-                    if (data.success) {
-                        // Store job_id in sessionStorage so processing.php can access it
-                        sessionStorage.setItem('current_job_id', data.job_id);
-                        // Redirect to processing page which polls until the ML job finishes
-                        window.location.href = 'processing.php?job_id=' + encodeURIComponent(data.job_id);
-                    } else {
-                        alert(data.error || 'Upload failed. Please try again.');
-                        uploadBtn.disabled = false;
-                        btnText.textContent = 'Upload & Analyze';
-                    }
-                })
-                .catch(() => {
-                    alert('Network error. Please check your connection and try again.');
-                    uploadBtn.disabled = false;
-                    btnText.textContent = 'Upload & Analyze';
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', 'api/upload.php');
+            xhr.responseType = 'json';
+
+            xhr.upload.addEventListener('progress', (event) => {
+                if (!event.lengthComputable) return;
+                const percent = Math.max(10, Math.min((event.loaded / event.total) * 100, 92));
+                setUploadStatus({
+                    type: 'uploading',
+                    title: 'Uploading your dataset',
+                    message: `Sending ${fileData.name} to the server...`,
+                    percent
                 });
+            });
+
+            xhr.onload = () => {
+                stopUploadNarration();
+                const data = xhr.response || safeJsonParse(xhr.responseText);
+
+                if (xhr.status >= 200 && xhr.status < 300 && data?.success) {
+                    setUploadStatus({
+                        type: data.storage_warning ? 'warning' : 'success',
+                        title: data.storage_warning ? 'Upload complete with warning' : 'Upload complete',
+                        message: data.storage_warning
+                            ? 'The analysis job was created, but cloud storage sync reported a warning.'
+                            : 'Your dataset is ready. Redirecting you to the live processing view...',
+                        percent: 100,
+                        meta: data.storage_warning || ''
+                    });
+                    sessionStorage.setItem('current_job_id', data.job_id);
+                    setTimeout(() => {
+                        window.location.href = 'processing.php?job_id=' + encodeURIComponent(data.job_id);
+                    }, 900);
+                    return;
+                }
+
+                const backendResponse = data?.backend_response ? ` Backend says: ${data.backend_response}` : '';
+                showInlineError((data?.error || `Upload failed with status ${xhr.status}.`) + backendResponse);
+                uploadBtn.disabled = false;
+                btnText.textContent = 'Upload & Analyze';
+            };
+
+            xhr.onerror = () => {
+                stopUploadNarration();
+                showInlineError('Network error while contacting the upload API. Please check the backend connection and retry.');
+                uploadBtn.disabled = false;
+                btnText.textContent = 'Upload & Analyze';
+            };
+
+            xhr.send(formData);
+        }
+
+        function safeJsonParse(raw) {
+            try {
+                return JSON.parse(raw);
+            } catch (error) {
+                return null;
+            }
         }
     </script>
 </body>

@@ -1,6 +1,5 @@
 <?php
 session_start();
-//TODO: MAKE SURE THIS PAGE CAN ONLY BE ACCESSED IF THERE IS A CURRENT UPLOAD WITH AVAILABLE COLUMNS AND SAMPLE ROWS IN THE SESSION. OTHERWISE REDIRECT BACK TO UPLOAD.
 if (!isset($_SESSION['user_id'])) {
     header('Location: signin.php');
     exit;
@@ -12,6 +11,11 @@ $availableColumns = $upload['columns'] ?? [];
 $sampleRows = $upload['sample_rows'] ?? [];
 $suggestedMapping = $upload['suggested_mapping'] ?? null;
 $hasUploadPreview = $uploadedFile !== '' && !empty($availableColumns);
+
+if (!$hasUploadPreview) {
+    header('Location: upload.php?missing_preview=1');
+    exit;
+}
 
 $requiredFields = [
     ['id' => 'customer_id', 'label' => 'Customer ID', 'hint' => null, 'sample' => 'CUST-001', 'tooltip' => 'Unique identifier for the customer'],
@@ -71,21 +75,8 @@ $requiredFields = [
         <div class="w-full max-w-[1024px] flex flex-col gap-6">
             <div class="flex flex-col gap-2">
                 <h1 class="text-3xl font-black tracking-[-0.033em]">Column Mapping</h1>
-                <?php if ($hasUploadPreview): ?>
                 <p class="text-[#536e93] text-base leading-normal">Match the columns from your uploaded file <span class="font-medium text-primary bg-primary/5 px-1 py-0.5 rounded"><?php echo htmlspecialchars($uploadedFile); ?></span> to the required Customer 360 fields below.</p>
-                <?php else: ?>
-                <p class="text-[#536e93] text-base leading-normal">No uploaded file preview is available yet. Start from the upload page to generate live column data for mapping.</p>
-                <?php endif; ?>
             </div>
-
-            <?php if (!$hasUploadPreview): ?>
-            <div class="rounded-xl border border-border-subtle bg-white p-8 shadow-sm text-center">
-                <span class="material-symbols-outlined text-5xl text-slate-300">upload_file</span>
-                <h2 class="mt-4 text-xl font-bold text-primary">Upload data to continue</h2>
-                <p class="mt-2 text-sm text-[#536e93]">Column mapping works only after the backend has returned live preview columns and sample rows.</p>
-                <a href="upload.php" class="mt-6 inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2.5 text-sm font-bold text-white hover:bg-[#1a3b66] transition-colors">Go to Upload</a>
-            </div>
-            <?php else: ?>
             <div id="warningBanner" class="@container">
                 <div class="flex flex-col items-start justify-between gap-4 rounded-lg border border-yellow-200 bg-yellow-50 dark:bg-yellow-900/20 dark:border-yellow-800 p-4 sm:flex-row sm:items-center">
                     <div class="flex items-start gap-3">
@@ -96,6 +87,18 @@ $requiredFields = [
                         </div>
                     </div>
                     <button onclick="dismissWarning()" class="hover:bg-yellow-100 dark:hover:bg-yellow-800/40 px-3 py-1.5 rounded-md text-sm font-medium transition-colors whitespace-nowrap">Dismiss</button>
+                </div>
+            </div>
+
+            <div id="mappingStatusCard" class="hidden rounded-xl border border-border-subtle bg-white p-4 shadow-sm">
+                <div class="flex items-start gap-3">
+                    <div id="mappingStatusIcon" class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                        <span class="material-symbols-outlined">check_circle</span>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <p id="mappingStatusTitle" class="text-sm font-bold text-primary">Mapping status</p>
+                        <p id="mappingStatusMessage" class="mt-1 text-sm text-[#536e93]">Confirm the required fields and continue to the live processing page.</p>
+                    </div>
                 </div>
             </div>
 
@@ -169,7 +172,6 @@ $requiredFields = [
                 <button type="button" onclick="window.location.href='upload.php'" class="flex min-w-[100px] items-center justify-center rounded-lg h-10 px-4 border border-border-subtle bg-white text-sm font-bold hover:bg-gray-50 transition-colors">Back</button>
                 <button type="button" onclick="submitMapping()" id="continueBtn" disabled class="flex min-w-[100px] items-center justify-center rounded-lg h-10 px-4 bg-primary text-white text-sm font-bold hover:bg-[#1a3b66] transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">Continue</button>
             </div>
-            <?php endif; ?>
         </div>
     </main>
 
@@ -197,13 +199,35 @@ $requiredFields = [
             if (mappedCount === totalRequired && !hasDuplicates) {
                 continueBtn.disabled = false;
                 document.getElementById('fieldsCounter').innerHTML = '<span class="text-green-600"><span class="material-symbols-outlined text-sm align-middle">check_circle</span> All Fields Mapped</span>';
+                setMappingStatus('success', 'Mapping ready', 'All required fields are mapped. You can continue to launch the analysis.');
             } else if (hasDuplicates) {
                 continueBtn.disabled = true;
                 document.getElementById('fieldsCounter').innerHTML = '<span class="text-red-600"><span class="material-symbols-outlined text-sm align-middle">error</span> Duplicate mappings detected</span>';
+                setMappingStatus('error', 'Duplicate columns selected', 'Each required field must point to a different source column.');
             } else {
                 continueBtn.disabled = true;
                 document.getElementById('fieldsCounter').innerHTML = '<span id="mappedCount">' + mappedCount + '</span> of ' + totalRequired + ' Fields Mapped';
+                setMappingStatus('info', 'Mapping in progress', `You have mapped ${mappedCount} of ${totalRequired} required fields.`);
             }
+        }
+
+        function setMappingStatus(type, title, message) {
+            const card = document.getElementById('mappingStatusCard');
+            const icon = document.getElementById('mappingStatusIcon');
+            const titleEl = document.getElementById('mappingStatusTitle');
+            const messageEl = document.getElementById('mappingStatusMessage');
+            const styles = {
+                info: ['bg-blue-100 text-blue-700', 'info'],
+                success: ['bg-green-100 text-green-700', 'check_circle'],
+                error: ['bg-red-100 text-red-700', 'error'],
+                loading: ['bg-slate-100 text-slate-700', 'progress_activity']
+            };
+            const [classes, iconName] = styles[type] || styles.info;
+            card.classList.remove('hidden');
+            icon.className = `mt-0.5 flex h-9 w-9 items-center justify-center rounded-full ${classes}`;
+            icon.innerHTML = `<span class="material-symbols-outlined ${type === 'loading' ? 'animate-spin' : ''}">${iconName}</span>`;
+            titleEl.textContent = title;
+            messageEl.textContent = message;
         }
 
         function dismissWarning() {
@@ -220,6 +244,7 @@ $requiredFields = [
             const continueBtn = document.getElementById('continueBtn');
             continueBtn.disabled = true;
             continueBtn.innerHTML = '<span class="material-symbols-outlined animate-spin text-sm mr-2">progress_activity</span> Processing...';
+            setMappingStatus('loading', 'Saving mapping', 'We are saving your selected columns and preparing the analysis job.');
 
             const mappings = {};
             document.querySelectorAll('.mapping-select').forEach(select => {
@@ -237,10 +262,11 @@ $requiredFields = [
                 if (!data.success && !data.redirect) {
                     throw new Error(data.error || 'Failed to save mapping');
                 }
+                setMappingStatus('success', 'Mapping saved', 'The backend accepted your mapping. Redirecting to the live processing page now.');
                 window.location.href = data.redirect || 'processing.php';
             })
             .catch(error => {
-                alert('Error saving mapping: ' + error.message);
+                setMappingStatus('error', 'Could not save mapping', error.message || 'The mapping request failed.');
                 continueBtn.disabled = false;
                 continueBtn.innerHTML = 'Continue';
             });

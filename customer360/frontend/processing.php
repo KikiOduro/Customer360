@@ -148,6 +148,19 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
                         </button>
                     </div>
                 </div>
+
+                <div id="jobNarrationCard" class="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1a222e] p-5 shadow-sm">
+                    <div class="flex items-start gap-4">
+                        <div id="jobNarrationIcon" class="mt-0.5 flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 text-blue-700">
+                            <span class="material-symbols-outlined animate-spin">progress_activity</span>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p id="jobNarrationTitle" class="text-sm font-bold text-primary dark:text-white">Analysis is being prepared</p>
+                            <p id="jobNarrationMessage" class="mt-1 text-sm text-slate-500 dark:text-slate-400">We are waiting for the backend to start the segmentation job.</p>
+                            <div id="jobNarrationMeta" class="mt-3 hidden rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -160,6 +173,33 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
             { id: 'step4', activeText: 'Running clustering and segment assignment...', completeText: 'Customer segmentation complete' },
             { id: 'step5', activeText: 'Preparing results and recommendations...', completeText: 'Analysis complete!' }
         ];
+        let pollAttempts = 0;
+
+        function setNarration(type, title, message, meta = '') {
+            const icon = document.getElementById('jobNarrationIcon');
+            const titleEl = document.getElementById('jobNarrationTitle');
+            const messageEl = document.getElementById('jobNarrationMessage');
+            const metaEl = document.getElementById('jobNarrationMeta');
+            const config = {
+                info: ['bg-blue-100 text-blue-700', 'progress_activity', true],
+                success: ['bg-green-100 text-green-700', 'check_circle', false],
+                warning: ['bg-amber-100 text-amber-700', 'warning', false],
+                error: ['bg-red-100 text-red-700', 'error', false]
+            }[type] || ['bg-blue-100 text-blue-700', 'progress_activity', true];
+
+            icon.className = `mt-0.5 flex h-10 w-10 items-center justify-center rounded-full ${config[0]}`;
+            icon.innerHTML = `<span class="material-symbols-outlined ${config[2] ? 'animate-spin' : ''}">${config[1]}</span>`;
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+
+            if (meta) {
+                metaEl.textContent = meta;
+                metaEl.classList.remove('hidden');
+            } else {
+                metaEl.textContent = '';
+                metaEl.classList.add('hidden');
+            }
+        }
 
         function updateStep(stepIndex, status) {
             const step = document.getElementById(steps[stepIndex].id);
@@ -203,10 +243,10 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
 
         function applyJobState(status) {
             const statusConfig = {
-                pending: { progress: 15, activeStep: 0, message: 'Your file has been received and queued for analysis.' },
-                processing: { progress: 70, activeStep: 3, message: 'Analysis is running on the backend now.' },
-                completed: { progress: 100, activeStep: 4, message: 'Analysis finished successfully.' },
-                cancelled: { progress: 100, activeStep: 0, message: 'This analysis job was cancelled.' }
+                pending: { progress: 15, activeStep: 0, message: 'Your file has been received and queued for analysis.', narration: ['info', 'Job queued', 'Your dataset is in line for processing. We will move through validation and segmentation automatically.', 'This stage usually lasts only a few moments.'] },
+                processing: { progress: 70, activeStep: 3, message: 'Analysis is running on the backend now.', narration: ['info', 'Segmentation is running', 'We are cleaning the data, computing RFM features, and generating your customer segments now.', 'Keep this page open if you want to watch progress update live.'] },
+                completed: { progress: 100, activeStep: 4, message: 'Analysis finished successfully.', narration: ['success', 'Analysis complete', 'Your results are ready. You can now open the analytics dashboard for this job.', 'The report and segment outputs have been generated.'] },
+                cancelled: { progress: 100, activeStep: 0, message: 'This analysis job was cancelled.', narration: ['warning', 'Analysis cancelled', 'This job was cancelled before completion.', 'Start a new upload when you are ready to try again.'] }
             };
             const config = statusConfig[status] || statusConfig.pending;
 
@@ -219,6 +259,7 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
             });
 
             updateProgress(config.progress, config.message);
+            setNarration(...config.narration);
         }
 
         const jobId = <?php echo json_encode($jobId); ?>;
@@ -233,16 +274,27 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
 
                 if (data.status === 'failed') {
                     updateProgress(100, 'Analysis failed.');
-                    alert('Processing failed: ' + (data.error_message || 'Unknown error'));
+                    setNarration(
+                        'error',
+                        'Analysis failed',
+                        data.error_message || 'The backend reported a failure while processing this dataset.',
+                        'You can return to Upload Data, adjust the file, and submit a new run.'
+                    );
                     return;
                 }
 
                 if (data.status === 'cancelled') {
                     updateProgress(100, 'Analysis cancelled.');
-                    alert(data.error_message || 'This analysis job was cancelled.');
+                    setNarration(
+                        'warning',
+                        'Analysis cancelled',
+                        data.error_message || 'This analysis job was cancelled.',
+                        'No further processing will happen for this job.'
+                    );
                     return;
                 }
 
+                pollAttempts = 0;
                 applyJobState(data.status);
 
                 if (data.status === 'completed') {
@@ -253,7 +305,16 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
                 setTimeout(pollJobStatus, 1500);
             } catch (error) {
                 console.error(error);
+                pollAttempts += 1;
                 updateProgress(5, 'Waiting for the backend to respond...');
+                setNarration(
+                    pollAttempts > 2 ? 'warning' : 'info',
+                    pollAttempts > 2 ? 'Still trying to reach the backend' : 'Connecting to the backend',
+                    pollAttempts > 2
+                        ? 'The status API is taking longer than expected, but we are still polling automatically.'
+                        : 'We are checking the current job status now.',
+                    pollAttempts > 2 ? 'If this persists, the backend may be restarting or the job queue may be busy.' : ''
+                );
                 setTimeout(pollJobStatus, 3000);
             }
         }

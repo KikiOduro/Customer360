@@ -139,7 +139,7 @@ def run_segmentation_job(
         generate_report(
             results=results,
             output_path=str(pdf_path),
-            company_name=job.user.company_name if job.user and job.user.company_name else ""
+            company_name=job.owner.company_name if job.owner and job.owner.company_name else ""
         )
         
         db.commit()
@@ -195,7 +195,7 @@ async def upload_file(
         job_id=job_id,
         user_id=current_user.id,
         original_filename=file.filename,
-        upload_path=stored_upload["storage_object_path"],
+        upload_path=stored_upload["storage_object_path"] or stored_upload["local_path"],
         local_upload_path=stored_upload["local_path"],
         storage_provider=stored_upload["storage_provider"],
         storage_bucket=stored_upload["storage_bucket"],
@@ -206,11 +206,11 @@ async def upload_file(
         include_comparison=include_comparison,
         status="pending"
     )
-    
+
     db.add(job)
     db.commit()
     db.refresh(job)
-    
+
     # Start background processing
     from ..config import DATABASE_URL
     background_tasks.add_task(
@@ -337,7 +337,7 @@ async def upload_with_mapping(
         job_id=job_id,
         user_id=current_user.id,
         original_filename=file.filename,
-        upload_path=stored_upload["storage_object_path"],
+        upload_path=stored_upload["storage_object_path"] or stored_upload["local_path"],
         local_upload_path=stored_upload["local_path"],
         storage_provider=stored_upload["storage_provider"],
         storage_bucket=stored_upload["storage_bucket"],

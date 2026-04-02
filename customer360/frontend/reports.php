@@ -279,11 +279,47 @@ function getStatusBadge(string $status): string {
         </nav>
     </aside>
 
+    <div id="reportsStatusToast" class="pointer-events-none fixed bottom-6 right-6 z-50 hidden max-w-sm rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-xl">
+        <div class="flex items-start gap-3">
+            <div id="reportsStatusIcon" class="mt-0.5 flex h-9 w-9 items-center justify-center rounded-full bg-slate-100 text-slate-600">
+                <span class="material-symbols-outlined">info</span>
+            </div>
+            <div class="min-w-0 flex-1">
+                <p id="reportsStatusTitle" class="text-sm font-bold text-primary">Status</p>
+                <p id="reportsStatusMessage" class="mt-1 text-sm text-slate-500">Update complete.</p>
+            </div>
+        </div>
+    </div>
+
     <script>
+        let reportsToastTimer = null;
         function toggleUserMenu() { document.getElementById('userMenu').classList.toggle('hidden'); }
         function toggleMobileMenu() {
             document.getElementById('mobileSidebar').classList.toggle('-translate-x-full');
             document.getElementById('mobileMenuOverlay').classList.toggle('hidden');
+        }
+
+        function showReportsToast(type, title, message) {
+            const toast = document.getElementById('reportsStatusToast');
+            const icon = document.getElementById('reportsStatusIcon');
+            const titleEl = document.getElementById('reportsStatusTitle');
+            const messageEl = document.getElementById('reportsStatusMessage');
+            const styles = {
+                info: ['bg-blue-100 text-blue-700', 'info'],
+                success: ['bg-green-100 text-green-700', 'check_circle'],
+                error: ['bg-red-100 text-red-700', 'error'],
+                loading: ['bg-slate-100 text-slate-700', 'progress_activity']
+            };
+            const [classes, iconName] = styles[type] || styles.info;
+            icon.className = `mt-0.5 flex h-9 w-9 items-center justify-center rounded-full ${classes}`;
+            icon.innerHTML = `<span class="material-symbols-outlined ${type === 'loading' ? 'animate-spin' : ''}">${iconName}</span>`;
+            titleEl.textContent = title;
+            messageEl.textContent = message;
+            toast.classList.remove('hidden');
+            clearTimeout(reportsToastTimer);
+            if (type !== 'loading') {
+                reportsToastTimer = setTimeout(() => toast.classList.add('hidden'), 3500);
+            }
         }
 
         let filterTimeout = null;
@@ -318,14 +354,16 @@ function getStatusBadge(string $status): string {
 
         function deleteReport(id) {
             if (!confirm('Are you sure you want to delete this report?')) return;
+            showReportsToast('loading', 'Deleting report', 'We are removing this report and refreshing the page.');
 
             fetch(`api/process.php?action=delete&job_id=${encodeURIComponent(id)}`)
                 .then(response => response.json())
                 .then(data => {
                     if (!data.success) throw new Error(data.error || 'Delete failed');
+                    showReportsToast('success', 'Report deleted', 'The selected report was removed successfully.');
                     window.location.reload();
                 })
-                .catch(error => alert(error.message));
+                .catch(error => showReportsToast('error', 'Delete failed', error.message));
         }
     </script>
 </body>
