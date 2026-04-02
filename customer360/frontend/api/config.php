@@ -27,7 +27,7 @@ function backendBaseUrl(): string {
     }
 
     $scheme = envValue('BACKEND_API_SCHEME', 'http');
-    $host = envValue('BACKEND_API_HOST', '154.65.20.56');
+    $host = envValue('BACKEND_API_HOST', '127.0.0.1');
     $port = envValue('BACKEND_API_PORT', '8000');
 
     return rtrim(sprintf('%s://%s:%s', $scheme, $host, $port), '/');
