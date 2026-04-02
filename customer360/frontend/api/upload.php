@@ -19,11 +19,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     jsonResponse(['success' => false, 'error' => 'Method not allowed'], 405);
 }
 
-if (!isset($_FILES['file'])) {
+if (!isset($_FILES['file']) && !isset($_FILES['csv_file'])) {
     jsonResponse(['success' => false, 'error' => 'No file provided'], 400);
 }
 
-$file      = $_FILES['file'];
+$file      = $_FILES['file'] ?? $_FILES['csv_file'];
 $authToken = $_SESSION['auth_token'] ?? null;
 
 // ── VALIDATE FILE ─────────────────────────────────────────────
