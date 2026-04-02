@@ -1,5 +1,8 @@
 <?php
 session_start();
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
+
 if (!isset($_SESSION['user_id'])) {
     header('Location: signin.php');
     exit;
@@ -132,6 +135,7 @@ $optionalFields = [
             <div class="flex flex-col gap-2">
                 <h1 class="text-3xl font-black tracking-[-0.033em]">Column Mapping</h1>
                 <p class="text-[#536e93] text-base leading-normal">Match the columns from your uploaded file <span class="font-medium text-primary bg-primary/5 px-1 py-0.5 rounded"><?php echo htmlspecialchars($uploadedFile); ?></span> to the required Customer 360 fields below.</p>
+                <p class="text-[10px] uppercase tracking-[0.24em] text-slate-400">Build 9355edc-plus</p>
                 <?php if ($totalRows !== null || $rawRows !== null): ?>
                 <p class="text-xs uppercase tracking-[0.2em] text-slate-500">
                     Parsed rows: <?php echo number_format((int) ($totalRows ?? 0)); ?>
