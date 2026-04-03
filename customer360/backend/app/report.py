@@ -11,6 +11,7 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, letter
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch, cm
+from reportlab.lib.utils import ImageReader
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
     PageBreak, Image, HRFlowable
@@ -119,6 +120,9 @@ class ReportGenerator:
         
         # Segmentation Results
         story.extend(self._build_segmentation_results())
+
+        # Visual charts and plots
+        story.extend(self._build_visual_analysis())
         
         # Detailed Segment Profiles
         story.extend(self._build_segment_profiles())
@@ -389,6 +393,112 @@ class ReportGenerator:
         elements.append(Spacer(1, 0.3*inch))
         
         return elements
+
+    def _build_visual_analysis(self) -> List:
+        """Build a chart-heavy section from the generated analysis artifacts."""
+        elements = []
+        charts = self.results.get('charts') or {}
+
+        elements.append(PageBreak())
+        elements.append(Paragraph("Visual Analysis & Segment Plots", self.styles['SectionTitle']))
+        elements.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e2e8f0')))
+        elements.append(Spacer(1, 0.2 * inch))
+
+        if not charts:
+            elements.append(Paragraph(
+                "No chart artifacts were attached to this report output.",
+                self.styles['ReportBodyText']
+            ))
+            elements.append(Spacer(1, 0.2 * inch))
+            return elements
+
+        chart_sections = [
+            (
+                'pca_scatter',
+                'Customer Segment Map',
+                'A PCA projection of customer-level RFM patterns. Points with similar positions behave similarly, while color groups show the discovered customer segments.'
+            ),
+            (
+                'segment_sizes',
+                'Segment Size Distribution',
+                'A breakdown of how customers are distributed across the discovered segments, useful for spotting dominant or niche customer groups.'
+            ),
+            (
+                'rfm_distributions',
+                'RFM Distributions',
+                'Distribution plots for recency, frequency, and monetary features. These help explain the spread and skew of customer behavior before and after segmentation.'
+            ),
+            (
+                'pareto',
+                'Revenue Concentration',
+                'A Pareto-style revenue concentration chart showing how much total revenue is driven by top customer groups.'
+            ),
+            (
+                'algorithm_comparison',
+                'Clustering Algorithm Comparison',
+                'A side-by-side quality comparison of candidate clustering methods used during analysis.'
+            ),
+            (
+                'radar_chart',
+                'Segment RFM Radar Profile',
+                'A segment-level radar view comparing relative recency, frequency, and monetary strengths across customer groups.'
+            ),
+            (
+                'rfm_violin_plots',
+                'Per-Segment RFM Density',
+                'Violin plots showing how each segment differs across recency, frequency, and monetary distributions.'
+            ),
+        ]
+
+        rendered_count = 0
+        for chart_key, chart_title, chart_description in chart_sections:
+            chart_path = charts.get(chart_key)
+            if not chart_path:
+                continue
+
+            chart_file = Path(chart_path)
+            if not chart_file.exists():
+                logger.warning("Skipping missing chart artifact %s at %s", chart_key, chart_file)
+                continue
+
+            elements.append(Paragraph(chart_title, self.styles['SubSection']))
+            elements.append(Paragraph(chart_description, self.styles['ReportBodyText']))
+            elements.append(Spacer(1, 0.08 * inch))
+            elements.extend(self._build_chart_figure(chart_file))
+            elements.append(Spacer(1, 0.22 * inch))
+            rendered_count += 1
+
+        if rendered_count == 0:
+            elements.append(Paragraph(
+                "Chart paths were present in the analysis output, but none of the image files could be loaded from disk.",
+                self.styles['ReportBodyText']
+            ))
+            elements.append(Spacer(1, 0.2 * inch))
+
+        return elements
+
+    def _build_chart_figure(self, chart_file: Path) -> List:
+        """Return a scaled chart image block that fits inside the report page."""
+        max_width = 6.7 * inch
+        max_height = 4.4 * inch
+
+        try:
+            image_width, image_height = ImageReader(str(chart_file)).getSize()
+            if image_width <= 0 or image_height <= 0:
+                raise ValueError("Image has invalid dimensions")
+
+            scale = min(max_width / image_width, max_height / image_height, 1.0)
+            figure = Image(str(chart_file), width=image_width * scale, height=image_height * scale)
+            figure.hAlign = 'CENTER'
+            return [figure]
+        except Exception as exc:
+            logger.warning("Could not embed chart %s: %s", chart_file, exc)
+            return [
+                Paragraph(
+                    f"Chart could not be embedded: {chart_file.name}",
+                    self.styles['SmallText']
+                )
+            ]
     
     def _build_segment_profiles(self) -> List:
         """Build detailed segment profiles."""
