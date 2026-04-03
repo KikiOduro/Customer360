@@ -141,6 +141,7 @@ class SegmentationPipeline:
             logger.info("Step 8: Analysing segments...")
             self.segments = analyze_clusters(self.rfm, self.labels)
             self._apply_artifact_segment_labels()
+            self._disambiguate_segment_names()
             self.results['segments']        = self.segments
             self.results['cluster_sizes']   = get_cluster_sizes(self.labels)
             self.results['segment_summary'] = get_segment_summary(self.segments)
@@ -385,6 +386,30 @@ class SegmentationPipeline:
                         'M_score': float(row['M_score']) if pd.notna(row.get('M_score')) else None,
                         'RFM_total': float(row['RFM_total']) if pd.notna(row.get('RFM_total')) else None,
                     }
+
+    def _disambiguate_segment_names(self) -> None:
+        """Ensure repeated segment labels remain understandable in dashboard/PDF cards."""
+        if not self.segments:
+            return
+
+        label_counts: Dict[str, int] = {}
+        for segment in self.segments:
+            base_label = str(segment.get('segment_label') or 'Customer Group').strip() or 'Customer Group'
+            label_counts[base_label] = label_counts.get(base_label, 0) + 1
+            segment['segment_base_label'] = base_label
+
+        used_index: Dict[str, int] = {}
+        for segment in self.segments:
+            base_label = segment['segment_base_label']
+            used_index[base_label] = used_index.get(base_label, 0) + 1
+            if label_counts[base_label] > 1:
+                segment['segment_label'] = f"{base_label} - Group {used_index[base_label]}"
+                if segment.get('description'):
+                    segment['description'] = (
+                        f"{segment['description']} This subgroup has a similar broad profile to "
+                        f"'{base_label}', but the platform separated it because its average recency, "
+                        "purchase frequency, or spend pattern is meaningfully different from the other subgroup."
+                    )
 
     def _artifacts_used_summary(self, scaler_override) -> Dict[str, Any]:
         cluster_profile = self.model_artifacts.get('cluster_profile')
@@ -802,12 +827,18 @@ class SegmentationPipeline:
         segment_label_map = {s['cluster_id']: s['segment_label'] for s in self.segments}
         segment_key_map = {s['cluster_id']: s['segment_key'] for s in self.segments}
         description_map = {s['segment_label']: s.get('description', '') for s in self.segments}
+        base_label_map = {s['segment_label']: s.get('segment_base_label', s['segment_label']) for s in self.segments}
+        short_name_map = {s['segment_label']: s.get('segment_short_name', s['segment_label']) for s in self.segments}
+        emoji_map = {s['segment_label']: s.get('segment_emoji', '👥') for s in self.segments}
         action_map = {
             s['segment_label']: (s.get('recommended_actions') or [''])[0]
             for s in self.segments
         }
 
         output['segment'] = output['cluster'].map(segment_label_map).fillna('Unknown')
+        output['segment_base_label'] = output['segment'].map(base_label_map).fillna(output['segment'])
+        output['segment_short_name'] = output['segment'].map(short_name_map).fillna(output['segment'])
+        output['segment_emoji'] = output['segment'].map(emoji_map).fillna('👥')
         output['segment_description'] = output['segment'].map(description_map).fillna('')
         output['recommended_action'] = output['segment'].map(action_map).fillna('')
         output['risk_level'] = output['cluster'].map(segment_key_map).map(self._risk_level_for_segment_key).fillna('Medium')
@@ -908,6 +939,9 @@ class SegmentationPipeline:
                 'customer_email': '',
                 'initials': initials,
                 'segment': row.get('segment', 'Unknown'),
+                'segment_base_label': row.get('segment_base_label', row.get('segment', 'Unknown')),
+                'segment_short_name': row.get('segment_short_name', row.get('segment', 'Unknown')),
+                'segment_emoji': row.get('segment_emoji', '👥'),
                 'segment_description': row.get('segment_description', ''),
                 'recommended_action': row.get('recommended_action', ''),
                 'risk_level': row.get('risk_level', 'Medium'),
@@ -941,11 +975,11 @@ class SegmentationPipeline:
                 'quality_rating': 0,
             }
 
-        growth_segments = {'Champions', 'Loyal Customers', 'Potential Loyalists', 'Promising'}
+        growth_segment_keys = {'champions', 'loyal_customers', 'potential_loyalists', 'promising'}
         growth_customers = sum(
             int(segment.get('num_customers', 0) or 0)
             for segment in segments
-            if segment.get('segment_label') in growth_segments
+            if segment.get('segment_key') in growth_segment_keys
         )
         total_customers = int(summary.get('total_customers', 0) or 0)
         health_score = round((growth_customers / total_customers * 100), 1) if total_customers else 0.0
@@ -960,15 +994,14 @@ class SegmentationPipeline:
 
         best_segment = summary.get('highest_value_segment', {}) or {}
         risk_count = int(summary.get('at_risk_customers', 0) or 0)
-        headline = (
-            f"{best_segment.get('label', 'Your top segment')} is driving the strongest customer value."
-        )
+        best_segment_label = str(best_segment.get('label') or 'Your strongest customer group')
+        headline = f"{best_segment_label} is currently bringing the strongest value to the business."
         narrative = (
             f"You have {total_customers:,} customers across {summary.get('num_segments', len(segments))} segments. "
-            f"{growth_customers:,} customers ({health_score:.1f}%) are in your healthier growth segments, while "
-            f"{risk_count:,} customers need urgent retention attention. Your top 2 segments contribute "
-            f"{revenue_concentration:.1f}% of recorded revenue, and the selected {str(meta.get('clustering_method', 'clustering')).upper()} model scored "
-            f"{silhouette:.3f} on silhouette quality."
+            f"{growth_customers:,} customers ({health_score:.1f}%) are in stronger repeat-buyer or growth groups, while "
+            f"{risk_count:,} customers may need a follow-up or win-back action. Your top 2 customer groups contribute "
+            f"{revenue_concentration:.1f}% of recorded revenue. The overall grouping confidence is "
+            f"{quality_rating} out of 5 stars, which tells you how clearly the customer groups separate from one another."
         )
 
         return {

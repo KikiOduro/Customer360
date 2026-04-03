@@ -131,6 +131,33 @@ class ReportGenerator:
                 meta[key] = fallback_value
 
         return meta
+
+    def _grouping_strength_label(self, score: Any) -> str:
+        """Translate the clustering score into plain language."""
+        numeric_score = self._safe_number(score)
+        if numeric_score >= 0.55:
+            return "strong and easy to separate"
+        if numeric_score >= 0.35:
+            return "fairly clear, but some customer groups still overlap"
+        if numeric_score > 0:
+            return "soft, meaning several customers behave in similar ways across groups"
+        return "not available"
+
+    def _segment_title(self, seg: Dict[str, Any]) -> str:
+        """Return a readable segment title with a compact standard label fallback."""
+        label = str(seg.get('segment_label') or 'Customer Group').strip() or 'Customer Group'
+        short_name = str(seg.get('segment_short_name') or '').strip()
+        if short_name and short_name != label:
+            return f"{label} ({short_name})"
+        return label
+
+    def _plain_metric_name(self, metric: str) -> str:
+        """Convert RFM field names to user-facing language."""
+        return {
+            'recency': 'Days Since Last Purchase',
+            'frequency': 'Number of Purchases',
+            'monetary': 'Total Customer Spend',
+        }.get(metric, metric.capitalize())
     
     def generate(self, output_path: str) -> str:
         """
@@ -253,17 +280,19 @@ class ReportGenerator:
         summary = self.results.get('segment_summary', {})
         story_summary = self.results.get('story_summary', {}) or {}
         
+        grouping_method = str(meta.get('clustering_method', 'kmeans') or 'kmeans').replace('_', ' ').title()
+        grouping_strength = self._grouping_strength_label(meta.get('silhouette_score', 0))
+
         # Key metrics
         summary_text = f"""
         This report analyzes <b>{meta.get('num_customers', 0):,}</b> customers based on 
         <b>{meta.get('num_transactions', 0):,}</b> transactions totaling 
         <b>{self._format_currency(meta.get('total_revenue', 0))}</b> in revenue.
         <br/><br/>
-        Using {meta.get('clustering_method', 'K-Means').upper()} clustering with RFM 
-        (Recency, Frequency, Monetary) analysis, customers have been segmented into 
-        <b>{meta.get('num_clusters', 0)}</b> distinct groups. The clustering achieved 
-        a silhouette score of <b>{meta.get('silhouette_score', 0):.3f}</b>, indicating 
-        {'good' if meta.get('silhouette_score', 0) > 0.5 else 'moderate'} cluster separation.
+        The platform grouped customers into <b>{meta.get('num_clusters', 0)}</b> customer groups by looking at
+        <b>how recently they bought</b>, <b>how often they buy</b>, and <b>how much they spend</b>.
+        The grouping clarity is <b>{grouping_strength}</b>. For technical review, the selected backend method was
+        <b>{grouping_method}</b>, but day-to-day users can focus on the group descriptions and recommended actions below.
         """
         
         elements.append(Paragraph(summary_text, self.styles['ReportBodyText']))
@@ -277,7 +306,7 @@ class ReportGenerator:
             elements.append(Spacer(1, 0.2*inch))
         
         # Key findings
-        elements.append(Paragraph("Key Findings:", self.styles['SubSection']))
+        elements.append(Paragraph("Key Takeaways", self.styles['SubSection']))
         
         if summary:
             findings = [
@@ -341,20 +370,19 @@ class ReportGenerator:
         """Build the RFM analysis section."""
         elements = []
         
-        elements.append(Paragraph("RFM Analysis", self.styles['SectionTitle']))
+        elements.append(Paragraph("How the Platform Grouped Your Customers", self.styles['SectionTitle']))
         elements.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e2e8f0')))
         elements.append(Spacer(1, 0.2*inch))
         
         elements.append(Paragraph(
-            """<b>RFM</b> (Recency, Frequency, Monetary) is a proven customer segmentation 
-            technique that analyzes three key behaviors:""",
+            """The platform grouped customers using three simple buying signals. You do not need to know the technical model details to read this report. Just interpret the groups using these three ideas:""",
             self.styles['ReportBodyText']
         ))
         
         rfm_explanation = [
-            "<b>Recency</b>: How recently did the customer make a purchase? (Lower is better)",
-            "<b>Frequency</b>: How often do they purchase? (Higher is better)",
-            "<b>Monetary</b>: How much do they spend? (Higher is better)"
+            "<b>Days Since Last Purchase</b>: customers who bought more recently are usually warmer and easier to re-engage.",
+            "<b>Number of Purchases</b>: customers who come back more often are usually more loyal.",
+            "<b>Total Spend</b>: customers who have spent more money usually contribute more value to the business."
         ]
         
         for item in rfm_explanation:
@@ -376,7 +404,7 @@ class ReportGenerator:
                 else f"{self._safe_number(value):,.1f}{suffix}"
             )
             data.append([
-                metric.capitalize(),
+                self._plain_metric_name(metric),
                 value_formatter(stats.get('mean', 0)),
                 value_formatter(stats.get('median', 0)),
                 value_formatter(stats.get('std', 0)),
@@ -406,15 +434,15 @@ class ReportGenerator:
         """Build the segmentation results section."""
         elements = []
         
-        elements.append(Paragraph("Segmentation Results", self.styles['SectionTitle']))
+        elements.append(Paragraph("Customer Groups Found by the Platform", self.styles['SectionTitle']))
         elements.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e2e8f0')))
         elements.append(Spacer(1, 0.2*inch))
         
         clustering = self.results.get('clustering', {})
         
         elements.append(Paragraph(
-            f"""The {clustering.get('method', 'K-Means').upper()} algorithm identified 
-            <b>{clustering.get('n_clusters', 0)}</b> distinct customer segments.""",
+            f"""The platform found <b>{clustering.get('n_clusters', 0)}</b> customer groups in this dataset.
+            Some groups may have similar broad names but different “Group 1 / Group 2” endings when their buying patterns are close but not identical.""",
             self.styles['ReportBodyText']
         ))
         
@@ -427,7 +455,7 @@ class ReportGenerator:
         
         for seg in segments:
             data.append([
-                seg['segment_label'],
+                self._segment_title(seg),
                 f"{seg['num_customers']:,}",
                 f"{seg['percentage']:.1f}%",
                 f"{seg['avg_recency']:.0f} days",
@@ -476,37 +504,37 @@ class ReportGenerator:
             (
                 'pca_scatter',
                 'Customer Segment Map',
-                'A PCA projection of customer-level RFM patterns. Points with similar positions behave similarly, while color groups show the discovered customer segments.'
+                'Customers shown close together tend to behave in similar ways. Customers far apart behave differently. The colors show the groups the platform discovered.'
             ),
             (
                 'segment_sizes',
                 'Segment Size Distribution',
-                'A breakdown of how customers are distributed across the discovered segments, useful for spotting dominant or niche customer groups.'
+                'This shows how many customers fall into each group, which helps you see whether one group is very large or whether the customer base is spread out.'
             ),
             (
                 'rfm_distributions',
-                'RFM Distributions',
-                'Distribution plots for recency, frequency, and monetary features. These help explain the spread and skew of customer behavior before and after segmentation.'
+                'Buying Pattern Distributions',
+                'This shows how recent buying, repeat visits, and customer spend are spread across the dataset.'
             ),
             (
                 'pareto',
                 'Revenue Concentration',
-                'A Pareto-style revenue concentration chart showing how much total revenue is driven by top customer groups.'
+                'This shows which customer groups bring in most of the revenue first, so you can see whether sales depend heavily on a small number of groups.'
             ),
             (
                 'algorithm_comparison',
-                'Clustering Algorithm Comparison',
-                'A side-by-side quality comparison of candidate clustering methods used during analysis.'
+                'Grouping Confidence Check',
+                'This compares the backend grouping methods and helps the platform choose the one that separates customers most clearly. Non-technical users do not need to choose a method manually.'
             ),
             (
                 'radar_chart',
-                'Segment RFM Radar Profile',
-                'A segment-level radar view comparing relative recency, frequency, and monetary strengths across customer groups.'
+                'Group Behaviour Profile',
+                'This compares whether each customer group is stronger on recent purchases, repeat buying, or total spending.'
             ),
             (
                 'rfm_violin_plots',
-                'Per-Segment RFM Density',
-                'Violin plots showing how each segment differs across recency, frequency, and monetary distributions.'
+                'Group-by-Group Differences',
+                'This shows whether customers inside each group behave very similarly or whether there is still a wide spread within the group.'
             ),
         ]
 
@@ -565,7 +593,7 @@ class ReportGenerator:
         elements = []
         
         elements.append(PageBreak())
-        elements.append(Paragraph("Detailed Segment Profiles", self.styles['SectionTitle']))
+        elements.append(Paragraph("What Each Customer Group Means", self.styles['SectionTitle']))
         elements.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e2e8f0')))
         elements.append(Spacer(1, 0.2*inch))
         
@@ -573,17 +601,20 @@ class ReportGenerator:
         
         for seg in segments:
             elements.append(Paragraph(
-                f"{seg['segment_label']} ({seg['percentage']:.1f}% of customers)",
+                f"{self._segment_title(seg)} - {seg['percentage']:.1f}% of customers",
                 self.styles['SubSection']
             ))
+
+            if seg.get('description'):
+                elements.append(Paragraph(str(seg.get('description')), self.styles['ReportBodyText']))
             
             # Segment metrics
             metrics_text = f"""
             <b>Size:</b> {seg['num_customers']:,} customers<br/>
             <b>Revenue Contribution:</b> {self._format_currency(seg['total_revenue'])}<br/>
-            <b>Recency:</b> {seg['avg_recency']:.0f} days (range: {seg['min_recency']}-{seg['max_recency']})<br/>
-            <b>Frequency:</b> {seg['avg_frequency']:.1f} transactions (range: {seg['min_frequency']}-{seg['max_frequency']})<br/>
-            <b>Monetary:</b> {self._format_currency(seg['avg_monetary'])} (range: {self._format_currency(seg['min_monetary'])}-{self._format_currency(seg['max_monetary'])})
+            <b>Days Since Last Purchase:</b> {seg['avg_recency']:.0f} days on average (range: {seg['min_recency']}-{seg['max_recency']})<br/>
+            <b>Number of Purchases:</b> {seg['avg_frequency']:.1f} on average (range: {seg['min_frequency']}-{seg['max_frequency']})<br/>
+            <b>Average Customer Spend:</b> {self._format_currency(seg['avg_monetary'])} (range: {self._format_currency(seg['min_monetary'])}-{self._format_currency(seg['max_monetary'])})
             """
             elements.append(Paragraph(metrics_text, self.styles['ReportBodyText']))
             
@@ -596,7 +627,7 @@ class ReportGenerator:
         elements = []
         
         elements.append(PageBreak())
-        elements.append(Paragraph("Marketing Recommendations", self.styles['SectionTitle']))
+        elements.append(Paragraph("Recommended Actions for Each Group", self.styles['SectionTitle']))
         elements.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e2e8f0')))
         elements.append(Spacer(1, 0.2*inch))
         
@@ -604,7 +635,7 @@ class ReportGenerator:
         
         for seg in segments:
             elements.append(Paragraph(
-                f"<b>{seg['segment_label']}</b>",
+                f"<b>{self._segment_title(seg)}</b>",
                 self.styles['SubSection']
             ))
             

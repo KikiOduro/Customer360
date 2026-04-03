@@ -25,11 +25,11 @@ $templateRows = [
 ];
 
 $faqs = [
-    ['question' => 'Why is my upload failing at 99%?', 'answer' => 'This usually happens if there is a special character in the \'Email\' column or if a required field is empty. Please check rows 50-100 in your spreadsheet for any missing data points.'],
-    ['question' => 'How do I format Ghanaian phone numbers?', 'answer' => 'We support both international format (+233 24...) and local format (024...). Spaces and dashes are automatically removed during import.'],
-    ['question' => 'Can I export my analytics reports?', 'answer' => 'Yes! Navigate to the \'Analytics\' tab. In the top right corner of any chart, you\'ll see a \'Download\' icon. You can export reports as PDF or CSV files.'],
-    ['question' => 'How do I segment my customers?', 'answer' => 'Customer 360 automatically segments your customers using RFM (Recency, Frequency, Monetary) analysis. Once you upload your transaction data, our system will identify Champions, Loyal Customers, At-Risk customers, and more.'],
-    ['question' => 'What file formats are supported?', 'answer' => 'We support CSV (.csv) and Excel (.xlsx, .xls) files up to 25MB. For larger datasets, please contact our support team.'],
+    ['question' => 'Why is my upload failing near the end?', 'answer' => 'This usually means a required column was not mapped correctly, a date or money format could not be read, or many rows are missing customer IDs. Use the mapping page to confirm your Customer ID, Date, Invoice ID, and Amount or Quantity + Unit Price fields before continuing.'],
+    ['question' => 'What do I need in my file for customer grouping to work?', 'answer' => 'The platform needs a stable customer ID, a purchase date, an invoice or order number, and either a total amount column or quantity and unit price columns. This is what allows the system to tell who bought recently, who buys often, and who spends the most.'],
+    ['question' => 'Can I export my analytics reports?', 'answer' => 'Yes. Open the Analytics page for a completed job and use Export CSV or Download PDF. The CSV gives the customer-by-customer table, while the PDF gives a readable management report with charts and recommended actions.'],
+    ['question' => 'How does the platform group my customers?', 'answer' => 'The platform compares customers based on three simple buying signals: how recently they bought, how often they return, and how much they spend. It then creates customer groups such as Best Repeat Buyers, Customers Who Need a Follow-Up, and Valuable Customers You May Be Losing, and explains what each group means in plain language.'],
+    ['question' => 'What file formats are supported?', 'answer' => 'The main guided workflow currently supports CSV (.csv) files up to 25MB. If your data is in Excel, export it as CSV first so the mapping and validation step can read it correctly.'],
     ['question' => 'How long does analysis take?', 'answer' => 'Most analyses complete within 2-5 minutes depending on the size of your dataset. You\'ll receive a notification when your results are ready.'],
 ];
 

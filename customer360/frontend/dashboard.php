@@ -528,8 +528,8 @@ $currentPage = 'dashboard';
                                                 <p class="font-medium text-slate-900 dark:text-white truncate"><?php echo htmlspecialchars($run['original_filename']); ?></p>
                                                 <p class="mt-1 text-xs text-slate-500 dark:text-slate-400 truncate">Job ID: <?php echo htmlspecialchars($run['job_id']); ?></p>
                                                 <div class="mt-2 flex flex-wrap gap-2 text-xs text-slate-500 dark:text-slate-400">
-                                                    <span class="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">Method: <?php echo htmlspecialchars($run['clustering_method'] ? strtoupper($run['clustering_method']) : 'Pending'); ?></span>
-                                                    <span class="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">Clusters: <?php echo $run['num_clusters'] !== null ? number_format((int) $run['num_clusters']) : 'Not available'; ?></span>
+                                                    <span class="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">Analysis type: Customer grouping</span>
+                                                    <span class="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">Customer groups: <?php echo $run['num_clusters'] !== null ? number_format((int) $run['num_clusters']) : 'Not available'; ?></span>
                                                 </div>
                                             </div>
                                         </div>
@@ -545,7 +545,7 @@ $currentPage = 'dashboard';
                                             <p>Customers: <span class="text-slate-900 dark:text-white"><?php echo formatCompactNumber($run['num_customers']); ?></span></p>
                                             <p>Transactions: <span class="text-slate-900 dark:text-white"><?php echo formatCompactNumber($run['num_transactions']); ?></span></p>
                                             <p>Revenue: <span class="text-slate-900 dark:text-white"><?php echo formatCurrencyValue($run['total_revenue']); ?></span></p>
-                                            <p>Silhouette: <span class="text-slate-900 dark:text-white"><?php echo $run['silhouette_score'] !== null ? number_format((float) $run['silhouette_score'], 3) : 'Not available'; ?></span></p>
+                                            <p>Grouping confidence: <span class="text-slate-900 dark:text-white"><?php echo $run['silhouette_score'] !== null ? number_format(max(1, min(5, (int) round(1 + ((float) $run['silhouette_score'] * 4))))) . '/5' : 'Not available'; ?></span></p>
                                         </div>
                                     </td>
                                     <td class="px-6 py-4">

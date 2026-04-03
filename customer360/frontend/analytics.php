@@ -49,16 +49,82 @@ $hasAnalyticsData = is_array($analysisResults) && $analysisResults !== null;
 $uploadedFile = $_SESSION['current_job']['filename'] ?? 'Uploaded file';
 
 $kpis = [
-    ['label' => 'Total Revenue', 'value' => $meta['total_revenue'] ?? $prepSummary['total_revenue'] ?? null, 'icon' => 'payments', 'type' => 'currency', 'color' => 'blue'],
-    ['label' => 'Active Customers', 'value' => $meta['num_customers'] ?? $summary['total_customers'] ?? null, 'icon' => 'group', 'type' => 'number', 'color' => 'purple'],
-    ['label' => 'Avg Transaction', 'value' => $prepSummary['avg_transaction'] ?? null, 'icon' => 'shopping_cart', 'type' => 'currency', 'color' => 'orange'],
-    ['label' => 'Total Transactions', 'value' => $meta['num_transactions'] ?? $prepSummary['num_transactions'] ?? null, 'icon' => 'receipt_long', 'type' => 'number', 'color' => 'green'],
-    ['label' => 'Customer Health Score', 'value' => $storySummary['health_score'] ?? null, 'icon' => 'favorite', 'type' => 'percentage', 'color' => 'green'],
-    ['label' => 'Revenue Concentration', 'value' => $storySummary['revenue_concentration'] ?? null, 'icon' => 'leaderboard', 'type' => 'percentage', 'color' => 'orange'],
-    ['label' => 'Analysis Quality', 'value' => $storySummary['quality_rating'] ?? null, 'icon' => 'hotel_class', 'type' => 'stars', 'color' => 'purple'],
+    [
+        'label' => 'Total Revenue',
+        'value' => $meta['total_revenue'] ?? $prepSummary['total_revenue'] ?? null,
+        'icon' => 'payments',
+        'type' => 'currency',
+        'color' => 'blue',
+        'help_title' => 'Total Revenue',
+        'help_text' => 'This is the total sales value found in the cleaned data that went into the customer grouping. If some rows were removed during cleaning, this number reflects only the rows that were kept for analysis.'
+    ],
+    [
+        'label' => 'Total Customers',
+        'value' => $meta['num_customers'] ?? $summary['total_customers'] ?? null,
+        'icon' => 'group',
+        'type' => 'number',
+        'color' => 'purple',
+        'help_title' => 'Total Customers',
+        'help_text' => 'This is the number of unique customers found after the platform grouped your transactions by customer ID. If some rows had no customer ID and you did not allow synthetic IDs, those rows were excluded.'
+    ],
+    [
+        'label' => 'Average Sale Value',
+        'value' => $prepSummary['avg_transaction'] ?? null,
+        'icon' => 'shopping_cart',
+        'type' => 'currency',
+        'color' => 'orange',
+        'help_title' => 'Average Sale Value',
+        'help_text' => 'This is the average amount per transaction row after cleaning. It gives a quick sense of the typical sale size in the dataset.'
+    ],
+    [
+        'label' => 'Total Transactions',
+        'value' => $meta['num_transactions'] ?? $prepSummary['num_transactions'] ?? null,
+        'icon' => 'receipt_long',
+        'type' => 'number',
+        'color' => 'green',
+        'help_title' => 'Total Transactions',
+        'help_text' => 'This is the number of usable transaction rows that remained after blank rows, invalid dates, missing IDs, or unwanted negative amounts were handled.'
+    ],
+    [
+        'label' => 'Customer Health Score',
+        'value' => $storySummary['health_score'] ?? null,
+        'icon' => 'favorite',
+        'type' => 'percentage',
+        'color' => 'green',
+        'help_title' => 'Customer Health Score',
+        'help_text' => 'This estimates what percentage of your customers are in stronger repeat-buyer groups. A higher number usually means more of your customer base is active or growing, but you should still check whether one small group is carrying most of the revenue.'
+    ],
+    [
+        'label' => 'Top-Group Revenue Share',
+        'value' => $storySummary['revenue_concentration'] ?? null,
+        'icon' => 'leaderboard',
+        'type' => 'percentage',
+        'color' => 'orange',
+        'help_title' => 'Top-Group Revenue Share',
+        'help_text' => 'This shows how much of your total revenue comes from your two biggest customer groups. If it is very high, your business may depend heavily on a small set of customer types, which can be risky if they stop buying.'
+    ],
+    [
+        'label' => 'Grouping Confidence',
+        'value' => $storySummary['quality_rating'] ?? null,
+        'icon' => 'hotel_class',
+        'type' => 'stars',
+        'color' => 'purple',
+        'help_title' => 'Grouping Confidence',
+        'help_text' => 'This score is a simple 1 to 5 star summary of how clearly the customer groups separated. Fewer stars does not automatically mean your data is bad; it can also mean your customers behave in very similar ways, so the boundaries between groups are naturally soft.'
+    ],
 ];
 
 $segmentColors = [
+    'Best Repeat Buyers' => 'yellow',
+    'Steady Regular Buyers' => 'blue',
+    'Growing Repeat Buyers' => 'green',
+    'First-Time or New Buyers' => 'cyan',
+    'New Buyers With Good Potential' => 'teal',
+    'Customers Who Need a Follow-Up' => 'orange',
+    'Cooling-Off Customers' => 'purple',
+    'Valuable Customers You May Be Losing' => 'red',
+    'Quiet Low-Activity Customers' => 'gray',
+    'Customers Who Have Likely Left' => 'slate',
     'Champions' => 'yellow',
     'Loyal Customers' => 'blue',
     'Potential Loyalists' => 'green',
@@ -93,21 +159,23 @@ $segmentDisplayMap = [
 $chartDisplay = [
     'pareto' => ['title' => 'Revenue Breakdown', 'caption' => 'See which customer groups contribute the largest share of your revenue first.'],
     'segment_sizes' => ['title' => 'Customer Groups', 'caption' => 'Understand how your customer base is distributed across the discovered segments.'],
-    'pca_scatter' => ['title' => 'Customer Map', 'caption' => 'Customers plotted close together behave similarly across recency, frequency, and spending.'],
-    'rfm_distributions' => ['title' => 'Behaviour Patterns', 'caption' => 'Review the spread of customer recency, purchase frequency, and total spend.'],
-    'radar_chart' => ['title' => 'Segment Profiles', 'caption' => 'Compare how each segment differs across the three RFM dimensions.'],
-    'rfm_violin_plots' => ['title' => 'Deep Dive', 'caption' => 'Inspect the detailed value ranges inside each segment for each RFM metric.'],
-    'algorithm_comparison' => ['title' => 'Algorithm Quality', 'caption' => 'Compare clustering quality across K-Means, GMM, and Hierarchical models.'],
+    'pca_scatter' => ['title' => 'Customer Map', 'caption' => 'Customers that appear close together behave in similar ways. Customers far apart behave differently.'],
+    'rfm_distributions' => ['title' => 'Buying Patterns', 'caption' => 'See how recent purchases, repeat visits, and spending levels are spread across your customer base.'],
+    'radar_chart' => ['title' => 'Group Profiles', 'caption' => 'Compare which groups buy more recently, buy more often, or spend more money on average.'],
+    'rfm_violin_plots' => ['title' => 'Group Differences', 'caption' => 'See whether a customer group is tightly packed or mixed, and how wide the spending and visit differences are inside that group.'],
+    'algorithm_comparison' => ['title' => 'Grouping Confidence', 'caption' => 'This checks which grouping method separated your customers most clearly. You do not need to choose manually; the platform uses this to pick the strongest option.'],
 ];
 
 $segments = [];
 foreach ($segmentsRaw as $segment) {
     $name = $segment['segment_label'] ?? $segment['segment_name'] ?? $segment['name'] ?? 'Unknown';
-    $displayMeta = $segmentDisplayMap[$name] ?? ['title' => $name, 'emoji' => '👥'];
+    $baseName = $segment['segment_base_label'] ?? $name;
+    $displayMeta = $segmentDisplayMap[$baseName] ?? $segmentDisplayMap[$name] ?? ['title' => $name, 'emoji' => '👥'];
     $segments[] = [
         'name' => $name,
-        'friendly_name' => $displayMeta['title'],
-        'emoji' => $displayMeta['emoji'],
+        'friendly_name' => $segment['segment_label'] ?? $displayMeta['title'],
+        'technical_name' => $segment['segment_short_name'] ?? $name,
+        'emoji' => $segment['segment_emoji'] ?? $displayMeta['emoji'],
         'pct' => round($segment['percentage'] ?? 0),
         'count' => $segment['num_customers'] ?? null,
         'avg_recency' => $segment['avg_recency'] ?? null,
@@ -115,7 +183,7 @@ foreach ($segmentsRaw as $segment) {
         'avg_monetary' => $segment['avg_monetary'] ?? null,
         'actions' => $segment['recommended_actions'] ?? [],
         'description' => $segment['description'] ?? '',
-        'color' => $segmentColors[$name] ?? 'gray',
+        'color' => $segmentColors[$baseName] ?? $segmentColors[$name] ?? 'gray',
     ];
 }
 
@@ -152,6 +220,15 @@ function formatKpiValue(array $kpi): string {
         return $rating > 0 ? str_repeat('★', $rating) . str_repeat('☆', 5 - $rating) : 'Not available';
     }
     return formatNumberValue($value);
+}
+
+function getPlainFeatureLabel(string $featureName): string {
+    $map = [
+        'recency' => 'How recently customers bought',
+        'frequency' => 'How often customers come back',
+        'monetary' => 'How much customers spend',
+    ];
+    return $map[strtolower($featureName)] ?? ucfirst(str_replace('_', ' ', $featureName));
 }
 
 function getSegmentBgClass($color): string {
@@ -300,7 +377,16 @@ function getSegmentBarClass($color): string {
                 <?php foreach ($kpis as $kpi): ?>
                 <div class="flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                     <div class="mb-2 flex items-center justify-between">
-                        <span class="text-sm font-medium text-slate-500"><?php echo htmlspecialchars($kpi['label']); ?></span>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-medium text-slate-500"><?php echo htmlspecialchars($kpi['label']); ?></span>
+                            <button
+                                type="button"
+                                class="info-help-btn inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-500 hover:bg-slate-100"
+                                data-help-title="<?php echo htmlspecialchars($kpi['help_title']); ?>"
+                                data-help-text="<?php echo htmlspecialchars($kpi['help_text']); ?>"
+                                aria-label="Explain <?php echo htmlspecialchars($kpi['label']); ?>"
+                            >?</button>
+                        </div>
                         <span class="flex h-8 w-8 items-center justify-center rounded-full bg-<?php echo $kpi['color']; ?>-50 text-<?php echo $kpi['color']; ?>-600">
                             <span class="material-symbols-outlined text-[20px]"><?php echo htmlspecialchars($kpi['icon']); ?></span>
                         </span>
@@ -329,7 +415,7 @@ function getSegmentBarClass($color): string {
             <div class="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
                 <div class="flex flex-col gap-2 mb-5">
                     <h2 class="text-xl font-bold text-primary">Visual Charts</h2>
-                    <p class="text-sm text-slate-500">Each chart below comes from the Python analysis pipeline and explains a different part of the segmentation result.</p>
+                    <p class="text-sm text-slate-500">Each picture explains one part of your customer story, such as who brings in the most revenue and which groups are slipping away.</p>
                 </div>
                 <div class="flex flex-wrap gap-2 mb-5" id="chartTabs">
                     <?php foreach ($chartPanels as $index => $chart): ?>
@@ -353,13 +439,13 @@ function getSegmentBarClass($color): string {
 
             <?php if (!empty($shapSummary)): ?>
             <div class="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 class="text-xl font-bold text-primary mb-2">What Drives Your Segments</h2>
-                <p class="text-sm text-slate-500 mb-5">This ranks the RFM features that most strongly influenced how customers were grouped.</p>
+                <h2 class="text-xl font-bold text-primary mb-2">What Mostly Separates One Customer Group From Another</h2>
+                <p class="text-sm text-slate-500 mb-5">This shows whether recent buying, repeat visits, or total spending had the strongest influence when the platform formed the customer groups.</p>
                 <div class="space-y-4">
                     <?php $maxImportance = max(array_map(fn($item) => (float) ($item['importance'] ?? 0), $shapSummary)) ?: 1; ?>
                     <?php foreach ($shapSummary as $featureItem): ?>
                     <?php
-                        $featureLabel = ucfirst(str_replace('_', ' ', (string) ($featureItem['feature'] ?? 'feature')));
+                        $featureLabel = getPlainFeatureLabel((string) ($featureItem['feature'] ?? 'feature'));
                         $importance = (float) ($featureItem['importance'] ?? 0);
                         $width = max(8, min(100, ($importance / $maxImportance) * 100));
                     ?>
@@ -380,8 +466,11 @@ function getSegmentBarClass($color): string {
             <div class="mb-8">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-xl font-bold text-primary">Customer Segments</h2>
-                    <?php if (isset($meta['silhouette_score'])): ?>
-                    <span class="text-xs text-slate-500 bg-slate-100 px-3 py-1 rounded-full">Silhouette score: <strong><?php echo number_format((float) $meta['silhouette_score'], 3); ?></strong></span>
+                    <?php if (isset($storySummary['quality_rating'])): ?>
+                    <span class="text-xs text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+                        Grouping confidence:
+                        <strong><?php echo htmlspecialchars(formatKpiValue(['value' => $storySummary['quality_rating'], 'type' => 'stars'])); ?></strong>
+                    </span>
                     <?php endif; ?>
                 </div>
                 <?php if (empty($segments)): ?>
@@ -396,8 +485,19 @@ function getSegmentBarClass($color): string {
                                     <span class="text-lg" aria-hidden="true"><?php echo htmlspecialchars($segment['emoji']); ?></span>
                                 </div>
                                 <div>
-                                    <h4 class="font-bold text-primary"><?php echo htmlspecialchars($segment['friendly_name']); ?></h4>
-                                    <p class="text-xs text-slate-500"><?php echo htmlspecialchars($segment['name']); ?> · <?php echo htmlspecialchars(formatNumberValue($segment['count'])); ?> customers</p>
+                                    <div class="flex items-center gap-2">
+                                        <h4 class="font-bold text-primary"><?php echo htmlspecialchars($segment['friendly_name']); ?></h4>
+                                        <button
+                                            type="button"
+                                            class="info-help-btn inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-500 hover:bg-slate-100"
+                                            data-help-title="<?php echo htmlspecialchars($segment['friendly_name']); ?>"
+                                            data-help-text="<?php echo htmlspecialchars($segment['description'] !== '' ? $segment['description'] : 'This customer group was formed from recent buying behaviour, repeat visits, and total spend.'); ?>"
+                                            aria-label="Explain this customer group"
+                                        >?</button>
+                                    </div>
+                                    <p class="text-xs text-slate-500">
+                                        Simple label: <?php echo htmlspecialchars($segment['technical_name']); ?> · <?php echo htmlspecialchars(formatNumberValue($segment['count'])); ?> customers
+                                    </p>
                                 </div>
                             </div>
                             <span class="font-bold text-primary"><?php echo htmlspecialchars((string) $segment['pct']); ?>%</span>
@@ -406,8 +506,8 @@ function getSegmentBarClass($color): string {
                             <div class="h-full rounded-full <?php echo getSegmentBarClass($segment['color']); ?>" style="width:<?php echo max(0, min(100, (int) $segment['pct'])); ?>%"></div>
                         </div>
                         <div class="mt-3 grid grid-cols-3 gap-2 text-center">
-                            <div><p class="text-xs text-slate-400">Recency</p><p class="text-sm font-semibold text-primary"><?php echo $segment['avg_recency'] !== null ? round((float) $segment['avg_recency']) . 'd' : 'N/A'; ?></p></div>
-                            <div><p class="text-xs text-slate-400">Frequency</p><p class="text-sm font-semibold text-primary"><?php echo $segment['avg_freq'] !== null ? round((float) $segment['avg_freq'], 1) . 'x' : 'N/A'; ?></p></div>
+                            <div><p class="text-xs text-slate-400">Days Since Last Buy</p><p class="text-sm font-semibold text-primary"><?php echo $segment['avg_recency'] !== null ? round((float) $segment['avg_recency']) . 'd' : 'N/A'; ?></p></div>
+                            <div><p class="text-xs text-slate-400">Repeat Purchases</p><p class="text-sm font-semibold text-primary"><?php echo $segment['avg_freq'] !== null ? round((float) $segment['avg_freq'], 1) . 'x' : 'N/A'; ?></p></div>
                             <div><p class="text-xs text-slate-400">Avg Spend</p><p class="text-sm font-semibold text-primary"><?php echo formatCurrency($segment['avg_monetary']); ?></p></div>
                         </div>
                         <p class="mt-3 text-sm text-slate-600"><?php echo htmlspecialchars($segment['description'] !== '' ? $segment['description'] : 'Customer behaviour in this segment is summarized by the RFM averages above.'); ?></p>
@@ -444,7 +544,7 @@ function getSegmentBarClass($color): string {
                 <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-4">
                     <div>
                         <h2 class="text-xl font-bold text-primary">Customer Explorer</h2>
-                        <p class="text-sm text-slate-500">Search, filter, and paginate the full customer list produced by the segmentation pipeline.</p>
+                        <p class="text-sm text-slate-500">Search and filter the full customer list to see which group each customer belongs to and what action is recommended.</p>
                     </div>
                     <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
                         <input id="customerSearch" type="search" placeholder="Search customer ID, name, or segment..." class="w-full sm:w-72 rounded-lg border-slate-200 text-sm focus:border-primary focus:ring-primary"/>
@@ -557,6 +657,24 @@ function getSegmentBarClass($color): string {
     </nav>
 </aside>
 
+<div id="helpModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-900/60 px-4">
+    <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+        <div class="flex items-start justify-between gap-4">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">Quick Explanation</p>
+                <h3 id="helpModalTitle" class="mt-2 text-xl font-bold text-primary">About this metric</h3>
+            </div>
+            <button id="closeHelpModal" type="button" class="rounded-full p-2 text-slate-500 hover:bg-slate-100" aria-label="Close explanation">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+        <p id="helpModalText" class="mt-4 text-sm leading-6 text-slate-700"></p>
+        <button id="dismissHelpModal" type="button" class="mt-6 w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white hover:bg-primary-hover">
+            Got it
+        </button>
+    </div>
+</div>
+
 <script>
     const JOB_ID = <?= json_encode($jobId) ?>;
     const CUSTOMER_ROWS = <?= json_encode(array_values($customerRows ?? [])) ?>;
@@ -568,6 +686,30 @@ function getSegmentBarClass($color): string {
     function toggleMobileMenu() {
         document.getElementById('mobileSidebar').classList.toggle('-translate-x-full');
         document.getElementById('mobileMenuOverlay').classList.toggle('hidden');
+    }
+
+    function openHelpModal(title, text) {
+        const modal = document.getElementById('helpModal');
+        const titleNode = document.getElementById('helpModalTitle');
+        const textNode = document.getElementById('helpModalText');
+        if (titleNode) {
+            titleNode.textContent = title || 'Quick Explanation';
+        }
+        if (textNode) {
+            textNode.textContent = text || 'No extra explanation is available for this card yet.';
+        }
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+    }
+
+    function closeHelpModal() {
+        const modal = document.getElementById('helpModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
     }
 
     function escapeHtml(value) {
@@ -628,7 +770,10 @@ function getSegmentBarClass($color): string {
                 .map((part) => part.slice(0, 1).toUpperCase())
                 .join('')
                 .slice(0, 2) || 'C';
-            const badgeClass = SEGMENT_BADGE_CLASSES[customer.segment] || 'bg-gray-100 text-gray-800';
+            const segmentKey = customer.segment_base_label || customer.segment || 'Unknown';
+            const badgeClass = SEGMENT_BADGE_CLASSES[segmentKey]
+                || SEGMENT_BADGE_CLASSES[customer.segment]
+                || 'bg-gray-100 text-gray-800';
             const riskClass = customer.risk_level === 'High'
                 ? 'bg-red-100 text-red-800'
                 : customer.risk_level === 'Low'
@@ -753,6 +898,20 @@ function getSegmentBarClass($color): string {
             renderCustomerTable();
             document.getElementById('customerTableBody')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         });
+    });
+
+    document.querySelectorAll('.info-help-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+            openHelpModal(button.dataset.helpTitle || 'Quick Explanation', button.dataset.helpText || '');
+        });
+    });
+
+    document.getElementById('closeHelpModal')?.addEventListener('click', closeHelpModal);
+    document.getElementById('dismissHelpModal')?.addEventListener('click', closeHelpModal);
+    document.getElementById('helpModal')?.addEventListener('click', (event) => {
+        if (event.target?.id === 'helpModal') {
+            closeHelpModal();
+        }
     });
 
     renderCustomerTable();

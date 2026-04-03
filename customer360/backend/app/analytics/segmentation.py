@@ -13,8 +13,10 @@ logger = logging.getLogger(__name__)
 # Segment definitions based on RFM characteristics
 SEGMENT_DEFINITIONS = {
     'champions': {
-        'label': 'Champions',
-        'description': 'Best customers - high recency, frequency, and monetary value',
+        'label': 'Best Repeat Buyers',
+        'short_name': 'Champions',
+        'emoji': '⭐',
+        'description': 'These customers buy often, spend strongly, and bought recently. They are your strongest repeat buyers, so protect that relationship and reward them.',
         'criteria': {'R': 'high', 'F': 'high', 'M': 'high'},
         'actions': [
             'Reward with exclusive loyalty programs and VIP treatment',
@@ -24,8 +26,10 @@ SEGMENT_DEFINITIONS = {
         ]
     },
     'loyal_customers': {
-        'label': 'Loyal Customers',
-        'description': 'Regular customers with good frequency and spending',
+        'label': 'Steady Regular Buyers',
+        'short_name': 'Loyal Customers',
+        'emoji': '💙',
+        'description': 'These customers keep coming back and spend a healthy amount. They may not be your top spenders yet, but they are reliable and worth nurturing.',
         'criteria': {'R': 'high', 'F': 'high', 'M': 'medium'},
         'actions': [
             'Upsell and cross-sell higher value products',
@@ -35,8 +39,10 @@ SEGMENT_DEFINITIONS = {
         ]
     },
     'potential_loyalists': {
-        'label': 'Potential Loyalists',
-        'description': 'Recent customers with moderate frequency showing promise',
+        'label': 'Growing Repeat Buyers',
+        'short_name': 'Potential Loyalists',
+        'emoji': '📈',
+        'description': 'These customers bought recently and are starting to show repeat-buying behaviour. A good follow-up offer can help turn them into steady regulars.',
         'criteria': {'R': 'high', 'F': 'medium', 'M': 'medium'},
         'actions': [
             'Offer membership programs and loyalty incentives',
@@ -46,8 +52,10 @@ SEGMENT_DEFINITIONS = {
         ]
     },
     'new_customers': {
-        'label': 'New Customers',
-        'description': 'Recently acquired customers with few transactions',
+        'label': 'First-Time or New Buyers',
+        'short_name': 'New Customers',
+        'emoji': '🌱',
+        'description': 'These customers are still new and have only a small buying history. The main goal is to give them a good first experience so they come back.',
         'criteria': {'R': 'high', 'F': 'low', 'M': 'low'},
         'actions': [
             'Welcome with onboarding campaigns and first-purchase offers',
@@ -57,8 +65,10 @@ SEGMENT_DEFINITIONS = {
         ]
     },
     'promising': {
-        'label': 'Promising',
-        'description': 'Recent shoppers with moderate spending potential',
+        'label': 'New Buyers With Good Potential',
+        'short_name': 'Promising',
+        'emoji': '✨',
+        'description': 'These customers purchased recently and show some spending potential, but they have not yet become regular buyers. Keep them engaged quickly.',
         'criteria': {'R': 'high', 'F': 'low', 'M': 'medium'},
         'actions': [
             'Engage with targeted promotions to increase frequency',
@@ -68,8 +78,10 @@ SEGMENT_DEFINITIONS = {
         ]
     },
     'need_attention': {
-        'label': 'Need Attention',
-        'description': 'Previously active customers showing declining engagement',
+        'label': 'Customers Who Need a Follow-Up',
+        'short_name': 'Need Attention',
+        'emoji': '📣',
+        'description': 'These customers were active before, but their recent buying has slowed down. This is not automatically a bad group, but it is a warning sign that they may drift away if you do nothing.',
         'criteria': {'R': 'medium', 'F': 'medium', 'M': 'medium'},
         'actions': [
             'Send personalized win-back offers',
@@ -79,8 +91,10 @@ SEGMENT_DEFINITIONS = {
         ]
     },
     'about_to_sleep': {
-        'label': 'About to Sleep',
-        'description': 'Customers who haven\'t purchased recently but had good history',
+        'label': 'Cooling-Off Customers',
+        'short_name': 'About to Sleep',
+        'emoji': '🌙',
+        'description': 'These customers have not bought in a while, although they had some history with the business. A timely reminder or comeback offer may reactivate them.',
         'criteria': {'R': 'medium', 'F': 'low', 'M': 'low'},
         'actions': [
             'Send reactivation campaigns with urgency',
@@ -90,8 +104,10 @@ SEGMENT_DEFINITIONS = {
         ]
     },
     'at_risk': {
-        'label': 'At Risk',
-        'description': 'Previously valuable customers who haven\'t purchased in a while',
+        'label': 'Valuable Customers You May Be Losing',
+        'short_name': 'At Risk',
+        'emoji': '⚠',
+        'description': 'These customers used to spend well or buy often, but they have stayed away for too long. They deserve urgent win-back attention because they can represent lost revenue.',
         'criteria': {'R': 'low', 'F': 'high', 'M': 'high'},
         'actions': [
             'Launch urgent win-back campaigns with strong incentives',
@@ -101,8 +117,10 @@ SEGMENT_DEFINITIONS = {
         ]
     },
     'hibernating': {
-        'label': 'Hibernating',
-        'description': 'Low activity customers who made purchases long ago',
+        'label': 'Quiet Low-Activity Customers',
+        'short_name': 'Hibernating',
+        'emoji': '💤',
+        'description': 'These customers have been inactive for a long time and do not show strong spend or visit frequency. Try low-cost reactivation before spending too much budget here.',
         'criteria': {'R': 'low', 'F': 'low', 'M': 'low'},
         'actions': [
             'Send re-engagement emails with major incentives',
@@ -112,8 +130,10 @@ SEGMENT_DEFINITIONS = {
         ]
     },
     'lost': {
-        'label': 'Lost Customers',
-        'description': 'Customers who haven\'t engaged for a very long time',
+        'label': 'Customers Who Have Likely Left',
+        'short_name': 'Lost Customers',
+        'emoji': '🧊',
+        'description': 'These customers have been absent for a very long time. Consider one final win-back attempt, then focus more effort on stronger active groups.',
         'criteria': {'R': 'very_low', 'F': 'low', 'M': 'low'},
         'actions': [
             'Attempt one final win-back campaign',
@@ -256,6 +276,8 @@ def analyze_clusters(
             'cluster_id': int(cluster_id),
             'segment_key': segment_key,
             'segment_label': segment_label,
+            'segment_short_name': SEGMENT_DEFINITIONS[segment_key].get('short_name', segment_label),
+            'segment_emoji': SEGMENT_DEFINITIONS[segment_key].get('emoji', '👥'),
             'description': SEGMENT_DEFINITIONS[segment_key]['description'],
             'num_customers': num_customers,
             'percentage': round(num_customers / total_customers * 100, 1),
