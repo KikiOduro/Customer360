@@ -83,6 +83,33 @@ class ReportGenerator:
             fontSize=8,
             textColor=colors.HexColor('#718096')
         ))
+
+    def _currency_code(self) -> str:
+        """Return a report-safe currency label that renders correctly in PDF core fonts."""
+        raw_currency = str(self.results.get('meta', {}).get('currency') or 'GHS').strip()
+        if not raw_currency:
+            return 'GHS'
+
+        # Avoid symbols like GH₵ because ReportLab's default Helvetica core font may not
+        # render the cedi glyph consistently in generated PDFs.
+        if raw_currency.upper() in {'GH₵', 'GHS', 'CEDI', 'GH¢'}:
+            return 'GHS'
+
+        ascii_currency = raw_currency.encode('ascii', 'ignore').decode('ascii').strip()
+        return ascii_currency or 'GHS'
+
+    def _safe_number(self, value: Any) -> float:
+        """Coerce nullable numeric values to a finite float."""
+        try:
+            numeric_value = float(value or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+        return numeric_value
+
+    def _format_currency(self, amount: Any, decimals: int = 2) -> str:
+        """Format monetary values with an ASCII currency code to avoid missing glyphs."""
+        return f"{self._currency_code()} {self._safe_number(amount):,.{decimals}f}"
     
     def generate(self, output_path: str) -> str:
         """
@@ -208,7 +235,7 @@ class ReportGenerator:
         summary_text = f"""
         This report analyzes <b>{meta.get('num_customers', 0):,}</b> customers based on 
         <b>{meta.get('num_transactions', 0):,}</b> transactions totaling 
-        <b>GH₵{meta.get('total_revenue', 0):,.2f}</b> in revenue.
+        <b>{self._format_currency(meta.get('total_revenue', 0))}</b> in revenue.
         <br/><br/>
         Using {meta.get('clustering_method', 'K-Means').upper()} clustering with RFM 
         (Recency, Frequency, Monetary) analysis, customers have been segmented into 
@@ -226,11 +253,11 @@ class ReportGenerator:
         if summary:
             findings = [
                 f"• Highest value segment: {summary.get('highest_value_segment', {}).get('label', 'N/A')} "
-                f"(avg. GH₵{summary.get('highest_value_segment', {}).get('avg_monetary', 0):,.2f} per customer)",
+                f"(avg. {self._format_currency(summary.get('highest_value_segment', {}).get('avg_monetary', 0))} per customer)",
                 f"• Most loyal segment: {summary.get('most_loyal_segment', {}).get('label', 'N/A')} "
                 f"(avg. {summary.get('most_loyal_segment', {}).get('avg_frequency', 0):.1f} transactions)",
                 f"• At-risk customers: {summary.get('at_risk_customers', 0):,} customers "
-                f"representing GH₵{summary.get('at_risk_revenue', 0):,.2f} in potential revenue"
+                f"representing {self._format_currency(summary.get('at_risk_revenue', 0))} in potential revenue"
             ]
             
             for finding in findings:
@@ -258,8 +285,8 @@ class ReportGenerator:
             ['Metric', 'Value'],
             ['Total Transactions', f"{summary.get('num_transactions', 0):,}"],
             ['Unique Customers', f"{summary.get('num_customers', 0):,}"],
-            ['Total Revenue', f"GH₵{summary.get('total_revenue', 0):,.2f}"],
-            ['Average Transaction', f"GH₵{summary.get('avg_transaction', 0):,.2f}"],
+            ['Total Revenue', self._format_currency(summary.get('total_revenue', 0))],
+            ['Average Transaction', self._format_currency(summary.get('avg_transaction', 0))],
             ['Date Range', f"{date_range.get('start', 'N/A')[:10]} to {date_range.get('end', 'N/A')[:10]}"],
             ['Data Quality', f"{cleaning_stats.get('retention_rate', 0)*100:.1f}% rows retained after cleaning"]
         ]
@@ -313,15 +340,19 @@ class ReportGenerator:
         
         for metric in ['recency', 'frequency', 'monetary']:
             stats = rfm_stats.get(metric, {})
-            prefix = "GH₵" if metric == 'monetary' else ""
             suffix = " days" if metric == 'recency' else ""
+            value_formatter = (
+                lambda value: self._format_currency(value, decimals=1)
+                if metric == 'monetary'
+                else f"{self._safe_number(value):,.1f}{suffix}"
+            )
             data.append([
                 metric.capitalize(),
-                f"{prefix}{stats.get('mean', 0):,.1f}{suffix}",
-                f"{prefix}{stats.get('median', 0):,.1f}{suffix}",
-                f"{prefix}{stats.get('std', 0):,.1f}{suffix}",
-                f"{prefix}{stats.get('min', 0):,.1f}{suffix}",
-                f"{prefix}{stats.get('max', 0):,.1f}{suffix}"
+                value_formatter(stats.get('mean', 0)),
+                value_formatter(stats.get('median', 0)),
+                value_formatter(stats.get('std', 0)),
+                value_formatter(stats.get('min', 0)),
+                value_formatter(stats.get('max', 0))
             ])
         
         table = Table(data, colWidths=[1.2*inch, 1.2*inch, 1.2*inch, 1.2*inch, 1*inch, 1*inch])
@@ -372,8 +403,8 @@ class ReportGenerator:
                 f"{seg['percentage']:.1f}%",
                 f"{seg['avg_recency']:.0f} days",
                 f"{seg['avg_frequency']:.1f}",
-                f"GH₵{seg['avg_monetary']:,.2f}",
-                f"GH₵{seg['total_revenue']:,.2f}"
+                self._format_currency(seg['avg_monetary']),
+                self._format_currency(seg['total_revenue'])
             ])
         
         table = Table(data, colWidths=[1.3*inch, 0.8*inch, 0.6*inch, 0.9*inch, 0.9*inch, 1*inch, 1.1*inch])
@@ -520,10 +551,10 @@ class ReportGenerator:
             # Segment metrics
             metrics_text = f"""
             <b>Size:</b> {seg['num_customers']:,} customers<br/>
-            <b>Revenue Contribution:</b> GH₵{seg['total_revenue']:,.2f}<br/>
+            <b>Revenue Contribution:</b> {self._format_currency(seg['total_revenue'])}<br/>
             <b>Recency:</b> {seg['avg_recency']:.0f} days (range: {seg['min_recency']}-{seg['max_recency']})<br/>
             <b>Frequency:</b> {seg['avg_frequency']:.1f} transactions (range: {seg['min_frequency']}-{seg['max_frequency']})<br/>
-            <b>Monetary:</b> GH₵{seg['avg_monetary']:,.2f} (range: GH₵{seg['min_monetary']:,.2f}-GH₵{seg['max_monetary']:,.2f})
+            <b>Monetary:</b> {self._format_currency(seg['avg_monetary'])} (range: {self._format_currency(seg['min_monetary'])}-{self._format_currency(seg['max_monetary'])})
             """
             elements.append(Paragraph(metrics_text, self.styles['ReportBodyText']))
             
