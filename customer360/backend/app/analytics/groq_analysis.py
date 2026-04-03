@@ -33,32 +33,6 @@ from ..models import Job
 logger = logging.getLogger(__name__)
 
 
-SEGMENT_NAME_MAP = {
-    "Best Repeat Buyers": "Your Star Customers",
-    "Steady Regular Buyers": "Your Faithful Regulars",
-    "Growing Repeat Buyers": "Almost Regulars",
-    "First-Time or New Buyers": "Fresh Faces",
-    "New Buyers With Good Potential": "Showing Interest",
-    "Customers Who Need a Follow-Up": "Slipping Away Slowly",
-    "Cooling-Off Customers": "About to Forget You",
-    "Valuable Customers You May Be Losing": "Danger Zone",
-    "Quiet Low-Activity Customers": "Sleeping Customers",
-    "Customers Who Have Likely Left": "Gone Customers",
-    "Champions": "Your Star Customers",
-    "Loyal Customers": "Your Faithful Regulars",
-    "Potential Loyalists": "Almost Regulars",
-    "New Customers": "Fresh Faces",
-    "Promising": "Showing Interest",
-    "Need Attention": "Slipping Away Slowly",
-    "Needs Attention": "Slipping Away Slowly",
-    "About to Sleep": "About to Forget You",
-    "At Risk": "Danger Zone",
-    "Hibernating": "Sleeping Customers",
-    "Lost Customers": "Gone Customers",
-    "Lost": "Gone Customers",
-}
-
-
 SYSTEM_PROMPT = """
 You are a trusted business advisor helping small and medium business owners in Ghana
 understand their customer data. Use warm, clear, everyday English that a non-technical
@@ -73,7 +47,10 @@ Rules:
 5. Recommend actions a Ghana SME can do this week, such as WhatsApp follow-up,
    phone calls, loyalty offers, or personal check-ins.
 6. Never include raw customer IDs, names, phone numbers, or emails.
-7. Return only valid JSON with this exact shape:
+7. Use the customer group names exactly as they appear in the user data below.
+   Do not rename any segment, do not remove " - Group N" suffixes, and return one
+   segment_insights entry for each exact group name provided.
+8. Return only valid JSON with this exact shape:
 {
   "headline": "short one-sentence business summary",
   "story": "3-4 sentence explanation of what is going well and what needs attention",
@@ -187,9 +164,7 @@ def _safe_number(value: Any, decimals: int = 2) -> float:
 
 
 def _segment_alias(segment_name: str) -> str:
-    base_name = str(segment_name or "Customer Group").split(" - Group ", 1)[0].strip()
-    alias = SEGMENT_NAME_MAP.get(base_name) or SEGMENT_NAME_MAP.get(segment_name)
-    return alias or base_name or "Customer Group"
+    return str(segment_name or "Customer Group").strip() or "Customer Group"
 
 
 def prepare_groq_context(results: Dict[str, Any]) -> Dict[str, Any]:
@@ -212,9 +187,14 @@ def prepare_groq_context(results: Dict[str, Any]) -> Dict[str, Any]:
         },
         "segments": [
             {
-                "name": _segment_alias(str(segment.get("segment_label") or "")),
-                "raw_label": str(segment.get("segment_label") or "Customer Group"),
+                "name": _segment_alias(str(segment.get("segment_label") or "Customer Group")),
+                "short_name": str(segment.get("segment_short_name") or ""),
                 "description": str(segment.get("description") or ""),
+                "current_actions": [
+                    str(action)
+                    for action in (segment.get("recommended_actions") or [])
+                    if action
+                ][:3],
                 "customer_count": int(segment.get("num_customers") or 0),
                 "percentage": _safe_number(segment.get("percentage"), 1),
                 "avg_recency_days": _safe_number(segment.get("avg_recency"), 1),
@@ -247,14 +227,22 @@ def _build_user_prompt(context: Dict[str, Any]) -> str:
     quality_score = business.get("analysis_quality_score", 0)
 
     segment_lines = []
+    exact_names = []
     for segment in context.get("segments", []):
+        exact_names.append(segment["name"])
+        existing_actions = "; ".join(segment.get("current_actions", [])[:2]) or "No default actions listed."
         segment_lines.append(
-            "- {name}: {customer_count} customers ({percentage}%), "
-            "last bought {avg_recency_days} days ago on average, "
-            "buy {avg_frequency} times on average, "
-            "spend GHS {avg_spend_ghs} on average, "
-            "total revenue GHS {total_revenue_ghs}. "
-            "Meaning: {description}".format(**segment)
+            (
+                "- Exact segment name: {name}\n"
+                "  Simple label currently shown in UI/PDF: {short_name}\n"
+                "  Segment size: {customer_count} customers ({percentage}%)\n"
+                "  Last bought {avg_recency_days} days ago on average, "
+                "buy {avg_frequency} times on average, "
+                "spend GHS {avg_spend_ghs} on average, "
+                "total revenue GHS {total_revenue_ghs}.\n"
+                "  Current meaning: {description}\n"
+                "  Current actions: {existing_actions}"
+            ).format(existing_actions=existing_actions, **segment)
         )
 
     feature_lines = []
@@ -289,6 +277,12 @@ Data quality:
 - Duplicate rows removed: {quality.get('duplicates_removed', 0)}
 - Missing values handled: {quality.get('missing_values', 0)}
 - Extreme values smoothed: {quality.get('outliers_capped', 0)}
+
+Important naming rule:
+- Return segment_insights using these exact segment_name values only:
+  {", ".join(exact_names) if exact_names else "No customer groups available"}
+- Keep each group name unique. If a name includes " - Group 1" or " - Group 2", preserve that exact suffix.
+- Improve the recommendation and explanation for each group, but do not invent new group names.
 """.strip()
 
     if len(prompt) > GROQ_MAX_INPUT_CHARS:
@@ -306,7 +300,10 @@ def _fallback_business_narrative(results: Dict[str, Any]) -> Dict[str, Any]:
         (
             segment
             for segment in segments
-            if segment["name"] in {"Danger Zone", "Slipping Away Slowly", "About to Forget You"}
+            if any(
+                token in segment["name"].lower()
+                for token in ("risk", "follow-up", "cooling-off", "likely left", "quiet low-activity")
+            )
         ),
         None,
     )
@@ -323,20 +320,22 @@ def _fallback_business_narrative(results: Dict[str, Any]) -> Dict[str, Any]:
 
     top_actions = []
     for segment in segments[:3]:
-        if segment["name"] == "Your Star Customers":
+        segment_name = segment["name"]
+        existing_action = (segment.get("current_actions") or [""])[0]
+        if "best repeat buyers" in segment_name.lower():
             action = "Send a thank-you offer to your best repeat buyers"
             how = "Use a WhatsApp broadcast or personal calls with a loyalty discount."
-        elif segment["name"] in {"Danger Zone", "Slipping Away Slowly", "About to Forget You"}:
-            action = f"Follow up with {segment['name']}"
+        elif any(token in segment_name.lower() for token in ("risk", "follow-up", "cooling-off", "likely left", "quiet low-activity")):
+            action = f"Follow up with {segment_name}"
             how = "Send a simple 'we miss you' WhatsApp message and a comeback offer this week."
         else:
-            action = f"Keep {segment['name']} active"
+            action = existing_action or f"Keep {segment_name} active"
             how = "Share new stock, bundles, or a small loyalty offer to encourage another purchase."
         top_actions.append({
             "action": action,
             "why": f"This group contains {segment['customer_count']} customers and contributed GHS {segment['total_revenue_ghs']}.",
             "how": how,
-            "segment_target": segment["name"],
+            "segment_target": segment_name,
         })
 
     return {
@@ -362,8 +361,11 @@ def _fallback_business_narrative(results: Dict[str, Any]) -> Dict[str, Any]:
             {
                 "segment_name": segment["name"],
                 "insight": segment["description"] or f"{segment['name']} represents {segment['customer_count']} customers.",
-                "action": f"Review this group and plan a follow-up campaign for {segment['name']}.",
-                "priority": "urgent" if segment["name"] in {"Danger Zone", "Slipping Away Slowly"} else "important",
+                "action": (segment.get("current_actions") or [f"Review this group and plan a follow-up campaign for {segment['name']}."])[0],
+                "priority": "urgent" if any(
+                    token in segment["name"].lower()
+                    for token in ("risk", "follow-up", "cooling-off", "likely left")
+                ) else "important",
             }
             for segment in segments
         ],

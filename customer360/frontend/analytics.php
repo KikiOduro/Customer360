@@ -172,6 +172,10 @@ foreach ($segmentsRaw as $segment) {
     $name = $segment['segment_label'] ?? $segment['segment_name'] ?? $segment['name'] ?? 'Unknown';
     $baseName = $segment['segment_base_label'] ?? $name;
     $displayMeta = $segmentDisplayMap[$baseName] ?? $segmentDisplayMap[$name] ?? ['title' => $name, 'emoji' => '👥'];
+    $aiInsight = trim((string) ($segment['ai_insight'] ?? ''));
+    $aiActions = is_array($segment['ai_actions'] ?? null) ? $segment['ai_actions'] : [];
+    $fallbackDescription = trim((string) ($segment['description'] ?? ''));
+    $fallbackActions = is_array($segment['recommended_actions'] ?? null) ? $segment['recommended_actions'] : [];
     $segments[] = [
         'name' => $name,
         'friendly_name' => $segment['segment_label'] ?? $displayMeta['title'],
@@ -182,8 +186,8 @@ foreach ($segmentsRaw as $segment) {
         'avg_recency' => $segment['avg_recency'] ?? null,
         'avg_freq' => $segment['avg_frequency'] ?? null,
         'avg_monetary' => $segment['avg_monetary'] ?? null,
-        'actions' => $segment['recommended_actions'] ?? [],
-        'description' => $segment['description'] ?? '',
+        'actions' => !empty($aiActions) ? $aiActions : $fallbackActions,
+        'description' => $aiInsight !== '' ? $aiInsight : $fallbackDescription,
         'color' => $segmentColors[$baseName] ?? $segmentColors[$name] ?? 'gray',
     ];
 }
@@ -374,25 +378,25 @@ function getSegmentBarClass($color): string {
                 </div>
             </div>
             <?php else: ?>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 mb-8">
+            <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <?php foreach ($kpis as $kpi): ?>
-                <div class="flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <div class="mb-2 flex items-center justify-between">
-                        <div class="flex items-center gap-2">
-                            <span class="text-sm font-medium text-slate-500"><?php echo htmlspecialchars($kpi['label']); ?></span>
+                <div class="flex min-h-[148px] flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="flex items-start gap-2">
+                            <span class="max-w-[10rem] text-sm font-semibold leading-5 text-slate-500"><?php echo htmlspecialchars($kpi['label']); ?></span>
                             <button
                                 type="button"
-                                class="info-help-btn inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-500 hover:bg-slate-100"
+                                class="info-help-btn mt-0.5 inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-500 hover:bg-slate-100"
                                 data-help-title="<?php echo htmlspecialchars($kpi['help_title']); ?>"
                                 data-help-text="<?php echo htmlspecialchars($kpi['help_text']); ?>"
                                 aria-label="Explain <?php echo htmlspecialchars($kpi['label']); ?>"
                             >?</button>
                         </div>
-                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-<?php echo $kpi['color']; ?>-50 text-<?php echo $kpi['color']; ?>-600">
+                        <span class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-<?php echo $kpi['color']; ?>-50 text-<?php echo $kpi['color']; ?>-600">
                             <span class="material-symbols-outlined text-[20px]"><?php echo htmlspecialchars($kpi['icon']); ?></span>
                         </span>
                     </div>
-                    <h3 class="text-2xl font-bold text-primary">
+                    <h3 class="pt-4 text-3xl font-bold tracking-tight text-primary">
                         <?php echo htmlspecialchars(formatKpiValue($kpi)); ?>
                     </h3>
                 </div>

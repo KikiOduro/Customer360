@@ -62,13 +62,77 @@ def persist_results_json(output_dir: str, job_id: str, results: dict) -> None:
 def enrich_results_with_cached_llm(job: Job, results: dict) -> dict:
     """Attach cached LLM narrative from the jobs table when the file payload lacks it."""
     if results.get("llm_analysis"):
-        return results
+        return apply_llm_segment_recommendations(results)
 
     if job.llm_analysis_json:
         try:
             results["llm_analysis"] = json.loads(job.llm_analysis_json)
         except json.JSONDecodeError:
             results["llm_analysis"] = None
+
+    return apply_llm_segment_recommendations(results)
+
+
+def apply_llm_segment_recommendations(results: dict) -> dict:
+    """Merge exact-name Groq segment insights/actions into segment and customer rows."""
+    llm_analysis = results.get("llm_analysis") if isinstance(results, dict) else None
+    segment_insights = (llm_analysis or {}).get("segment_insights") if isinstance(llm_analysis, dict) else None
+    if not isinstance(segment_insights, list) or not segment_insights:
+        return results
+
+    ai_by_segment = {}
+    for item in segment_insights:
+        if not isinstance(item, dict):
+            continue
+        segment_name = str(item.get("segment_name") or "").strip()
+        if not segment_name:
+            continue
+        insight = str(item.get("insight") or "").strip()
+        action = str(item.get("action") or "").strip()
+        ai_by_segment[segment_name] = {
+            "ai_insight": insight,
+            "ai_action": action,
+            "ai_priority": str(item.get("priority") or "important").strip() or "important",
+        }
+
+    if not ai_by_segment:
+        return results
+
+    for segment in results.get("segments") or []:
+        if not isinstance(segment, dict):
+            continue
+        segment_name = str(segment.get("segment_label") or "").strip()
+        ai_update = ai_by_segment.get(segment_name)
+        if not ai_update:
+            continue
+
+        if ai_update["ai_insight"]:
+            segment["ai_insight"] = ai_update["ai_insight"]
+        if ai_update["ai_action"]:
+            existing_actions = [
+                str(action)
+                for action in (segment.get("recommended_actions") or [])
+                if str(action).strip()
+            ]
+            merged_actions = [ai_update["ai_action"]] + [
+                action for action in existing_actions
+                if action.strip().lower() != ai_update["ai_action"].strip().lower()
+            ]
+            segment["ai_actions"] = merged_actions
+            segment["recommended_actions"] = merged_actions
+        segment["ai_priority"] = ai_update["ai_priority"]
+
+    for row in (results.get("customer_table") or []) + (results.get("recent_customers") or []):
+        if not isinstance(row, dict):
+            continue
+        row_segment = str(row.get("segment") or "").strip()
+        ai_update = ai_by_segment.get(row_segment)
+        if not ai_update:
+            continue
+        if ai_update["ai_insight"]:
+            row["segment_description"] = ai_update["ai_insight"]
+        if ai_update["ai_action"]:
+            row["recommended_action"] = ai_update["ai_action"]
 
     return results
 
@@ -177,6 +241,7 @@ def run_segmentation_job(
             try:
                 llm_narrative = generate_llm_analysis(results)
                 results["llm_analysis"] = llm_narrative
+                results = apply_llm_segment_recommendations(results)
                 job.llm_analysis_json = json.dumps(
                     sanitize_json_payload(llm_narrative),
                     ensure_ascii=False,

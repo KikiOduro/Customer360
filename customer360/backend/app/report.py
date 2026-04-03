@@ -637,8 +637,9 @@ class ReportGenerator:
                 self.styles['SubSection']
             ))
 
-            if seg.get('description'):
-                elements.append(Paragraph(str(seg.get('description')), self.styles['ReportBodyText']))
+            segment_description = str(seg.get('ai_insight') or seg.get('description') or '').strip()
+            if segment_description:
+                elements.append(Paragraph(segment_description, self.styles['ReportBodyText']))
             
             # Segment metrics
             metrics_text = f"""
@@ -670,8 +671,9 @@ class ReportGenerator:
                 f"<b>{self._segment_title(seg)}</b>",
                 self.styles['SubSection']
             ))
-            
-            for action in seg.get('recommended_actions', [])[:3]:  # Top 3 actions
+
+            action_list = seg.get('ai_actions') or seg.get('recommended_actions') or []
+            for action in action_list[:3]:  # Top 3 actions
                 elements.append(Paragraph(f"• {action}", self.styles['ReportBodyText']))
             
             elements.append(Spacer(1, 0.2*inch))
