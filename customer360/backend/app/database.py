@@ -118,6 +118,9 @@ def ensure_job_storage_columns():
             "progress_stage": "TEXT",
             "progress_message": "TEXT",
             "result_json": "TEXT",
+            "llm_analysis_json": "TEXT",
+            "llm_generated_at": "TIMESTAMP",
+            "llm_status": "TEXT",
         }
     else:
         column_types = {
@@ -130,6 +133,9 @@ def ensure_job_storage_columns():
             "progress_stage": "VARCHAR(100)",
             "progress_message": "TEXT",
             "result_json": "LONGTEXT",
+            "llm_analysis_json": "LONGTEXT",
+            "llm_generated_at": "TIMESTAMP NULL",
+            "llm_status": "VARCHAR(50)",
         }
 
     with engine.begin() as connection:

@@ -69,6 +69,15 @@ SUPABASE_STORAGE_OBJECT_BASE = f"{SUPABASE_URL}/storage/v1/object/{SUPABASE_STOR
 
 # AI integration
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+GROQ_ENABLED = _parse_bool(os.getenv("GROQ_ENABLED"), default=bool(GROQ_API_KEY))
+GROQ_REQUESTS_PER_MINUTE = int(os.getenv("GROQ_REQUESTS_PER_MINUTE", "20"))
+GROQ_DAILY_REQUEST_LIMIT = int(os.getenv("GROQ_DAILY_REQUEST_LIMIT", "800"))
+GROQ_USER_COOLDOWN_SECONDS = int(os.getenv("GROQ_USER_COOLDOWN_SECONDS", "60"))
+GROQ_USER_DAILY_LIMIT = int(os.getenv("GROQ_USER_DAILY_LIMIT", "10"))
+GROQ_MAX_INPUT_CHARS = int(os.getenv("GROQ_MAX_INPUT_CHARS", "12000"))
+GROQ_MAX_OUTPUT_TOKENS = int(os.getenv("GROQ_MAX_OUTPUT_TOKENS", "2000"))
+GROQ_RETRY_ATTEMPTS = int(os.getenv("GROQ_RETRY_ATTEMPTS", "3"))
 
 # Clustering settings
 DEFAULT_K_RANGE = (2, 8)  # Range of k values to try for K-Means (reduced from 10 for speed)

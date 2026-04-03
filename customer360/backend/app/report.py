@@ -279,6 +279,7 @@ class ReportGenerator:
         meta = self._report_meta()
         summary = self.results.get('segment_summary', {})
         story_summary = self.results.get('story_summary', {}) or {}
+        llm_analysis = self.results.get('llm_analysis', {}) or {}
         
         grouping_method = str(meta.get('clustering_method', 'kmeans') or 'kmeans').replace('_', ' ').title()
         grouping_strength = self._grouping_strength_label(meta.get('silhouette_score', 0))
@@ -298,7 +299,16 @@ class ReportGenerator:
         elements.append(Paragraph(summary_text, self.styles['ReportBodyText']))
         elements.append(Spacer(1, 0.3*inch))
 
-        if story_summary.get('narrative'):
+        llm_story = str(llm_analysis.get('story') or '').strip()
+        llm_headline = str(llm_analysis.get('headline') or '').strip()
+        if llm_story or llm_headline:
+            elements.append(Paragraph("What This Means for Your Business", self.styles['SubSection']))
+            if llm_headline:
+                elements.append(Paragraph(f"<b>{llm_headline}</b>", self.styles['ReportBodyText']))
+            if llm_story:
+                elements.append(Paragraph(llm_story, self.styles['ReportBodyText']))
+            elements.append(Spacer(1, 0.2*inch))
+        elif story_summary.get('narrative'):
             elements.append(Paragraph("What This Means for Your Business", self.styles['SubSection']))
             if story_summary.get('headline'):
                 elements.append(Paragraph(f"<b>{story_summary.get('headline')}</b>", self.styles['ReportBodyText']))
@@ -308,7 +318,15 @@ class ReportGenerator:
         # Key findings
         elements.append(Paragraph("Key Takeaways", self.styles['SubSection']))
         
-        if summary:
+        llm_findings = [
+            str(finding)
+            for finding in (llm_analysis.get('key_findings') or [])
+            if finding
+        ]
+        if llm_findings:
+            for finding in llm_findings[:5]:
+                elements.append(Paragraph(f"• {finding}", self.styles['ReportBodyText']))
+        elif summary:
             findings = [
                 f"• Highest value segment: {summary.get('highest_value_segment', {}).get('label', 'N/A')} "
                 f"(avg. {self._format_currency(summary.get('highest_value_segment', {}).get('avg_monetary', 0))} per customer)",
@@ -598,6 +616,20 @@ class ReportGenerator:
         elements.append(Spacer(1, 0.2*inch))
         
         segments = self.results.get('segments', [])
+        llm_actions = self.results.get('llm_analysis', {}).get('top_3_actions', [])
+
+        if llm_actions:
+            elements.append(Paragraph("Top Actions This Week", self.styles['SubSection']))
+            for index, action_item in enumerate(llm_actions[:3], start=1):
+                if not isinstance(action_item, dict):
+                    continue
+                action_text = (
+                    f"<b>{index}. {action_item.get('action', 'Take one focused customer follow-up action')}</b><br/>"
+                    f"{action_item.get('why', '')}<br/>"
+                    f"{action_item.get('how', '')}"
+                )
+                elements.append(Paragraph(action_text, self.styles['ReportBodyText']))
+            elements.append(Spacer(1, 0.25*inch))
         
         for seg in segments:
             elements.append(Paragraph(

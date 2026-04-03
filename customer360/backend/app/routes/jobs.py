@@ -23,6 +23,7 @@ from ..schemas import (
 )
 from ..auth import get_current_user
 from ..config import UPLOAD_DIR, OUTPUT_DIR, MAX_FILE_SIZE_MB, ALLOWED_EXTENSIONS
+from ..analytics.groq_analysis import GroqRateLimiter, generate_llm_analysis
 from ..analytics.preprocessing import build_mapping_validation_report, get_csv_preview
 from ..analytics.pipeline import run_pipeline
 from ..report import generate_report
@@ -49,6 +50,27 @@ def sanitize_json_payload(value):
         return None
 
     return value
+
+
+def persist_results_json(output_dir: str, job_id: str, results: dict) -> None:
+    """Write the latest results payload to the job's results JSON file."""
+    results_path = Path(output_dir) / f"{job_id}_results.json"
+    with open(results_path, "w") as handle:
+        json.dump(sanitize_json_payload(results), handle, indent=2, default=str)
+
+
+def enrich_results_with_cached_llm(job: Job, results: dict) -> dict:
+    """Attach cached LLM narrative from the jobs table when the file payload lacks it."""
+    if results.get("llm_analysis"):
+        return results
+
+    if job.llm_analysis_json:
+        try:
+            results["llm_analysis"] = json.loads(job.llm_analysis_json)
+        except json.JSONDecodeError:
+            results["llm_analysis"] = None
+
+    return results
 
 
 def validate_file(file: UploadFile) -> None:
@@ -146,6 +168,30 @@ def run_segmentation_job(
         db.refresh(job)
         if job.status == "cancelled":
             return
+
+        llm_narrative = None
+        job.llm_status = "skipped"
+        limiter = GroqRateLimiter()
+        allowed, reason = limiter.check_all(job.user_id, db)
+        if allowed:
+            try:
+                llm_narrative = generate_llm_analysis(results)
+                results["llm_analysis"] = llm_narrative
+                job.llm_analysis_json = json.dumps(
+                    sanitize_json_payload(llm_narrative),
+                    ensure_ascii=False,
+                    default=str,
+                ) if llm_narrative else None
+                job.llm_generated_at = datetime.utcnow() if llm_narrative else None
+                job.llm_status = (llm_narrative or {}).get("source", "unavailable") if llm_narrative else "unavailable"
+                persist_results_json(output_dir, job_id, results)
+            except Exception:
+                results["llm_analysis"] = None
+                job.llm_analysis_json = None
+                job.llm_status = "error"
+        else:
+            results["llm_analysis"] = None
+            job.llm_status = f"rate_limited: {reason[:180]}"
         
         # Update job with results
         job.status = "completed"
@@ -157,6 +203,7 @@ def run_segmentation_job(
         job.num_clusters = meta.get('num_clusters', 0)
         job.silhouette_score = meta.get('silhouette_score', 0)
         job.output_path = output_dir
+        job.result_json = json.dumps(sanitize_json_payload(results), ensure_ascii=False, default=str)
         job.progress_percent = 100
         job.progress_stage = "completed"
         job.progress_message = "Analysis completed successfully. Opening results is now available."
@@ -613,6 +660,8 @@ async def get_job_results(
     
     with open(results_path, 'r') as f:
         results = json.load(f)
+
+    results = enrich_results_with_cached_llm(job, results)
     
     return sanitize_json_payload(results)
 
@@ -654,6 +703,8 @@ async def download_report(
     
     with open(results_path, 'r') as f:
         results = json.load(f)
+
+    results = enrich_results_with_cached_llm(job, results)
     
     # Generate PDF
     pdf_path = Path(job.output_path) / f"{job_id}_report.pdf"

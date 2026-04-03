@@ -91,6 +91,32 @@ API_PORT=8000
 
 Keep real secrets only in the server `.env`. Do not commit production credentials into git.
 
+## 3.1 Optional Groq AI Business Summary
+
+The backend can generate a plain-language “Business Coach Summary” once per completed job using Groq. That summary is cached into the job results and shown on `analytics.php`; it can also appear in the generated PDF report.
+
+Enable it by setting these values in the server `backend/.env`:
+
+```env
+GROQ_API_KEY=YOUR_GROQ_KEY
+GROQ_MODEL=llama-3.3-70b-versatile
+GROQ_ENABLED=true
+GROQ_REQUESTS_PER_MINUTE=20
+GROQ_DAILY_REQUEST_LIMIT=800
+GROQ_USER_COOLDOWN_SECONDS=60
+GROQ_USER_DAILY_LIMIT=10
+GROQ_MAX_INPUT_CHARS=12000
+GROQ_MAX_OUTPUT_TOKENS=2000
+GROQ_RETRY_ATTEMPTS=3
+```
+
+Operational rules:
+
+- Groq is called once per completed job, not on every page load.
+- Only aggregate segment statistics and data-quality counts are sent to Groq; raw customer names, emails, phone numbers, and customer IDs are not sent.
+- If Groq is disabled, rate-limited, or unavailable, the pipeline still completes and the UI/report fall back to the deterministic story summary.
+- Do not commit the real Groq key into Git.
+
 ## 4. How The Server Deployment Was Performed
 
 ### SSH into the server

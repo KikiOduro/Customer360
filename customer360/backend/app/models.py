@@ -4,7 +4,7 @@ Defines User and Job tables.
 MySQL-compatible schema.
 """
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, Text, Float, TIMESTAMP
+from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, Text, Float, TIMESTAMP
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
@@ -74,6 +74,9 @@ class Job(Base):
     
     # Cached analysis results (JSON) — populated by background tasks
     result_json = Column(Text, nullable=True)
+    llm_analysis_json = Column(Text, nullable=True)
+    llm_generated_at = Column(TIMESTAMP, nullable=True)
+    llm_status = Column(String(50), nullable=True)
     
     # Timestamps
     created_at = Column(TIMESTAMP, server_default=func.now())

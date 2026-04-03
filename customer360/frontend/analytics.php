@@ -36,6 +36,7 @@ $meta = $analysisResults['meta'] ?? [];
 $summary = $analysisResults['segment_summary'] ?? [];
 $prepSummary = $analysisResults['preprocessing']['summary'] ?? [];
 $storySummary = $analysisResults['story_summary'] ?? [];
+$llmAnalysis = $analysisResults['llm_analysis'] ?? null;
 $edaSummary = $analysisResults['preprocessing']['eda'] ?? [];
 $cleaningStats = $analysisResults['preprocessing']['cleaning_stats'] ?? [];
 $outlierSummary = $analysisResults['outlier_treatment'] ?? [];
@@ -398,6 +399,7 @@ function getSegmentBarClass($color): string {
                 <?php endforeach; ?>
             </div>
 
+            <?php if (!(is_array($llmAnalysis) && !empty($llmAnalysis))): ?>
             <div class="mb-8 rounded-2xl border border-amber-100 bg-amber-50 p-6 shadow-sm">
                 <div class="flex items-start gap-4">
                     <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/20 text-primary">
@@ -410,6 +412,74 @@ function getSegmentBarClass($color): string {
                     </div>
                 </div>
             </div>
+            <?php endif; ?>
+
+            <?php if (is_array($llmAnalysis) && !empty($llmAnalysis)): ?>
+            <div class="mb-8 rounded-2xl border-2 border-accent bg-gradient-to-r from-amber-50 to-yellow-50 p-6 shadow-sm">
+                <div class="flex items-start gap-4">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/20 text-primary">
+                        <span class="material-symbols-outlined">auto_awesome</span>
+                    </div>
+                    <div class="flex-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <p class="text-xs font-bold uppercase tracking-[0.2em] text-amber-700">Business Coach Summary</p>
+                            <?php if (($llmAnalysis['source'] ?? '') === 'groq'): ?>
+                            <span class="rounded-full bg-white/80 px-2 py-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-primary">AI-assisted</span>
+                            <?php endif; ?>
+                        </div>
+                        <h2 class="mt-2 text-xl font-bold text-primary"><?php echo htmlspecialchars($llmAnalysis['headline'] ?? 'Here is a simple summary of what your customer groups mean.'); ?></h2>
+                        <p class="mt-2 text-sm leading-6 text-slate-700"><?php echo htmlspecialchars($llmAnalysis['story'] ?? 'Use the customer groups and recommended actions below to plan your follow-up messages and retention campaigns.'); ?></p>
+
+                        <?php if (isset($llmAnalysis['health_score']) && is_array($llmAnalysis['health_score'])): ?>
+                        <div class="mt-4 inline-flex items-center gap-3 rounded-full border border-amber-200 bg-white px-4 py-2">
+                            <span class="text-base font-extrabold text-primary"><?php echo htmlspecialchars((string) ((int) ($llmAnalysis['health_score']['score'] ?? 0))); ?>/10</span>
+                            <span class="text-sm font-semibold text-slate-700"><?php echo htmlspecialchars((string) ($llmAnalysis['health_score']['label'] ?? 'Business Health')); ?></span>
+                            <button
+                                type="button"
+                                class="info-help-btn inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-200 bg-slate-50 text-[11px] font-bold text-slate-500 hover:bg-slate-100"
+                                data-help-title="Business Health Score"
+                                data-help-text="<?php echo htmlspecialchars((string) ($llmAnalysis['health_score']['explanation'] ?? 'This gives a simple 1 to 10 summary of how strong your customer base looks and how urgently you may need follow-up action.')); ?>"
+                                aria-label="Explain business health score"
+                            >?</button>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($llmAnalysis['key_findings']) && is_array($llmAnalysis['key_findings'])): ?>
+                        <div class="mt-5 grid gap-2">
+                            <?php foreach (array_slice($llmAnalysis['key_findings'], 0, 3) as $finding): ?>
+                            <div class="flex items-start gap-2 text-sm text-slate-700">
+                                <span class="mt-1 text-accent">●</span>
+                                <p><?php echo htmlspecialchars((string) $finding); ?></p>
+                            </div>
+                            <?php endforeach; ?>
+                        </div>
+                        <?php endif; ?>
+
+                        <?php if (!empty($llmAnalysis['top_3_actions']) && is_array($llmAnalysis['top_3_actions'])): ?>
+                        <div class="mt-5 border-t border-amber-200 pt-4">
+                            <h3 class="text-sm font-bold uppercase tracking-[0.18em] text-primary">What To Do This Week</h3>
+                            <div class="mt-3 grid gap-3">
+                                <?php foreach (array_slice($llmAnalysis['top_3_actions'], 0, 3) as $index => $actionItem): ?>
+                                <?php if (!is_array($actionItem)) continue; ?>
+                                <div class="flex gap-3 rounded-xl bg-white/80 p-3">
+                                    <div class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
+                                        <?php echo $index + 1; ?>
+                                    </div>
+                                    <div>
+                                        <p class="text-sm font-semibold text-primary"><?php echo htmlspecialchars((string) ($actionItem['action'] ?? 'Take one focused customer follow-up action')); ?></p>
+                                        <p class="mt-1 text-xs leading-5 text-slate-600">
+                                            <?php echo htmlspecialchars((string) ($actionItem['how'] ?? $actionItem['why'] ?? 'Use this recommendation to plan your next customer outreach.')); ?>
+                                        </p>
+                                    </div>
+                                </div>
+                                <?php endforeach; ?>
+                            </div>
+                        </div>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <?php if (!empty($chartPanels)): ?>
             <div class="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
