@@ -125,7 +125,7 @@ if (!$authToken) {
 
 // ── REAL MODE: forward to FastAPI ─────────────────────────────
 $clustering_method  = $_POST['clustering_method']  ?? 'kmeans';
-$include_comparison = $_POST['include_comparison']  ?? 'false';
+$include_comparison = $_POST['include_comparison']  ?? 'true';
 
 // Build multipart body manually (curl is cleaner than file_get_contents for files)
 if (function_exists('curl_init')) {
@@ -166,6 +166,9 @@ if (function_exists('curl_init')) {
     $body .= "--{$boundary}\r\n";
     $body .= "Content-Disposition: form-data; name=\"clustering_method\"\r\n\r\n";
     $body .= "{$clustering_method}\r\n";
+    $body .= "--{$boundary}\r\n";
+    $body .= "Content-Disposition: form-data; name=\"include_comparison\"\r\n\r\n";
+    $body .= "{$include_comparison}\r\n";
     $body .= "--{$boundary}--\r\n";
 
     $context  = stream_context_create(['http' => [

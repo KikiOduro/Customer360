@@ -81,7 +81,7 @@ function buildBackendMappingFormData(array $mapping, array $data): array {
         'invoice_id_col' => $mapping['invoice_id'] ?? '',
         'amount_col' => $mapping['amount'] ?? '',
         'clustering_method' => $data['clustering_method'] ?? 'kmeans',
-        'include_comparison' => $data['include_comparison'] ?? false,
+        'include_comparison' => $data['include_comparison'] ?? true,
         'amount_source_mode' => $data['amount_source_mode'] ?? 'direct',
         'invoice_date_format' => $data['invoice_date_format'] ?? '',
         'dayfirst' => !empty($data['dayfirst']) ? 'true' : 'false',
