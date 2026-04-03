@@ -35,6 +35,9 @@ squarify==0.4.3
 # Explainability
 shap==0.44.1
 
+# LLM narrative generation
+groq==0.13.0
+
 # PDF Report Generation
 reportlab==4.0.8
 fpdf2==2.7.8
