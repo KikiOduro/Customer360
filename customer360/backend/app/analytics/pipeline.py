@@ -806,6 +806,13 @@ class SegmentationPipeline:
         customer_csv_path = self.output_dir / f"{self.job_id}_customers.csv"
         customer_output.to_csv(customer_csv_path, index=False)
 
+        # Track output artifacts before serializing the main results payload.
+        self.results['output_files'] = {
+            'customers_csv':  str(customer_csv_path),
+            'results_json':   str(self.output_dir / f"{self.job_id}_results.json"),
+            'segments_json':  str(self.output_dir / f"{self.job_id}_segments.json")
+        }
+
         # Full results JSON
         results_json_path = self.output_dir / f"{self.job_id}_results.json"
         with open(results_json_path, 'w') as f:
@@ -814,13 +821,7 @@ class SegmentationPipeline:
         # Segments JSON (kept for backwards compat with jobs.py)
         segments_json_path = self.output_dir / f"{self.job_id}_segments.json"
         with open(segments_json_path, 'w') as f:
-            json.dump(self.segments, f, indent=2)
-
-        self.results['output_files'] = {
-            'customers_csv':  str(customer_csv_path),
-            'results_json':   str(results_json_path),
-            'segments_json':  str(segments_json_path)
-        }
+            json.dump(self._convert_to_serializable(self.segments), f, indent=2, default=str)
 
     def _build_recent_customers(self, customer_output: pd.DataFrame, limit: int = 8):
         """Prepare a lightweight recent-customer table for the frontend."""
