@@ -4,6 +4,7 @@ Handles file upload, job status, results, and report generation.
 """
 import os
 import json
+import math
 import uuid
 import shutil
 from datetime import datetime
@@ -34,6 +35,20 @@ def update_job_progress(db: Session, job: Job, percent: int, stage: str, message
     job.progress_stage = stage
     job.progress_message = message
     db.commit()
+
+
+def sanitize_json_payload(value):
+    """Recursively replace NaN/Infinity values with None so JSON responses remain valid."""
+    if isinstance(value, dict):
+        return {key: sanitize_json_payload(item) for key, item in value.items()}
+
+    if isinstance(value, list):
+        return [sanitize_json_payload(item) for item in value]
+
+    if isinstance(value, float) and not math.isfinite(value):
+        return None
+
+    return value
 
 
 def validate_file(file: UploadFile) -> None:
@@ -599,7 +614,7 @@ async def get_job_results(
     with open(results_path, 'r') as f:
         results = json.load(f)
     
-    return results
+    return sanitize_json_payload(results)
 
 
 @router.get("/report/{job_id}")
