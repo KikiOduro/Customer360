@@ -134,7 +134,7 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
                 <div class="hidden md:flex items-center gap-9">
                     <a class="text-sm font-medium hover:text-primary/70 transition-colors" href="dashboard.php">Dashboard</a>
                     <a class="text-sm font-medium hover:text-primary/70 transition-colors" href="upload.php">Upload</a>
-                    <a class="text-sm font-medium hover:text-primary/70 transition-colors" href="analytics.php">Analytics</a>
+                    <a class="text-sm font-medium hover:text-primary/70 transition-colors" href="analytics.php?job_id=<?php echo urlencode($jobId); ?>">Analytics</a>
                     <a class="text-sm font-medium hover:text-primary/70 transition-colors" href="reports.php">Reports</a>
                 </div>
                 <div class="flex gap-3 items-center">
@@ -386,7 +386,7 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
         }
 
         function goToResults() {
-            window.location.href = 'analysis.php?job_id=' + encodeURIComponent(jobId);
+            window.location.href = 'analytics.php?job_id=' + encodeURIComponent(jobId);
         }
 
         function applyJobState(status, createdAt, backendProgress = null) {
