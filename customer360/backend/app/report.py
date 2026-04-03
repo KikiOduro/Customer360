@@ -110,6 +110,27 @@ class ReportGenerator:
     def _format_currency(self, amount: Any, decimals: int = 2) -> str:
         """Format monetary values with an ASCII currency code to avoid missing glyphs."""
         return f"{self._currency_code()} {self._safe_number(amount):,.{decimals}f}"
+
+    def _report_meta(self) -> Dict[str, Any]:
+        """Return report summary metadata with fallbacks for older result JSON files."""
+        meta = dict(self.results.get('meta') or {})
+        preprocessing_summary = self.results.get('preprocessing', {}).get('summary', {})
+        clustering = self.results.get('clustering', {})
+
+        fallback_fields = {
+            'num_customers': preprocessing_summary.get('num_customers', 0),
+            'num_transactions': preprocessing_summary.get('num_transactions', 0),
+            'total_revenue': preprocessing_summary.get('total_revenue', 0),
+            'num_clusters': clustering.get('n_clusters', 0),
+            'silhouette_score': clustering.get('silhouette_score', 0),
+            'clustering_method': clustering.get('method', 'kmeans'),
+        }
+
+        for key, fallback_value in fallback_fields.items():
+            if meta.get(key) in (None, '', 0, 0.0):
+                meta[key] = fallback_value
+
+        return meta
     
     def generate(self, output_path: str) -> str:
         """
@@ -228,7 +249,7 @@ class ReportGenerator:
         elements.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor('#e2e8f0')))
         elements.append(Spacer(1, 0.2*inch))
         
-        meta = self.results.get('meta', {})
+        meta = self._report_meta()
         summary = self.results.get('segment_summary', {})
         
         # Key metrics

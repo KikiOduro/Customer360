@@ -163,11 +163,6 @@ class SegmentationPipeline:
             chart_paths = self._generate_charts(rfm_normalised, pca_result)
             self.results['charts'] = chart_paths
 
-            # 12. Save outputs
-            self._emit_progress(98, 'saving_outputs', 'Saving analysis JSON, chart outputs, and customer exports to the server.')
-            logger.info("Step 12: Saving outputs...")
-            self._save_outputs(customer_output)
-
             end_time = datetime.utcnow()
             self.results['meta'] = {
                 'job_id':            self.job_id,
@@ -184,6 +179,11 @@ class SegmentationPipeline:
                 'currency': 'GHS',
                 'model_artifacts_used': self._artifacts_used_summary(scaler_override),
             }
+
+            # 12. Save outputs after meta is available so reports and JSON exports stay consistent.
+            self._emit_progress(98, 'saving_outputs', 'Saving analysis JSON, chart outputs, and customer exports to the server.')
+            logger.info("Step 12: Saving outputs...")
+            self._save_outputs(customer_output)
 
             logger.info(
                 f"Pipeline completed in {self.results['meta']['duration_seconds']:.1f}s"
