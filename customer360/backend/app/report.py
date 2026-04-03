@@ -251,6 +251,7 @@ class ReportGenerator:
         
         meta = self._report_meta()
         summary = self.results.get('segment_summary', {})
+        story_summary = self.results.get('story_summary', {}) or {}
         
         # Key metrics
         summary_text = f"""
@@ -267,6 +268,13 @@ class ReportGenerator:
         
         elements.append(Paragraph(summary_text, self.styles['ReportBodyText']))
         elements.append(Spacer(1, 0.3*inch))
+
+        if story_summary.get('narrative'):
+            elements.append(Paragraph("What This Means for Your Business", self.styles['SubSection']))
+            if story_summary.get('headline'):
+                elements.append(Paragraph(f"<b>{story_summary.get('headline')}</b>", self.styles['ReportBodyText']))
+            elements.append(Paragraph(str(story_summary.get('narrative')), self.styles['ReportBodyText']))
+            elements.append(Spacer(1, 0.2*inch))
         
         # Key findings
         elements.append(Paragraph("Key Findings:", self.styles['SubSection']))

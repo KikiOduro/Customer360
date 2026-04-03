@@ -35,8 +35,15 @@ if ($jobId && $authToken) {
 $meta = $analysisResults['meta'] ?? [];
 $summary = $analysisResults['segment_summary'] ?? [];
 $prepSummary = $analysisResults['preprocessing']['summary'] ?? [];
+$storySummary = $analysisResults['story_summary'] ?? [];
+$edaSummary = $analysisResults['preprocessing']['eda'] ?? [];
+$cleaningStats = $analysisResults['preprocessing']['cleaning_stats'] ?? [];
+$outlierSummary = $analysisResults['outlier_treatment'] ?? [];
+$shapSummary = $analysisResults['shap']['ranked_features'] ?? [];
+$chartsRaw = $analysisResults['charts'] ?? [];
 $segmentsRaw = $analysisResults['segments'] ?? [];
 $recentCustomers = $analysisResults['recent_customers'] ?? [];
+$customerRows = $analysisResults['customer_table'] ?? $recentCustomers;
 $hasAnalyticsData = is_array($analysisResults) && $analysisResults !== null;
 
 $uploadedFile = $_SESSION['current_job']['filename'] ?? 'Uploaded file';
@@ -46,6 +53,9 @@ $kpis = [
     ['label' => 'Active Customers', 'value' => $meta['num_customers'] ?? $summary['total_customers'] ?? null, 'icon' => 'group', 'type' => 'number', 'color' => 'purple'],
     ['label' => 'Avg Transaction', 'value' => $prepSummary['avg_transaction'] ?? null, 'icon' => 'shopping_cart', 'type' => 'currency', 'color' => 'orange'],
     ['label' => 'Total Transactions', 'value' => $meta['num_transactions'] ?? $prepSummary['num_transactions'] ?? null, 'icon' => 'receipt_long', 'type' => 'number', 'color' => 'green'],
+    ['label' => 'Customer Health Score', 'value' => $storySummary['health_score'] ?? null, 'icon' => 'favorite', 'type' => 'percentage', 'color' => 'green'],
+    ['label' => 'Revenue Concentration', 'value' => $storySummary['revenue_concentration'] ?? null, 'icon' => 'leaderboard', 'type' => 'percentage', 'color' => 'orange'],
+    ['label' => 'Analysis Quality', 'value' => $storySummary['quality_rating'] ?? null, 'icon' => 'hotel_class', 'type' => 'stars', 'color' => 'purple'],
 ];
 
 $segmentColors = [
@@ -64,11 +74,40 @@ $segmentColors = [
     'Lost' => 'slate',
 ];
 
+$segmentDisplayMap = [
+    'Champions' => ['title' => 'Star Customers', 'emoji' => '⭐'],
+    'Loyal Customers' => ['title' => 'Faithful Regulars', 'emoji' => '💙'],
+    'Potential Loyalists' => ['title' => 'Almost Regulars', 'emoji' => '📈'],
+    'New Customers' => ['title' => 'Fresh Buyers', 'emoji' => '🌱'],
+    'Promising' => ['title' => 'Warm Leads', 'emoji' => '✨'],
+    'Need Attention' => ['title' => 'Needs Follow-up', 'emoji' => '📣'],
+    'Needs Attention' => ['title' => 'Needs Follow-up', 'emoji' => '📣'],
+    'About to Sleep' => ['title' => 'Cooling Off', 'emoji' => '🌙'],
+    'At Risk' => ['title' => 'Danger Zone', 'emoji' => '⚠️'],
+    'Cannot Lose' => ['title' => 'Must Save', 'emoji' => '🛟'],
+    'Hibernating' => ['title' => 'Silent Customers', 'emoji' => '💤'],
+    'Lost Customers' => ['title' => 'Dormant Customers', 'emoji' => '🧊'],
+    'Lost' => ['title' => 'Dormant Customers', 'emoji' => '🧊'],
+];
+
+$chartDisplay = [
+    'pareto' => ['title' => 'Revenue Breakdown', 'caption' => 'See which customer groups contribute the largest share of your revenue first.'],
+    'segment_sizes' => ['title' => 'Customer Groups', 'caption' => 'Understand how your customer base is distributed across the discovered segments.'],
+    'pca_scatter' => ['title' => 'Customer Map', 'caption' => 'Customers plotted close together behave similarly across recency, frequency, and spending.'],
+    'rfm_distributions' => ['title' => 'Behaviour Patterns', 'caption' => 'Review the spread of customer recency, purchase frequency, and total spend.'],
+    'radar_chart' => ['title' => 'Segment Profiles', 'caption' => 'Compare how each segment differs across the three RFM dimensions.'],
+    'rfm_violin_plots' => ['title' => 'Deep Dive', 'caption' => 'Inspect the detailed value ranges inside each segment for each RFM metric.'],
+    'algorithm_comparison' => ['title' => 'Algorithm Quality', 'caption' => 'Compare clustering quality across K-Means, GMM, and Hierarchical models.'],
+];
+
 $segments = [];
 foreach ($segmentsRaw as $segment) {
     $name = $segment['segment_label'] ?? $segment['segment_name'] ?? $segment['name'] ?? 'Unknown';
+    $displayMeta = $segmentDisplayMap[$name] ?? ['title' => $name, 'emoji' => '👥'];
     $segments[] = [
         'name' => $name,
+        'friendly_name' => $displayMeta['title'],
+        'emoji' => $displayMeta['emoji'],
         'pct' => round($segment['percentage'] ?? 0),
         'count' => $segment['num_customers'] ?? null,
         'avg_recency' => $segment['avg_recency'] ?? null,
@@ -80,12 +119,39 @@ foreach ($segmentsRaw as $segment) {
     ];
 }
 
+$chartPanels = [];
+foreach ($chartDisplay as $chartKey => $chartInfo) {
+    if (!empty($chartsRaw[$chartKey]) && $jobId) {
+        $chartPanels[] = [
+            'key' => $chartKey,
+            'title' => $chartInfo['title'],
+            'caption' => $chartInfo['caption'],
+            'url' => 'api/process.php?action=chart&job_id=' . rawurlencode($jobId) . '&chart=' . rawurlencode($chartKey),
+        ];
+    }
+}
+
 function formatCurrency($value): string {
-    return $value === null ? 'Not available' : 'GH₵ ' . number_format((float) $value, 2);
+    return $value === null ? 'Not available' : 'GHS ' . number_format((float) $value, 2);
 }
 
 function formatNumberValue($value): string {
     return $value === null ? 'Not available' : number_format((float) $value);
+}
+
+function formatKpiValue(array $kpi): string {
+    $value = $kpi['value'];
+    if ($kpi['type'] === 'currency') {
+        return formatCurrency($value);
+    }
+    if ($kpi['type'] === 'percentage') {
+        return $value === null ? 'Not available' : number_format((float) $value, 1) . '%';
+    }
+    if ($kpi['type'] === 'stars') {
+        $rating = max(0, min(5, (int) round((float) ($value ?? 0))));
+        return $rating > 0 ? str_repeat('★', $rating) . str_repeat('☆', 5 - $rating) : 'Not available';
+    }
+    return formatNumberValue($value);
 }
 
 function getSegmentBgClass($color): string {
@@ -230,7 +296,7 @@ function getSegmentBarClass($color): string {
                 </div>
             </div>
             <?php else: ?>
-            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-8">
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7 mb-8">
                 <?php foreach ($kpis as $kpi): ?>
                 <div class="flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                     <div class="mb-2 flex items-center justify-between">
@@ -240,11 +306,76 @@ function getSegmentBarClass($color): string {
                         </span>
                     </div>
                     <h3 class="text-2xl font-bold text-primary">
-                        <?php echo $kpi['type'] === 'currency' ? formatCurrency($kpi['value']) : formatNumberValue($kpi['value']); ?>
+                        <?php echo htmlspecialchars(formatKpiValue($kpi)); ?>
                     </h3>
                 </div>
                 <?php endforeach; ?>
             </div>
+
+            <div class="mb-8 rounded-2xl border border-amber-100 bg-amber-50 p-6 shadow-sm">
+                <div class="flex items-start gap-4">
+                    <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/20 text-primary">
+                        <span class="material-symbols-outlined">auto_stories</span>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-xs font-bold uppercase tracking-[0.2em] text-amber-700">Your Customer Story</p>
+                        <h2 class="mt-2 text-xl font-bold text-primary"><?php echo htmlspecialchars($storySummary['headline'] ?? 'Your customer story is being prepared.'); ?></h2>
+                        <p class="mt-2 text-sm leading-6 text-slate-700"><?php echo htmlspecialchars($storySummary['narrative'] ?? 'Complete an analysis job to receive a plain-language summary of your customer base and what to do next.'); ?></p>
+                    </div>
+                </div>
+            </div>
+
+            <?php if (!empty($chartPanels)): ?>
+            <div class="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <div class="flex flex-col gap-2 mb-5">
+                    <h2 class="text-xl font-bold text-primary">Visual Charts</h2>
+                    <p class="text-sm text-slate-500">Each chart below comes from the Python analysis pipeline and explains a different part of the segmentation result.</p>
+                </div>
+                <div class="flex flex-wrap gap-2 mb-5" id="chartTabs">
+                    <?php foreach ($chartPanels as $index => $chart): ?>
+                    <button type="button" class="chart-tab rounded-full px-4 py-2 text-sm font-semibold transition-colors <?php echo $index === 0 ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'; ?>" data-chart-index="<?php echo $index; ?>">
+                        <?php echo htmlspecialchars($chart['title']); ?>
+                    </button>
+                    <?php endforeach; ?>
+                </div>
+                <div id="chartPanels">
+                    <?php foreach ($chartPanels as $index => $chart): ?>
+                    <article class="chart-panel <?php echo $index === 0 ? '' : 'hidden'; ?>" data-chart-index="<?php echo $index; ?>">
+                        <div class="rounded-2xl bg-slate-50 p-4 border border-slate-100">
+                            <img src="<?php echo htmlspecialchars($chart['url']); ?>" alt="<?php echo htmlspecialchars($chart['title']); ?>" class="w-full rounded-xl bg-white object-contain" loading="lazy"/>
+                        </div>
+                        <p class="mt-3 text-sm text-slate-600"><strong class="text-primary"><?php echo htmlspecialchars($chart['title']); ?>:</strong> <?php echo htmlspecialchars($chart['caption']); ?></p>
+                    </article>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
+
+            <?php if (!empty($shapSummary)): ?>
+            <div class="mb-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <h2 class="text-xl font-bold text-primary mb-2">What Drives Your Segments</h2>
+                <p class="text-sm text-slate-500 mb-5">This ranks the RFM features that most strongly influenced how customers were grouped.</p>
+                <div class="space-y-4">
+                    <?php $maxImportance = max(array_map(fn($item) => (float) ($item['importance'] ?? 0), $shapSummary)) ?: 1; ?>
+                    <?php foreach ($shapSummary as $featureItem): ?>
+                    <?php
+                        $featureLabel = ucfirst(str_replace('_', ' ', (string) ($featureItem['feature'] ?? 'feature')));
+                        $importance = (float) ($featureItem['importance'] ?? 0);
+                        $width = max(8, min(100, ($importance / $maxImportance) * 100));
+                    ?>
+                    <div>
+                        <div class="flex items-center justify-between text-sm font-medium text-slate-700">
+                            <span><?php echo htmlspecialchars($featureLabel); ?></span>
+                            <span><?php echo number_format($importance, 4); ?></span>
+                        </div>
+                        <div class="mt-2 h-3 overflow-hidden rounded-full bg-slate-100">
+                            <div class="h-full rounded-full bg-primary" style="width:<?php echo $width; ?>%"></div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <div class="mb-8">
                 <div class="flex items-center justify-between mb-4">
@@ -262,11 +393,11 @@ function getSegmentBarClass($color): string {
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center gap-3">
                                 <div class="rounded-lg p-2 <?php echo getSegmentBgClass($segment['color']); ?>">
-                                    <span class="material-symbols-outlined">category</span>
+                                    <span class="text-lg" aria-hidden="true"><?php echo htmlspecialchars($segment['emoji']); ?></span>
                                 </div>
                                 <div>
-                                    <h4 class="font-bold text-primary"><?php echo htmlspecialchars($segment['name']); ?></h4>
-                                    <p class="text-xs text-slate-500"><?php echo htmlspecialchars($segment['description'] !== '' ? $segment['description'] : formatNumberValue($segment['count']) . ' customers'); ?></p>
+                                    <h4 class="font-bold text-primary"><?php echo htmlspecialchars($segment['friendly_name']); ?></h4>
+                                    <p class="text-xs text-slate-500"><?php echo htmlspecialchars($segment['name']); ?> · <?php echo htmlspecialchars(formatNumberValue($segment['count'])); ?> customers</p>
                                 </div>
                             </div>
                             <span class="font-bold text-primary"><?php echo htmlspecialchars((string) $segment['pct']); ?>%</span>
@@ -279,11 +410,29 @@ function getSegmentBarClass($color): string {
                             <div><p class="text-xs text-slate-400">Frequency</p><p class="text-sm font-semibold text-primary"><?php echo $segment['avg_freq'] !== null ? round((float) $segment['avg_freq'], 1) . 'x' : 'N/A'; ?></p></div>
                             <div><p class="text-xs text-slate-400">Avg Spend</p><p class="text-sm font-semibold text-primary"><?php echo formatCurrency($segment['avg_monetary']); ?></p></div>
                         </div>
+                        <p class="mt-3 text-sm text-slate-600"><?php echo htmlspecialchars($segment['description'] !== '' ? $segment['description'] : 'Customer behaviour in this segment is summarized by the RFM averages above.'); ?></p>
                         <?php if (!empty($segment['actions'])): ?>
-                        <div class="mt-3 pt-3 border-t border-slate-100">
+                        <details class="mt-3 pt-3 border-t border-slate-100 group">
+                            <summary class="cursor-pointer list-none text-xs font-semibold text-primary flex items-center justify-between">
+                                <span>Top Actions & Segment Details</span>
+                                <span class="material-symbols-outlined text-[18px] group-open:rotate-180 transition-transform">expand_more</span>
+                            </summary>
+                            <div class="mt-3 space-y-2">
                             <p class="text-xs font-semibold text-slate-500 mb-1">Top Action</p>
                             <p class="text-xs text-slate-600"><?php echo htmlspecialchars($segment['actions'][0]); ?></p>
-                        </div>
+                                <?php if (count($segment['actions']) > 1): ?>
+                                <ul class="list-disc pl-4 text-xs text-slate-600 space-y-1">
+                                    <?php foreach (array_slice($segment['actions'], 1) as $actionItem): ?>
+                                    <li><?php echo htmlspecialchars($actionItem); ?></li>
+                                    <?php endforeach; ?>
+                                </ul>
+                                <?php endif; ?>
+                                <button type="button" class="segment-focus-btn mt-2 inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline" data-segment="<?php echo htmlspecialchars($segment['name']); ?>">
+                                    View these customers
+                                    <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                                </button>
+                            </div>
+                        </details>
                         <?php endif; ?>
                     </div>
                     <?php endforeach; ?>
@@ -292,9 +441,28 @@ function getSegmentBarClass($color): string {
             </div>
 
             <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-                <h2 class="text-xl font-bold text-primary mb-4">Recent Customers</h2>
-                <?php if (empty($recentCustomers)): ?>
-                <p class="text-sm text-slate-500">This analysis result did not include recent customer-level rows.</p>
+                <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between mb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-primary">Customer Explorer</h2>
+                        <p class="text-sm text-slate-500">Search, filter, and paginate the full customer list produced by the segmentation pipeline.</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-2 sm:items-center">
+                        <input id="customerSearch" type="search" placeholder="Search customer ID, name, or segment..." class="w-full sm:w-72 rounded-lg border-slate-200 text-sm focus:border-primary focus:ring-primary"/>
+                        <select id="segmentFilter" class="rounded-lg border-slate-200 text-sm focus:border-primary focus:ring-primary">
+                            <option value="">All Segments</option>
+                            <?php foreach ($segments as $segment): ?>
+                            <option value="<?php echo htmlspecialchars($segment['name']); ?>"><?php echo htmlspecialchars($segment['name']); ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select id="statusFilter" class="rounded-lg border-slate-200 text-sm focus:border-primary focus:ring-primary">
+                            <option value="">All Statuses</option>
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+                <?php if (empty($customerRows)): ?>
+                <p class="text-sm text-slate-500">This analysis result did not include customer-level rows.</p>
                 <?php else: ?>
                 <div class="overflow-x-auto">
                     <table class="w-full text-left text-sm">
@@ -303,34 +471,69 @@ function getSegmentBarClass($color): string {
                                 <th class="px-4 py-3 font-medium">Customer</th>
                                 <th class="px-4 py-3 font-medium">Segment</th>
                                 <th class="px-4 py-3 font-medium">Last Purchase</th>
+                                <th class="px-4 py-3 font-medium">Visits</th>
+                                <th class="px-4 py-3 font-medium">Risk</th>
                                 <th class="px-4 py-3 font-medium">Status</th>
                                 <th class="px-4 py-3 font-medium text-right">Total Spend</th>
                             </tr>
                         </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            <?php foreach ($recentCustomers as $customer): ?>
-                            <?php $segmentName = $customer['segment'] ?? 'Unknown'; $segmentColor = $segmentColors[$segmentName] ?? 'gray'; ?>
-                            <tr class="hover:bg-slate-50">
-                                <td class="px-4 py-4">
-                                    <div class="flex items-center gap-3">
-                                        <div class="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary"><?php echo htmlspecialchars(strtoupper(substr($customer['name'] ?? 'C', 0, 2))); ?></div>
-                                        <div>
-                                            <p class="font-medium text-primary"><?php echo htmlspecialchars($customer['name'] ?? 'Customer'); ?></p>
-                                            <p class="text-xs text-slate-500"><?php echo htmlspecialchars($customer['email'] ?? 'N/A'); ?></p>
-                                        </div>
-                                    </div>
-                                </td>
-                                <td class="px-4 py-4"><span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium <?php echo getSegmentBgClass($segmentColor); ?>"><?php echo htmlspecialchars($segmentName); ?></span></td>
-                                <td class="px-4 py-4 text-slate-500"><?php echo htmlspecialchars($customer['last_purchase_date'] ?? $customer['last_purchase'] ?? 'N/A'); ?></td>
-                                <td class="px-4 py-4"><?php echo htmlspecialchars(($customer['status'] ?? (($customer['recency_days'] ?? 30) < 30 ? 'Active' : 'Inactive'))); ?></td>
-                                <td class="px-4 py-4 text-right font-medium text-primary"><?php echo formatCurrency($customer['total_spend'] ?? $customer['spend'] ?? null); ?></td>
-                            </tr>
-                            <?php endforeach; ?>
-                        </tbody>
+                        <tbody id="customerTableBody" class="divide-y divide-slate-100"></tbody>
                     </table>
+                </div>
+                <div class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-t border-slate-100 pt-4">
+                    <p id="customerTableMeta" class="text-sm text-slate-500"></p>
+                    <div class="flex items-center gap-2">
+                        <button id="prevPage" type="button" class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-primary hover:bg-slate-50">Previous</button>
+                        <span id="pageLabel" class="text-sm font-semibold text-slate-700"></span>
+                        <button id="nextPage" type="button" class="rounded-lg border border-slate-200 px-3 py-2 text-sm font-medium text-primary hover:bg-slate-50">Next</button>
+                    </div>
                 </div>
                 <?php endif; ?>
             </div>
+
+            <details class="mt-8 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+                <summary class="cursor-pointer list-none">
+                    <div class="flex items-center justify-between gap-4">
+                        <div>
+                            <h2 class="text-xl font-bold text-primary">Data Quality Summary</h2>
+                            <p class="mt-1 text-sm text-slate-500">Review what the pipeline cleaned, capped, or flagged before generating customer segments.</p>
+                        </div>
+                        <span class="material-symbols-outlined text-slate-500">expand_more</span>
+                    </div>
+                </summary>
+                <div class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div class="rounded-xl bg-slate-50 p-4 border border-slate-100">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Rows Processed</p>
+                        <p class="mt-2 text-2xl font-bold text-primary"><?php echo htmlspecialchars(formatNumberValue($prepSummary['num_transactions'] ?? $meta['num_transactions'] ?? null)); ?></p>
+                        <p class="mt-1 text-xs text-slate-500">Blank rows removed: <?php echo htmlspecialchars(formatNumberValue($analysisResults['preprocessing']['removed_blank_rows'] ?? 0)); ?></p>
+                    </div>
+                    <div class="rounded-xl bg-slate-50 p-4 border border-slate-100">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Rows Removed</p>
+                        <p class="mt-2 text-2xl font-bold text-primary"><?php echo htmlspecialchars(formatNumberValue($cleaningStats['rows_removed'] ?? 0)); ?></p>
+                        <p class="mt-1 text-xs text-slate-500">Retention rate: <?php echo htmlspecialchars(isset($cleaningStats['retention_rate']) ? number_format((float) $cleaningStats['retention_rate'] * 100, 1) . '%' : 'N/A'); ?></p>
+                    </div>
+                    <div class="rounded-xl bg-slate-50 p-4 border border-slate-100">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Outliers Capped</p>
+                        <p class="mt-2 text-2xl font-bold text-primary"><?php echo htmlspecialchars(formatNumberValue(($outlierSummary['capped_below'] ?? 0) + ($outlierSummary['capped_above'] ?? 0))); ?></p>
+                        <p class="mt-1 text-xs text-slate-500">IQR bounds: <?php echo htmlspecialchars(formatCurrency($outlierSummary['lower_bound'] ?? null)); ?> to <?php echo htmlspecialchars(formatCurrency($outlierSummary['upper_bound'] ?? null)); ?></p>
+                    </div>
+                    <div class="rounded-xl bg-slate-50 p-4 border border-slate-100">
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Data Warnings</p>
+                        <p class="mt-2 text-2xl font-bold text-primary"><?php echo htmlspecialchars(formatNumberValue(count($analysisResults['preprocessing']['warnings'] ?? []))); ?></p>
+                        <p class="mt-1 text-xs text-slate-500">Missing values handled: <?php echo htmlspecialchars(formatNumberValue($edaSummary['missing_values'] ?? 0)); ?></p>
+                    </div>
+                </div>
+                <?php if (!empty($analysisResults['preprocessing']['warnings'])): ?>
+                <div class="mt-5 rounded-xl bg-amber-50 p-4 border border-amber-100">
+                    <p class="text-sm font-semibold text-amber-800">Pipeline Notices</p>
+                    <ul class="mt-2 space-y-1 text-sm text-amber-800">
+                        <?php foreach ($analysisResults['preprocessing']['warnings'] as $warningMessage): ?>
+                        <li><?php echo htmlspecialchars((string) $warningMessage); ?></li>
+                        <?php endforeach; ?>
+                    </ul>
+                </div>
+                <?php endif; ?>
+            </details>
             <?php endif; ?>
         </div>
     </main>
@@ -356,6 +559,10 @@ function getSegmentBarClass($color): string {
 
 <script>
     const JOB_ID = <?= json_encode($jobId) ?>;
+    const CUSTOMER_ROWS = <?= json_encode(array_values($customerRows ?? [])) ?>;
+    const SEGMENT_BADGE_CLASSES = <?= json_encode(array_map(fn($color) => getSegmentBgClass($color), $segmentColors)) ?>;
+    const ROWS_PER_PAGE = 10;
+    let activePage = 1;
 
     function toggleUserMenu() { document.getElementById('userMenu').classList.toggle('hidden'); }
     function toggleMobileMenu() {
@@ -363,27 +570,143 @@ function getSegmentBarClass($color): string {
         document.getElementById('mobileMenuOverlay').classList.toggle('hidden');
     }
 
-    document.getElementById('exportCsv').addEventListener('click', () => {
-        const rows = [['Customer', 'Email', 'Segment', 'Last Purchase', 'Status', 'Total Spend']];
-        document.querySelectorAll('tbody tr').forEach(row => {
-            const cells = row.querySelectorAll('td');
-            if (cells.length === 5) {
-                rows.push([
-                    cells[0].textContent.trim(),
-                    cells[0].querySelector('p.text-xs')?.textContent.trim() || '',
-                    cells[1].textContent.trim(),
-                    cells[2].textContent.trim(),
-                    cells[3].textContent.trim(),
-                    cells[4].textContent.trim()
-                ]);
-            }
+    function escapeHtml(value) {
+        return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#39;'
+        }[char]));
+    }
+
+    function formatGhs(value) {
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) {
+            return 'Not available';
+        }
+        return `GHS ${numeric.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    }
+
+    function getFilteredRows() {
+        const searchValue = (document.getElementById('customerSearch')?.value || '').trim().toLowerCase();
+        const segmentValue = document.getElementById('segmentFilter')?.value || '';
+        const statusValue = document.getElementById('statusFilter')?.value || '';
+
+        return CUSTOMER_ROWS.filter((row) => {
+            const searchText = [
+                row.customer_id,
+                row.customer_name,
+                row.customer_email,
+                row.segment,
+                row.risk_level,
+                row.status
+            ].join(' ').toLowerCase();
+            const matchesSearch = !searchValue || searchText.includes(searchValue);
+            const matchesSegment = !segmentValue || row.segment === segmentValue;
+            const matchesStatus = !statusValue || row.status === statusValue;
+            return matchesSearch && matchesSegment && matchesStatus;
         });
-        const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = 'customer360_segments.csv';
-        a.click();
+    }
+
+    function renderCustomerTable() {
+        const body = document.getElementById('customerTableBody');
+        if (!body) {
+            return;
+        }
+
+        const rows = getFilteredRows();
+        const totalPages = Math.max(1, Math.ceil(rows.length / ROWS_PER_PAGE));
+        activePage = Math.min(Math.max(1, activePage), totalPages);
+        const startIndex = (activePage - 1) * ROWS_PER_PAGE;
+        const pageRows = rows.slice(startIndex, startIndex + ROWS_PER_PAGE);
+
+        body.innerHTML = pageRows.map((customer) => {
+            const initialsSource = (customer.customer_name || customer.customer_id || 'C').trim();
+            const initials = initialsSource
+                .split(/\s+/)
+                .map((part) => part.slice(0, 1).toUpperCase())
+                .join('')
+                .slice(0, 2) || 'C';
+            const badgeClass = SEGMENT_BADGE_CLASSES[customer.segment] || 'bg-gray-100 text-gray-800';
+            const riskClass = customer.risk_level === 'High'
+                ? 'bg-red-100 text-red-800'
+                : customer.risk_level === 'Low'
+                    ? 'bg-green-100 text-green-800'
+                    : 'bg-orange-100 text-orange-800';
+            const lastPurchaseSource = customer.last_purchase_date || customer.last_purchase || null;
+            const lastPurchase = lastPurchaseSource
+                ? new Date(lastPurchaseSource).toLocaleDateString()
+                : 'N/A';
+
+            return `
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">${escapeHtml(initials)}</div>
+                            <div>
+                                <p class="font-medium text-primary">${escapeHtml(customer.customer_name || customer.customer_id || 'Customer')}</p>
+                                <p class="text-xs text-slate-500">${escapeHtml(customer.customer_id || 'N/A')}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-4"><span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${escapeHtml(badgeClass)}">${escapeHtml(customer.segment || 'Unknown')}</span></td>
+                    <td class="px-4 py-4 text-slate-500">${escapeHtml(lastPurchase)}</td>
+                    <td class="px-4 py-4 text-slate-700">${escapeHtml(customer.frequency_count ?? 0)}</td>
+                    <td class="px-4 py-4"><span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${escapeHtml(riskClass)}">${escapeHtml(customer.risk_level || 'Medium')}</span></td>
+                    <td class="px-4 py-4">${escapeHtml(customer.status || 'Inactive')}</td>
+                    <td class="px-4 py-4 text-right font-medium text-primary">${escapeHtml(formatGhs(customer.total_spend))}</td>
+                </tr>
+            `;
+        }).join('');
+
+        if (pageRows.length === 0) {
+            body.innerHTML = '<tr><td colspan="7" class="px-4 py-10 text-center text-sm text-slate-500">No customers match your filters.</td></tr>';
+        }
+
+        const meta = document.getElementById('customerTableMeta');
+        if (meta) {
+            const endIndex = Math.min(rows.length, startIndex + pageRows.length);
+            meta.textContent = rows.length
+                ? `Showing ${startIndex + 1}-${endIndex} of ${rows.length} customers`
+                : 'No customers to display';
+        }
+
+        const pageLabel = document.getElementById('pageLabel');
+        if (pageLabel) {
+            pageLabel.textContent = `Page ${activePage} of ${totalPages}`;
+        }
+
+        const prevButton = document.getElementById('prevPage');
+        const nextButton = document.getElementById('nextPage');
+        if (prevButton) prevButton.disabled = activePage <= 1;
+        if (nextButton) nextButton.disabled = activePage >= totalPages;
+        [prevButton, nextButton].forEach((button) => {
+            if (!button) return;
+            button.classList.toggle('opacity-50', button.disabled);
+            button.classList.toggle('cursor-not-allowed', button.disabled);
+        });
+    }
+
+    function activateChartTab(index) {
+        document.querySelectorAll('.chart-tab').forEach((button) => {
+            const isActive = Number(button.dataset.chartIndex) === index;
+            button.classList.toggle('bg-primary', isActive);
+            button.classList.toggle('text-white', isActive);
+            button.classList.toggle('bg-slate-100', !isActive);
+            button.classList.toggle('text-slate-600', !isActive);
+        });
+        document.querySelectorAll('.chart-panel').forEach((panel) => {
+            panel.classList.toggle('hidden', Number(panel.dataset.chartIndex) !== index);
+        });
+    }
+
+    document.getElementById('exportCsv').addEventListener('click', () => {
+        if (!JOB_ID) {
+            alert('CSV export requires a completed live analysis job.');
+            return;
+        }
+        window.location.href = `api/process.php?action=download_csv&job_id=${encodeURIComponent(JOB_ID)}`;
     });
 
     document.getElementById('downloadPdf').addEventListener('click', () => {
@@ -393,6 +716,46 @@ function getSegmentBarClass($color): string {
         }
         window.location.href = `api/process.php?action=report&job_id=${encodeURIComponent(JOB_ID)}`;
     });
+
+    document.getElementById('customerSearch')?.addEventListener('input', () => {
+        activePage = 1;
+        renderCustomerTable();
+    });
+    document.getElementById('segmentFilter')?.addEventListener('change', () => {
+        activePage = 1;
+        renderCustomerTable();
+    });
+    document.getElementById('statusFilter')?.addEventListener('change', () => {
+        activePage = 1;
+        renderCustomerTable();
+    });
+    document.getElementById('prevPage')?.addEventListener('click', () => {
+        activePage -= 1;
+        renderCustomerTable();
+    });
+    document.getElementById('nextPage')?.addEventListener('click', () => {
+        activePage += 1;
+        renderCustomerTable();
+    });
+
+    document.querySelectorAll('.chart-tab').forEach((button) => {
+        button.addEventListener('click', () => activateChartTab(Number(button.dataset.chartIndex || 0)));
+    });
+
+    document.querySelectorAll('.segment-focus-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+            const segment = button.dataset.segment || '';
+            const segmentFilter = document.getElementById('segmentFilter');
+            if (segmentFilter) {
+                segmentFilter.value = segment;
+            }
+            activePage = 1;
+            renderCustomerTable();
+            document.getElementById('customerTableBody')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+
+    renderCustomerTable();
 </script>
 </body>
 </html>

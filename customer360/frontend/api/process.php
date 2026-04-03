@@ -28,6 +28,12 @@ switch ($action) {
     case 'report':
         handleReport($jobId);
         break;
+    case 'download_csv':
+        handleCustomerCsv($jobId);
+        break;
+    case 'chart':
+        handleChart($jobId);
+        break;
     case 'delete':
         handleDelete($jobId);
         break;
@@ -140,15 +146,48 @@ function handleReport($jobId) {
 
     $token = requireToken();
     $reportUrl = BACKEND_API_URL . "/jobs/report/$jobId";
+    streamBackendAsset($reportUrl, $token, 'application/pdf', 'application/pdf', 'attachment; filename="customer360_report.pdf"');
+}
+
+function handleCustomerCsv($jobId) {
+    if (!$jobId) {
+        jsonResponse(['error' => 'No job ID provided'], 400);
+    }
+
+    $token = requireToken();
+    $csvUrl = BACKEND_API_URL . "/jobs/download/$jobId/customers";
+    streamBackendAsset($csvUrl, $token, 'text/csv', 'text/csv; charset=utf-8', 'attachment; filename="customers_segmented.csv"');
+}
+
+function handleChart($jobId) {
+    if (!$jobId) {
+        jsonResponse(['error' => 'No job ID provided'], 400);
+    }
+
+    $chart = trim((string) ($_GET['chart'] ?? ''));
+    if ($chart === '') {
+        jsonResponse(['error' => 'No chart key provided'], 400);
+    }
+
+    if (!preg_match('/^[a-z0-9_\\-]+$/i', $chart)) {
+        jsonResponse(['error' => 'Invalid chart key'], 400);
+    }
+
+    $token = requireToken();
+    $chartUrl = BACKEND_API_URL . "/jobs/chart/$jobId/" . rawurlencode($chart);
+    streamBackendAsset($chartUrl, $token, 'image/png', 'image/png', 'inline; filename="' . $chart . '.png"');
+}
+
+function streamBackendAsset(string $url, string $token, string $acceptHeader, string $fallbackContentType, string $fallbackContentDisposition) {
 
     if (function_exists('curl_init')) {
-        $ch = curl_init($reportUrl);
+        $ch = curl_init($url);
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_TIMEOUT => 120,
             CURLOPT_HTTPHEADER => [
                 'Authorization: Bearer ' . $token,
-                'Accept: application/pdf',
+                'Accept: ' . $acceptHeader,
             ],
             CURLOPT_HEADER => true,
         ]);
@@ -160,18 +199,21 @@ function handleReport($jobId) {
         curl_close($ch);
 
         if ($curlError) {
-            jsonResponse(['error' => 'Failed to download report: ' . $curlError], 502);
+            jsonResponse(['error' => 'Failed to download backend asset: ' . $curlError], 502);
         }
 
         $rawHeaders = substr($response, 0, $headerSize);
         $body = substr($response, $headerSize);
         if ($httpCode < 200 || $httpCode >= 300) {
             $decoded = json_decode($body, true);
-            jsonResponse(['error' => $decoded['detail'] ?? 'Failed to download report'], $httpCode ?: 502);
+            if ($httpCode === 401) {
+                jsonAuthExpired($decoded['detail'] ?? 'Your session has expired. Please sign in again.');
+            }
+            jsonResponse(['error' => $decoded['detail'] ?? 'Failed to download backend asset'], $httpCode ?: 502);
         }
 
-        $contentType = 'application/pdf';
-        $contentDisposition = 'attachment; filename="customer360_report.pdf"';
+        $contentType = $fallbackContentType;
+        $contentDisposition = $fallbackContentDisposition;
         foreach (explode("\r\n", $rawHeaders) as $headerLine) {
             if (stripos($headerLine, 'Content-Type:') === 0) {
                 $contentType = trim(substr($headerLine, strlen('Content-Type:')));
@@ -191,20 +233,20 @@ function handleReport($jobId) {
         'method' => 'GET',
         'header' => implode("\r\n", [
             'Authorization: Bearer ' . $token,
-            'Accept: application/pdf',
+            'Accept: ' . $acceptHeader,
         ]),
         'timeout' => 120,
         'ignore_errors' => true,
     ]]);
 
-    $body = file_get_contents($reportUrl, false, $context);
+    $body = file_get_contents($url, false, $context);
     if ($body === false) {
-        jsonResponse(['error' => 'Failed to download report'], 502);
+        jsonResponse(['error' => 'Failed to download backend asset'], 502);
     }
 
     $httpCode = 200;
-    $contentType = 'application/pdf';
-    $contentDisposition = 'attachment; filename="customer360_report.pdf"';
+    $contentType = $fallbackContentType;
+    $contentDisposition = $fallbackContentDisposition;
     foreach ($http_response_header ?? [] as $headerLine) {
         if (preg_match('/HTTP\/\d\.\d\s+(\d+)/', $headerLine, $matches)) {
             $httpCode = (int) $matches[1];
@@ -217,7 +259,10 @@ function handleReport($jobId) {
 
     if ($httpCode < 200 || $httpCode >= 300) {
         $decoded = json_decode($body, true);
-        jsonResponse(['error' => $decoded['detail'] ?? 'Failed to download report'], $httpCode ?: 502);
+        if ($httpCode === 401) {
+            jsonAuthExpired($decoded['detail'] ?? 'Your session has expired. Please sign in again.');
+        }
+        jsonResponse(['error' => $decoded['detail'] ?? 'Failed to download backend asset'], $httpCode ?: 502);
     }
 
     header('Content-Type: ' . $contentType);

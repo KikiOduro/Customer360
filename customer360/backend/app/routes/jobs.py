@@ -712,6 +712,80 @@ async def download_customers_csv(
     )
 
 
+@router.get("/chart/{job_id}/{chart_key}")
+async def download_job_chart(
+    job_id: str,
+    chart_key: str,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Stream a generated chart PNG for a completed job.
+    """
+    allowed_charts = {
+        "pca_scatter",
+        "segment_sizes",
+        "rfm_distributions",
+        "pareto",
+        "algorithm_comparison",
+        "radar_chart",
+        "rfm_violin_plots",
+    }
+    if chart_key not in allowed_charts:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid chart key"
+        )
+
+    job = db.query(Job).filter(
+        Job.job_id == job_id,
+        Job.user_id == current_user.id
+    ).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Job not found"
+        )
+
+    if job.status != "completed":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Job is not completed. Current status: {job.status}"
+        )
+
+    results_path = Path(job.output_path) / f"{job_id}_results.json"
+    if not results_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Results file not found"
+        )
+
+    with open(results_path, "r") as handle:
+        results = json.load(handle)
+
+    chart_path_value = ((results.get("charts") or {}).get(chart_key))
+    if not chart_path_value:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Requested chart was not generated for this job"
+        )
+
+    chart_path = Path(chart_path_value).resolve()
+    output_root = Path(job.output_path).resolve()
+    if output_root not in chart_path.parents or chart_path.suffix.lower() != ".png" or not chart_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Chart file not found"
+        )
+
+    return FileResponse(
+        path=str(chart_path),
+        filename=f"{job_id[:8]}_{chart_key}.png",
+        media_type="image/png"
+    )
+
+
 @router.post("/{job_id}/save")
 async def save_job(
     job_id: str,

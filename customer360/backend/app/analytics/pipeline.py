@@ -19,7 +19,7 @@ import joblib
 from .preprocessing import preprocess_transaction_data, get_csv_preview
 from .rfm import compute_rfm, normalize_rfm, get_rfm_statistics, get_rfm_distributions
 from .clustering import run_clustering, run_comparison
-from .segmentation import analyze_clusters, get_cluster_sizes, get_segment_summary
+from .segmentation import SEGMENT_DEFINITIONS, analyze_clusters, get_cluster_sizes, get_segment_summary
 from ..config import MODELS_DIR, OPTIMAL_K_SUBSAMPLE, SHAP_MAX_SAMPLES, CHART_DPI
 
 logger = logging.getLogger(__name__)
@@ -149,6 +149,7 @@ class SegmentationPipeline:
             self._emit_progress(88, 'customer_output', 'Preparing customer-level output tables and recent customer snapshots.')
             logger.info("Step 9: Preparing customer output...")
             customer_output = self._prepare_customer_output(rfm_normalised)
+            self.results['customer_table'] = self._build_customer_rows(customer_output)
             self.results['recent_customers'] = self._build_recent_customers(customer_output)
 
             # 10. SHAP explainability
@@ -179,6 +180,7 @@ class SegmentationPipeline:
                 'currency': 'GHS',
                 'model_artifacts_used': self._artifacts_used_summary(scaler_override),
             }
+            self.results['story_summary'] = self._generate_story_summary()
 
             # 12. Save outputs after meta is available so reports and JSON exports stay consistent.
             self._emit_progress(98, 'saving_outputs', 'Saving analysis JSON, chart outputs, and customer exports to the server.')
@@ -797,9 +799,71 @@ class SegmentationPipeline:
     def _prepare_customer_output(self, rfm_normalised: pd.DataFrame) -> pd.DataFrame:
         output = rfm_normalised[['customer_id', 'recency', 'frequency', 'monetary']].copy()
         output['cluster'] = self.labels
-        segment_map = {s['cluster_id']: s['segment_label'] for s in self.segments}
-        output['segment'] = output['cluster'].map(segment_map)
+        segment_label_map = {s['cluster_id']: s['segment_label'] for s in self.segments}
+        segment_key_map = {s['cluster_id']: s['segment_key'] for s in self.segments}
+        description_map = {s['segment_label']: s.get('description', '') for s in self.segments}
+        action_map = {
+            s['segment_label']: (s.get('recommended_actions') or [''])[0]
+            for s in self.segments
+        }
+
+        output['segment'] = output['cluster'].map(segment_label_map).fillna('Unknown')
+        output['segment_description'] = output['segment'].map(description_map).fillna('')
+        output['recommended_action'] = output['segment'].map(action_map).fillna('')
+        output['risk_level'] = output['cluster'].map(segment_key_map).map(self._risk_level_for_segment_key).fillna('Medium')
+        output['status'] = np.where(output['recency'] <= 30, 'Active', 'Inactive')
+        output['customer_name'] = output['customer_id'].astype(str)
+        output['rfm_score'] = (
+            output['recency'].rank(method='average', ascending=False, pct=True) * 100
+            + output['frequency'].rank(method='average', ascending=True, pct=True) * 100
+            + output['monetary'].rank(method='average', ascending=True, pct=True) * 100
+        ).round(0).astype(int)
+        output['estimated_lifetime_value'] = (
+            output['monetary'].astype(float) * np.maximum(output['frequency'].astype(float), 1.0)
+        ).round(2)
+
+        customer_dates = self._build_customer_dates()
+        if not customer_dates.empty:
+            output = output.merge(customer_dates, on='customer_id', how='left')
+        else:
+            output['last_purchase_date'] = pd.NaT
+            output['first_purchase_date'] = pd.NaT
+            output['customer_tenure_days'] = None
+
+        output = output.rename(columns={
+            'recency': 'recency_days',
+            'frequency': 'frequency_count',
+            'monetary': 'total_spend_ghs'
+        })
         return output
+
+    def _risk_level_for_segment_key(self, segment_key: str) -> str:
+        if segment_key in {'at_risk', 'lost', 'hibernating', 'about_to_sleep'}:
+            return 'High'
+        if segment_key in {'need_attention', 'promising', 'new_customers'}:
+            return 'Medium'
+        return 'Low'
+
+    def _build_customer_dates(self) -> pd.DataFrame:
+        if self.df is None or self.df.empty:
+            return pd.DataFrame()
+
+        try:
+            grouped = (
+                self.df.groupby('customer_id')
+                .agg(
+                    first_purchase_date=('invoice_date', 'min'),
+                    last_purchase_date=('invoice_date', 'max')
+                )
+                .reset_index()
+            )
+            grouped['customer_tenure_days'] = (
+                pd.to_datetime(grouped['last_purchase_date']) - pd.to_datetime(grouped['first_purchase_date'])
+            ).dt.days.clip(lower=0)
+            return grouped
+        except Exception as exc:
+            logger.warning("Could not build customer lifecycle dates for job %s: %s", self.job_id, exc)
+            return pd.DataFrame()
 
     def _save_outputs(self, customer_output: pd.DataFrame):
         # Customers CSV
@@ -823,34 +887,20 @@ class SegmentationPipeline:
         with open(segments_json_path, 'w') as f:
             json.dump(self._convert_to_serializable(self.segments), f, indent=2, default=str)
 
-    def _build_recent_customers(self, customer_output: pd.DataFrame, limit: int = 8):
-        """Prepare a lightweight recent-customer table for the frontend."""
+    def _build_customer_rows(self, customer_output: pd.DataFrame):
+        """Prepare all customer rows for the analytics dashboard table."""
         if customer_output.empty:
             return []
 
-        merged = customer_output.copy()
-        merged['last_purchase'] = pd.NaT
-        merged['total_spend'] = merged.get('monetary', 0)
-        merged['status'] = np.where(merged['recency'] <= 30, 'Active', 'Inactive')
-
-        try:
-            grouped = (
-                self.df.groupby('customer_id')
-                .agg(last_purchase=('invoice_date', 'max'), total_spend=('amount', 'sum'))
-                .reset_index()
-            )
-            merged = merged.merge(grouped, on='customer_id', how='left', suffixes=('', '_grouped'))
-            merged['last_purchase'] = merged['last_purchase_grouped'].combine_first(merged['last_purchase'])
-            merged['total_spend'] = merged['total_spend_grouped'].combine_first(merged['total_spend'])
-            merged = merged.drop(columns=[c for c in ['last_purchase_grouped', 'total_spend_grouped'] if c in merged.columns])
-        except Exception as exc:
-            logger.warning("Could not enrich recent customers table: %s", exc)
-
-        merged = merged.sort_values(by='last_purchase', ascending=False, na_position='last').head(limit)
-
         rows = []
-        for _, row in merged.iterrows():
-            customer_name = str(row['customer_id'])
+        sorted_output = customer_output.sort_values(
+            by=['last_purchase_date', 'total_spend_ghs'],
+            ascending=[False, False],
+            na_position='last'
+        )
+
+        for _, row in sorted_output.iterrows():
+            customer_name = str(row.get('customer_name') or row['customer_id'])
             initials = ''.join(part[:1].upper() for part in customer_name.split()[:2])[:2] or customer_name[:2].upper()
             rows.append({
                 'customer_id': str(row['customer_id']),
@@ -858,11 +908,77 @@ class SegmentationPipeline:
                 'customer_email': '',
                 'initials': initials,
                 'segment': row.get('segment', 'Unknown'),
-                'last_purchase': row['last_purchase'].isoformat() if pd.notna(row['last_purchase']) else None,
+                'segment_description': row.get('segment_description', ''),
+                'recommended_action': row.get('recommended_action', ''),
+                'risk_level': row.get('risk_level', 'Medium'),
+                'recency_days': int(row.get('recency_days', 0) or 0),
+                'frequency_count': int(row.get('frequency_count', 0) or 0),
+                'total_spend': float(row.get('total_spend_ghs', 0) or 0),
+                'rfm_score': int(row.get('rfm_score', 0) or 0),
+                'estimated_lifetime_value': float(row.get('estimated_lifetime_value', 0) or 0),
+                'first_purchase_date': row['first_purchase_date'].isoformat() if pd.notna(row.get('first_purchase_date')) else None,
+                'last_purchase_date': row['last_purchase_date'].isoformat() if pd.notna(row.get('last_purchase_date')) else None,
+                'customer_tenure_days': int(row.get('customer_tenure_days', 0) or 0),
                 'status': row.get('status', 'Active'),
-                'total_spend': float(row.get('total_spend', 0) or 0),
             })
         return rows
+
+    def _build_recent_customers(self, customer_output: pd.DataFrame, limit: int = 8):
+        """Prepare a lightweight recent-customer table for the frontend."""
+        return self._build_customer_rows(customer_output)[:limit]
+
+    def _generate_story_summary(self) -> Dict[str, Any]:
+        """Create a plain-language summary that the frontend and PDF can present directly."""
+        summary = self.results.get('segment_summary', {})
+        meta = self.results.get('meta', {})
+        segments = self.results.get('segments', []) or []
+        if not summary or not segments:
+            return {
+                'headline': 'Customer segmentation is ready.',
+                'narrative': 'Your customer analysis completed successfully and the segment dashboard is available.',
+                'health_score': 0,
+                'revenue_concentration': 0,
+                'quality_rating': 0,
+            }
+
+        growth_segments = {'Champions', 'Loyal Customers', 'Potential Loyalists', 'Promising'}
+        growth_customers = sum(
+            int(segment.get('num_customers', 0) or 0)
+            for segment in segments
+            if segment.get('segment_label') in growth_segments
+        )
+        total_customers = int(summary.get('total_customers', 0) or 0)
+        health_score = round((growth_customers / total_customers * 100), 1) if total_customers else 0.0
+
+        revenue_sorted = sorted(segments, key=lambda item: float(item.get('total_revenue', 0) or 0), reverse=True)
+        total_revenue = float(summary.get('total_revenue', 0) or 0)
+        top_two_revenue = sum(float(segment.get('total_revenue', 0) or 0) for segment in revenue_sorted[:2])
+        revenue_concentration = round((top_two_revenue / total_revenue * 100), 1) if total_revenue else 0.0
+
+        silhouette = float(meta.get('silhouette_score', 0) or 0)
+        quality_rating = max(1, min(5, int(round(1 + silhouette * 4)))) if silhouette > 0 else 1
+
+        best_segment = summary.get('highest_value_segment', {}) or {}
+        risk_count = int(summary.get('at_risk_customers', 0) or 0)
+        headline = (
+            f"{best_segment.get('label', 'Your top segment')} is driving the strongest customer value."
+        )
+        narrative = (
+            f"You have {total_customers:,} customers across {summary.get('num_segments', len(segments))} segments. "
+            f"{growth_customers:,} customers ({health_score:.1f}%) are in your healthier growth segments, while "
+            f"{risk_count:,} customers need urgent retention attention. Your top 2 segments contribute "
+            f"{revenue_concentration:.1f}% of recorded revenue, and the selected {str(meta.get('clustering_method', 'clustering')).upper()} model scored "
+            f"{silhouette:.3f} on silhouette quality."
+        )
+
+        return {
+            'headline': headline,
+            'narrative': narrative,
+            'health_score': health_score,
+            'revenue_concentration': revenue_concentration,
+            'quality_rating': quality_rating,
+            'silhouette_score': silhouette,
+        }
 
     def _convert_to_serializable(self, obj):
         if isinstance(obj, dict):

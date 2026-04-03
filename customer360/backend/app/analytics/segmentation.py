@@ -256,6 +256,7 @@ def analyze_clusters(
             'cluster_id': int(cluster_id),
             'segment_key': segment_key,
             'segment_label': segment_label,
+            'description': SEGMENT_DEFINITIONS[segment_key]['description'],
             'num_customers': num_customers,
             'percentage': round(num_customers / total_customers * 100, 1),
             'avg_recency': round(avg_recency, 1),
