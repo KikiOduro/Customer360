@@ -571,8 +571,12 @@ function getSegmentBarClass($color): string {
                 <div class="rounded-xl border border-slate-200 bg-white p-6 shadow-sm text-sm text-slate-500">This analysis result does not include segment rows yet.</div>
                 <?php else: ?>
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <?php foreach ($segments as $segment): ?>
-                    <div class="flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+                    <?php foreach ($segments as $segIdx => $segment): ?>
+                    <div
+                        class="flex flex-col rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+                        data-segment-card
+                        data-segment-index="<?php echo (int) $segIdx; ?>"
+                    >
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center gap-3">
                                 <div class="rounded-lg p-2 <?php echo getSegmentBgClass($segment['color']); ?>">
@@ -753,6 +757,31 @@ function getSegmentBarClass($color): string {
         <a class="flex items-center gap-3 rounded-lg text-red-400 hover:bg-white/5 px-4 py-3 text-sm font-medium" href="api/auth.php?action=logout"><span class="material-symbols-outlined">logout</span>Sign Out</a>
     </nav>
 </aside>
+
+<script>
+    window.__C360_SEGMENTS = <?php echo json_encode(array_map(function ($segment) {
+        return [
+            'name' => $segment['name'],
+            'count' => $segment['count'],
+            'pct' => $segment['pct'],
+            'avg_recency' => $segment['avg_recency'],
+            'avg_frequency' => $segment['avg_freq'],
+            'avg_monetary' => $segment['avg_monetary'],
+            'description' => $segment['description'],
+            'actions' => $segment['actions'],
+            'color' => $segment['color'],
+        ];
+    }, $segments), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+
+    window.__C360_META = <?php echo json_encode([
+        'total_revenue' => $meta['total_revenue'] ?? 0,
+        'num_customers' => $meta['num_customers'] ?? 0,
+        'num_transactions' => $meta['num_transactions'] ?? 0,
+        'silhouette_score' => $meta['silhouette_score'] ?? 0,
+        'clustering_method' => $meta['clustering_method'] ?? 'kmeans',
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?>;
+</script>
+<script src="assets/js/ai_profiler.js"></script>
 
 <div id="helpModal" class="fixed inset-0 z-[70] hidden items-center justify-center bg-slate-900/60 px-4">
     <div class="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
