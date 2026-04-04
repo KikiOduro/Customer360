@@ -1,0 +1,6 @@
+CustomerID,InvoiceDate,InvoiceNo,Quantity,UnitPrice,Amount,Description,Category
+CUST-001,2026-01-05,INV-1001,2,150.00,,Ankara tote bag,Fashion Accessories
+CUST-001,2026-01-18,INV-1044,1,320.00,,Leather sandals,Footwear
+CUST-002,2026-01-08,INV-1009,3,45.50,,Shea butter jar,Beauty & Personal Care
+CUST-003,2026-01-11,INV-1018,1,250.00,250.00,Branded hoodie,Fashion
+CUST-004,2026-01-15,INV-1030,4,30.00,,Herbal soap bar,Beauty & Personal Care

@@ -164,7 +164,7 @@ $missingPreview = isset($_GET['missing_preview']) && $_GET['missing_preview'] ==
                                 </div>
                                 <h3 class="text-xl font-bold text-primary mb-2">Drag & drop your files here</h3>
                                 <p class="text-slate-500 mb-8 max-w-sm">
-                                    Or <button type="button" onclick="document.getElementById('fileInput').click()" class="text-accent font-semibold hover:underline focus:outline-none">browse files</button> from your computer.
+                                    Or <button type="button" id="browseFilesBtn" class="text-accent font-semibold hover:underline focus:outline-none">browse files</button> from your computer.
                                 </p>
                                 <div class="flex flex-wrap justify-center gap-4 text-xs text-slate-400 font-medium">
                                     <span class="flex items-center gap-1 bg-slate-100 px-3 py-1 rounded-full">CSV</span>
@@ -241,10 +241,10 @@ $missingPreview = isset($_GET['missing_preview']) && $_GET['missing_preview'] ==
                                 </li>
                             </ul>
                             <div class="mt-8 pt-6 border-t border-slate-100">
-                                <a class="group flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors" href="templates/customer_template.csv" download>
+                                <a class="group flex items-center justify-between p-3 rounded-lg bg-slate-50 hover:bg-slate-100 transition-colors" href="templates/rfm_customer_transactions_template.csv" download>
                                     <div class="flex items-center gap-3">
                                         <span class="material-symbols-outlined text-green-600">download</span>
-                                        <div class="text-sm font-medium text-primary">Download Template</div>
+                                        <div class="text-sm font-medium text-primary">Download RFM Template</div>
                                     </div>
                                     <span class="material-symbols-outlined text-slate-400 text-sm">chevron_right</span>
                                 </a>
@@ -395,7 +395,18 @@ $missingPreview = isset($_GET['missing_preview']) && $_GET['missing_preview'] ==
         const dropZone = document.getElementById('dropZone');
         const fileInput = document.getElementById('fileInput');
         
-        dropZone.addEventListener('click', () => fileInput.click());
+        document.getElementById('browseFilesBtn')?.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            fileInput.click();
+        });
+
+        dropZone.addEventListener('click', (event) => {
+            if (event.target?.closest('#browseFilesBtn')) {
+                return;
+            }
+            fileInput.click();
+        });
         dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('border-accent', 'bg-accent/5'); });
         dropZone.addEventListener('dragleave', (e) => { e.preventDefault(); dropZone.classList.remove('border-accent', 'bg-accent/5'); });
         dropZone.addEventListener('drop', (e) => { e.preventDefault(); dropZone.classList.remove('border-accent', 'bg-accent/5'); handleFiles(Array.from(e.dataTransfer.files)); });

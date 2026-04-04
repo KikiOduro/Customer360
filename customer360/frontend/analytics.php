@@ -47,7 +47,7 @@ $recentCustomers = $analysisResults['recent_customers'] ?? [];
 $customerRows = $analysisResults['customer_table'] ?? $recentCustomers;
 $hasAnalyticsData = is_array($analysisResults) && $analysisResults !== null;
 
-$uploadedFile = $_SESSION['current_job']['filename'] ?? 'Uploaded file';
+$uploadedFile = basename((string) ($_SESSION['current_job']['filename'] ?? 'Uploaded file'));
 
 $kpis = [
     [
@@ -377,6 +377,7 @@ function getSegmentBarClass($color): string {
                         <?php endif; ?>
                     </p>
                 </div>
+                <?php if ($hasAnalyticsData): ?>
                 <div class="flex flex-wrap items-center gap-3">
                     <button id="exportCsv" class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-primary hover:bg-slate-50 shadow-sm">
                         <span class="material-symbols-outlined text-[20px]">download</span>Export CSV
@@ -385,6 +386,7 @@ function getSegmentBarClass($color): string {
                         <span class="material-symbols-outlined text-[20px]">picture_as_pdf</span>Download PDF
                     </button>
                 </div>
+                <?php endif; ?>
             </div>
 
             <?php if (!$hasAnalyticsData): ?>
@@ -972,7 +974,7 @@ function getSegmentBarClass($color): string {
         });
     }
 
-    document.getElementById('exportCsv').addEventListener('click', () => {
+    document.getElementById('exportCsv')?.addEventListener('click', () => {
         if (!JOB_ID) {
             alert('CSV export requires a completed live analysis job.');
             return;
@@ -980,7 +982,7 @@ function getSegmentBarClass($color): string {
         window.location.href = `api/process.php?action=download_csv&job_id=${encodeURIComponent(JOB_ID)}`;
     });
 
-    document.getElementById('downloadPdf').addEventListener('click', () => {
+    document.getElementById('downloadPdf')?.addEventListener('click', () => {
         if (!JOB_ID) {
             alert('PDF download requires a completed live analysis job.');
             return;

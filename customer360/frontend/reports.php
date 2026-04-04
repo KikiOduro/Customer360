@@ -35,7 +35,7 @@ if ($authToken) {
         $allReports = array_map(function ($job) {
             return [
                 'id' => $job['job_id'],
-                'filename' => $job['original_filename'] ?? 'Uploaded file',
+                'filename' => basename((string) ($job['original_filename'] ?? 'Uploaded file')),
                 'date_generated' => $job['created_at'] ?? null,
                 'customer_count' => $job['num_customers'] ?? null,
                 'status' => $job['status'] ?? 'pending',
@@ -161,7 +161,7 @@ function getStatusBadge(string $status): string {
                         <h1 class="text-3xl font-bold text-primary tracking-tight">Reports History</h1>
                         <p class="text-slate-500 mt-1">View and manage your generated customer analysis reports.</p>
                     </div>
-                    <a href="analysis.php" class="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-hover shadow-md">
+                    <a href="upload.php" class="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-hover shadow-md">
                         <span class="material-symbols-outlined text-[20px]">add</span>New Analysis
                     </a>
                 </div>
@@ -185,11 +185,6 @@ function getStatusBadge(string $status): string {
                             <option value="failed" <?php echo $statusFilter === 'failed' ? 'selected' : ''; ?>>Failed</option>
                         </select>
                     </div>
-                    <div class="col-span-12 flex justify-end md:col-span-1">
-                        <button id="exportBtn" class="flex h-[42px] w-full items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 md:w-auto md:px-3 transition-colors" title="Export List">
-                            <span class="material-symbols-outlined">download</span>
-                        </button>
-                    </div>
                 </div>
 
                 <div class="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
@@ -202,7 +197,7 @@ function getStatusBadge(string $status): string {
                         <span class="material-symbols-outlined text-5xl text-slate-300">description</span>
                         <h2 class="mt-4 text-lg font-semibold text-primary">No analysis reports yet</h2>
                         <p class="mt-2 text-sm text-slate-500">Analysis jobs will appear here once you upload customer data and start processing.</p>
-                        <a href="analysis.php" class="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-hover shadow-md">
+                        <a href="upload.php" class="mt-6 inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-white hover:bg-primary-hover shadow-md">
                             <span class="material-symbols-outlined text-[20px]">upload_file</span>Upload Data
                         </a>
                     </div>
@@ -225,7 +220,13 @@ function getStatusBadge(string $status): string {
                                     <td class="px-6 py-4 font-medium text-slate-800">
                                         <div class="flex items-center gap-2">
                                             <span class="material-symbols-outlined text-slate-400 text-[18px]">description</span>
+                                            <?php if ($report['status'] === 'completed'): ?>
+                                            <a href="analytics.php?job_id=<?php echo urlencode($report['id']); ?>" class="text-primary hover:underline">
+                                                <?php echo htmlspecialchars($report['filename']); ?>
+                                            </a>
+                                            <?php else: ?>
                                             <?php echo htmlspecialchars($report['filename']); ?>
+                                            <?php endif; ?>
                                         </div>
                                     </td>
                                     <td class="whitespace-nowrap px-6 py-4 tabular-nums"><?php echo $report['customer_count'] !== null ? number_format((int) $report['customer_count']) : '-'; ?></td>
@@ -233,7 +234,7 @@ function getStatusBadge(string $status): string {
                                     <td class="whitespace-nowrap px-6 py-4 text-right">
                                         <div class="flex items-center justify-end gap-2">
                                             <?php if ($report['status'] === 'completed'): ?>
-                                            <a href="analysis.php?job_id=<?php echo urlencode($report['id']); ?>" class="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-primary" title="View Report"><span class="material-symbols-outlined text-[20px]">visibility</span></a>
+                                            <a href="analytics.php?job_id=<?php echo urlencode($report['id']); ?>" class="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-primary" title="View Report"><span class="material-symbols-outlined text-[20px]">visibility</span></a>
                                             <?php else: ?>
                                             <a href="processing.php?job_id=<?php echo urlencode($report['id']); ?>" class="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-primary" title="Track Job"><span class="material-symbols-outlined text-[20px]">schedule</span></a>
                                             <?php endif; ?>
@@ -337,20 +338,6 @@ function getStatusBadge(string $status): string {
             filterTimeout = setTimeout(applyFilters, 500);
         });
         document.getElementById('statusFilter')?.addEventListener('change', applyFilters);
-
-        document.getElementById('exportBtn')?.addEventListener('click', () => {
-            const rows = [['Date Generated', 'Filename', 'Customer Count', 'Status']];
-            document.querySelectorAll('#reportsTableBody tr').forEach(row => {
-                const cells = row.querySelectorAll('td');
-                rows.push([cells[0].textContent.trim(), cells[1].textContent.trim(), cells[2].textContent.trim(), cells[3].textContent.trim()]);
-            });
-            const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(blob);
-            a.download = 'reports_history.csv';
-            a.click();
-        });
 
         function deleteReport(id) {
             if (!confirm('Are you sure you want to delete this report?')) return;
