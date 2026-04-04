@@ -829,7 +829,7 @@ class SegmentationPipeline:
         description_map = {s['segment_label']: s.get('description', '') for s in self.segments}
         base_label_map = {s['segment_label']: s.get('segment_base_label', s['segment_label']) for s in self.segments}
         short_name_map = {s['segment_label']: s.get('segment_short_name', s['segment_label']) for s in self.segments}
-        emoji_map = {s['segment_label']: s.get('segment_emoji', '👥') for s in self.segments}
+        icon_map = {s['segment_label']: s.get('segment_icon', 'group') for s in self.segments}
         action_map = {
             s['segment_label']: (s.get('recommended_actions') or [''])[0]
             for s in self.segments
@@ -838,7 +838,7 @@ class SegmentationPipeline:
         output['segment'] = output['cluster'].map(segment_label_map).fillna('Unknown')
         output['segment_base_label'] = output['segment'].map(base_label_map).fillna(output['segment'])
         output['segment_short_name'] = output['segment'].map(short_name_map).fillna(output['segment'])
-        output['segment_emoji'] = output['segment'].map(emoji_map).fillna('👥')
+        output['segment_icon'] = output['segment'].map(icon_map).fillna('group')
         output['segment_description'] = output['segment'].map(description_map).fillna('')
         output['recommended_action'] = output['segment'].map(action_map).fillna('')
         output['risk_level'] = output['cluster'].map(segment_key_map).map(self._risk_level_for_segment_key).fillna('Medium')
@@ -941,7 +941,7 @@ class SegmentationPipeline:
                 'segment': row.get('segment', 'Unknown'),
                 'segment_base_label': row.get('segment_base_label', row.get('segment', 'Unknown')),
                 'segment_short_name': row.get('segment_short_name', row.get('segment', 'Unknown')),
-                'segment_emoji': row.get('segment_emoji', '👥'),
+                'segment_icon': row.get('segment_icon', 'group'),
                 'segment_description': row.get('segment_description', ''),
                 'recommended_action': row.get('recommended_action', ''),
                 'risk_level': row.get('risk_level', 'Medium'),

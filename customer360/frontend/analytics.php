@@ -152,29 +152,29 @@ $segmentColors = [
 ];
 
 $segmentDisplayMap = [
-    'Your Star Customers' => ['title' => 'Your Star Customers', 'emoji' => '⭐'],
-    'Your Faithful Regulars' => ['title' => 'Your Faithful Regulars', 'emoji' => '💙'],
-    'Almost Regulars' => ['title' => 'Almost Regulars', 'emoji' => '📈'],
-    'Fresh Faces' => ['title' => 'Fresh Faces', 'emoji' => '🌱'],
-    'Showing Interest' => ['title' => 'Showing Interest', 'emoji' => '✨'],
-    'Slipping Away Slowly' => ['title' => 'Slipping Away Slowly', 'emoji' => '📣'],
-    'About to Forget You' => ['title' => 'About to Forget You', 'emoji' => '🌙'],
-    'Danger Zone' => ['title' => 'Danger Zone', 'emoji' => '⚠️'],
-    'Sleeping Customers' => ['title' => 'Sleeping Customers', 'emoji' => '💤'],
-    'Gone Customers' => ['title' => 'Gone Customers', 'emoji' => '🧊'],
-    'Champions' => ['title' => 'Star Customers', 'emoji' => '⭐'],
-    'Loyal Customers' => ['title' => 'Faithful Regulars', 'emoji' => '💙'],
-    'Potential Loyalists' => ['title' => 'Almost Regulars', 'emoji' => '📈'],
-    'New Customers' => ['title' => 'Fresh Buyers', 'emoji' => '🌱'],
-    'Promising' => ['title' => 'Warm Leads', 'emoji' => '✨'],
-    'Need Attention' => ['title' => 'Needs Follow-up', 'emoji' => '📣'],
-    'Needs Attention' => ['title' => 'Needs Follow-up', 'emoji' => '📣'],
-    'About to Sleep' => ['title' => 'Cooling Off', 'emoji' => '🌙'],
-    'At Risk' => ['title' => 'Danger Zone', 'emoji' => '⚠️'],
-    'Cannot Lose' => ['title' => 'Must Save', 'emoji' => '🛟'],
-    'Hibernating' => ['title' => 'Silent Customers', 'emoji' => '💤'],
-    'Lost Customers' => ['title' => 'Dormant Customers', 'emoji' => '🧊'],
-    'Lost' => ['title' => 'Dormant Customers', 'emoji' => '🧊'],
+    'Your Star Customers' => ['title' => 'Your Star Customers', 'icon' => 'kid_star'],
+    'Your Faithful Regulars' => ['title' => 'Your Faithful Regulars', 'icon' => 'favorite'],
+    'Almost Regulars' => ['title' => 'Almost Regulars', 'icon' => 'trending_up'],
+    'Fresh Faces' => ['title' => 'Fresh Faces', 'icon' => 'psychiatry'],
+    'Showing Interest' => ['title' => 'Showing Interest', 'icon' => 'auto_awesome'],
+    'Slipping Away Slowly' => ['title' => 'Slipping Away Slowly', 'icon' => 'campaign'],
+    'About to Forget You' => ['title' => 'About to Forget You', 'icon' => 'bedtime'],
+    'Danger Zone' => ['title' => 'Danger Zone', 'icon' => 'warning'],
+    'Sleeping Customers' => ['title' => 'Sleeping Customers', 'icon' => 'mode_standby'],
+    'Gone Customers' => ['title' => 'Gone Customers', 'icon' => 'ac_unit'],
+    'Champions' => ['title' => 'Star Customers', 'icon' => 'kid_star'],
+    'Loyal Customers' => ['title' => 'Faithful Regulars', 'icon' => 'favorite'],
+    'Potential Loyalists' => ['title' => 'Almost Regulars', 'icon' => 'trending_up'],
+    'New Customers' => ['title' => 'Fresh Buyers', 'icon' => 'psychiatry'],
+    'Promising' => ['title' => 'Warm Leads', 'icon' => 'auto_awesome'],
+    'Need Attention' => ['title' => 'Needs Follow-up', 'icon' => 'campaign'],
+    'Needs Attention' => ['title' => 'Needs Follow-up', 'icon' => 'campaign'],
+    'About to Sleep' => ['title' => 'Cooling Off', 'icon' => 'bedtime'],
+    'At Risk' => ['title' => 'Danger Zone', 'icon' => 'warning'],
+    'Cannot Lose' => ['title' => 'Must Save', 'icon' => 'support_agent'],
+    'Hibernating' => ['title' => 'Silent Customers', 'icon' => 'mode_standby'],
+    'Lost Customers' => ['title' => 'Dormant Customers', 'icon' => 'ac_unit'],
+    'Lost' => ['title' => 'Dormant Customers', 'icon' => 'ac_unit'],
 ];
 
 $chartDisplay = [
@@ -191,7 +191,7 @@ $segments = [];
 foreach ($segmentsRaw as $segment) {
     $name = $segment['segment_label'] ?? $segment['segment_name'] ?? $segment['name'] ?? 'Unknown';
     $baseName = $segment['segment_base_label'] ?? $name;
-    $displayMeta = $segmentDisplayMap[$baseName] ?? $segmentDisplayMap[$name] ?? ['title' => $name, 'emoji' => '👥'];
+    $displayMeta = $segmentDisplayMap[$baseName] ?? $segmentDisplayMap[$name] ?? ['title' => $name, 'icon' => 'group'];
     $aiInsight = trim((string) ($segment['ai_insight'] ?? ''));
     $aiActions = is_array($segment['ai_actions'] ?? null) ? $segment['ai_actions'] : [];
     $fallbackDescription = trim((string) ($segment['description'] ?? ''));
@@ -200,7 +200,7 @@ foreach ($segmentsRaw as $segment) {
         'name' => $name,
         'friendly_name' => $segment['segment_label'] ?? $displayMeta['title'],
         'technical_name' => $segment['segment_short_name'] ?? $name,
-        'emoji' => $segment['segment_emoji'] ?? $displayMeta['emoji'],
+        'icon' => $segment['segment_icon'] ?? $displayMeta['icon'],
         'pct' => round($segment['percentage'] ?? 0),
         'count' => $segment['num_customers'] ?? null,
         'avg_recency' => $segment['avg_recency'] ?? null,
@@ -582,7 +582,7 @@ function getSegmentBarClass($color): string {
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center gap-3">
                                 <div class="rounded-lg p-2 <?php echo getSegmentBgClass($segment['color']); ?>">
-                                    <span class="text-lg" aria-hidden="true"><?php echo htmlspecialchars($segment['emoji']); ?></span>
+                                    <span class="material-symbols-outlined text-[20px]" aria-hidden="true"><?php echo htmlspecialchars($segment['icon']); ?></span>
                                 </div>
                                 <div>
                                     <div class="flex items-center gap-2">

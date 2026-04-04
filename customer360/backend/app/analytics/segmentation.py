@@ -15,7 +15,7 @@ SEGMENT_DEFINITIONS = {
     'champions': {
         'label': 'Your Star Customers',
         'short_name': 'Your Star Customers',
-        'emoji': '⭐',
+        'icon': 'kid_star',
         'description': 'These are your best customers right now. They bought recently, they come back often, and they spend strongly, so your main job is to keep them happy and make them feel valued.',
         'criteria': {'R': 'high', 'F': 'high', 'M': 'high'},
         'actions': [
@@ -28,7 +28,7 @@ SEGMENT_DEFINITIONS = {
     'loyal_customers': {
         'label': 'Your Faithful Regulars',
         'short_name': 'Your Faithful Regulars',
-        'emoji': '💙',
+        'icon': 'favorite',
         'description': 'These customers keep returning and are already building a steady habit with your business. They may not be your biggest spenders yet, but they are reliable and worth growing.',
         'criteria': {'R': 'high', 'F': 'high', 'M': 'medium'},
         'actions': [
@@ -41,7 +41,7 @@ SEGMENT_DEFINITIONS = {
     'potential_loyalists': {
         'label': 'Almost Regulars',
         'short_name': 'Almost Regulars',
-        'emoji': '📈',
+        'icon': 'trending_up',
         'description': 'These customers are showing signs that they could become regular buyers. They have bought fairly recently, but they still need a little push to return more often.',
         'criteria': {'R': 'high', 'F': 'medium', 'M': 'medium'},
         'actions': [
@@ -54,7 +54,7 @@ SEGMENT_DEFINITIONS = {
     'new_customers': {
         'label': 'Fresh Faces',
         'short_name': 'Fresh Faces',
-        'emoji': '🌱',
+        'icon': 'psychiatry',
         'description': 'These are new customers who have only just started buying from you. The most important thing is to give them a good first impression so they come back for a second purchase.',
         'criteria': {'R': 'high', 'F': 'low', 'M': 'low'},
         'actions': [
@@ -67,7 +67,7 @@ SEGMENT_DEFINITIONS = {
     'promising': {
         'label': 'Showing Interest',
         'short_name': 'Showing Interest',
-        'emoji': '✨',
+        'icon': 'auto_awesome',
         'description': 'These customers are interested in your business and have bought recently, but they have not yet become steady repeat buyers. Keep them engaged before they lose interest.',
         'criteria': {'R': 'high', 'F': 'low', 'M': 'medium'},
         'actions': [
@@ -80,7 +80,7 @@ SEGMENT_DEFINITIONS = {
     'need_attention': {
         'label': 'Slipping Away Slowly',
         'short_name': 'Slipping Away Slowly',
-        'emoji': '📣',
+        'icon': 'campaign',
         'description': 'These customers have started slowing down. They were buying before, but they are not returning as strongly now, so you should follow up before they fully disappear.',
         'criteria': {'R': 'medium', 'F': 'medium', 'M': 'medium'},
         'actions': [
@@ -93,7 +93,7 @@ SEGMENT_DEFINITIONS = {
     'about_to_sleep': {
         'label': 'About to Forget You',
         'short_name': 'About to Forget You',
-        'emoji': '🌙',
+        'icon': 'bedtime',
         'description': 'These customers have not bought in a while and may soon forget your business if you stay quiet. A timely reminder or comeback offer can help bring them back.',
         'criteria': {'R': 'medium', 'F': 'low', 'M': 'low'},
         'actions': [
@@ -106,7 +106,7 @@ SEGMENT_DEFINITIONS = {
     'at_risk': {
         'label': 'Danger Zone',
         'short_name': 'Danger Zone',
-        'emoji': '⚠',
+        'icon': 'warning',
         'description': 'These customers used to be valuable, but they have stayed away for too long. This is an urgent group because you may lose meaningful revenue if you do not act quickly.',
         'criteria': {'R': 'low', 'F': 'high', 'M': 'high'},
         'actions': [
@@ -119,7 +119,7 @@ SEGMENT_DEFINITIONS = {
     'hibernating': {
         'label': 'Sleeping Customers',
         'short_name': 'Sleeping Customers',
-        'emoji': '💤',
+        'icon': 'mode_standby',
         'description': 'These customers have been quiet for a long time and are not showing strong buying activity. Try low-cost reactivation, but do not spend too much money chasing them.',
         'criteria': {'R': 'low', 'F': 'low', 'M': 'low'},
         'actions': [
@@ -132,7 +132,7 @@ SEGMENT_DEFINITIONS = {
     'lost': {
         'label': 'Gone Customers',
         'short_name': 'Gone Customers',
-        'emoji': '🧊',
+        'icon': 'ac_unit',
         'description': 'These customers have been gone for a very long time and are unlikely to return easily. Try one final win-back message, then put more effort into the stronger active groups.',
         'criteria': {'R': 'very_low', 'F': 'low', 'M': 'low'},
         'actions': [
@@ -277,7 +277,7 @@ def analyze_clusters(
             'segment_key': segment_key,
             'segment_label': segment_label,
             'segment_short_name': SEGMENT_DEFINITIONS[segment_key].get('short_name', segment_label),
-            'segment_emoji': SEGMENT_DEFINITIONS[segment_key].get('emoji', '👥'),
+            'segment_icon': SEGMENT_DEFINITIONS[segment_key].get('icon', 'group'),
             'description': SEGMENT_DEFINITIONS[segment_key]['description'],
             'num_customers': num_customers,
             'percentage': round(num_customers / total_customers * 100, 1),
