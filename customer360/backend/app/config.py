@@ -78,6 +78,7 @@ GROQ_USER_DAILY_LIMIT = int(os.getenv("GROQ_USER_DAILY_LIMIT", "10"))
 GROQ_MAX_INPUT_CHARS = int(os.getenv("GROQ_MAX_INPUT_CHARS", "12000"))
 GROQ_MAX_OUTPUT_TOKENS = int(os.getenv("GROQ_MAX_OUTPUT_TOKENS", "2000"))
 GROQ_RETRY_ATTEMPTS = int(os.getenv("GROQ_RETRY_ATTEMPTS", "3"))
+GROQ_TIMEOUT_SECONDS = float(os.getenv("GROQ_TIMEOUT_SECONDS", "90"))
 
 # Clustering settings
 DEFAULT_K_RANGE = (2, 8)  # Range of k values to try for K-Means (reduced from 10 for speed)

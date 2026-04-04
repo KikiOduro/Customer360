@@ -25,6 +25,7 @@ from ..config import (
     GROQ_MODEL,
     GROQ_REQUESTS_PER_MINUTE,
     GROQ_RETRY_ATTEMPTS,
+    GROQ_TIMEOUT_SECONDS,
     GROQ_USER_COOLDOWN_SECONDS,
     GROQ_USER_DAILY_LIMIT,
 )
@@ -167,6 +168,26 @@ def _segment_alias(segment_name: str) -> str:
     return str(segment_name or "Customer Group").strip() or "Customer Group"
 
 
+def _is_reactivation_group(segment_name: str) -> bool:
+    """Detect slower, inactive, or urgent win-back groups using plain segment names."""
+    normalized_name = str(segment_name or "").strip().lower()
+    return any(
+        token in normalized_name
+        for token in (
+            "slipping away",
+            "about to forget you",
+            "danger zone",
+            "sleeping customers",
+            "gone customers",
+            "risk",
+            "follow-up",
+            "cooling-off",
+            "likely left",
+            "quiet low-activity",
+        )
+    )
+
+
 def prepare_groq_context(results: Dict[str, Any]) -> Dict[str, Any]:
     """Extract a compact PII-free summary from pipeline results."""
     meta = results.get("meta", {}) or {}
@@ -300,10 +321,7 @@ def _fallback_business_narrative(results: Dict[str, Any]) -> Dict[str, Any]:
         (
             segment
             for segment in segments
-            if any(
-                token in segment["name"].lower()
-                for token in ("risk", "follow-up", "cooling-off", "likely left", "quiet low-activity")
-            )
+            if _is_reactivation_group(segment["name"])
         ),
         None,
     )
@@ -322,10 +340,10 @@ def _fallback_business_narrative(results: Dict[str, Any]) -> Dict[str, Any]:
     for segment in segments[:3]:
         segment_name = segment["name"]
         existing_action = (segment.get("current_actions") or [""])[0]
-        if "best repeat buyers" in segment_name.lower():
+        if any(token in segment_name.lower() for token in ("your star customers", "best repeat buyers")):
             action = "Send a thank-you offer to your best repeat buyers"
             how = "Use a WhatsApp broadcast or personal calls with a loyalty discount."
-        elif any(token in segment_name.lower() for token in ("risk", "follow-up", "cooling-off", "likely left", "quiet low-activity")):
+        elif _is_reactivation_group(segment_name):
             action = f"Follow up with {segment_name}"
             how = "Send a simple 'we miss you' WhatsApp message and a comeback offer this week."
         else:
@@ -362,10 +380,7 @@ def _fallback_business_narrative(results: Dict[str, Any]) -> Dict[str, Any]:
                 "segment_name": segment["name"],
                 "insight": segment["description"] or f"{segment['name']} represents {segment['customer_count']} customers.",
                 "action": (segment.get("current_actions") or [f"Review this group and plan a follow-up campaign for {segment['name']}."])[0],
-                "priority": "urgent" if any(
-                    token in segment["name"].lower()
-                    for token in ("risk", "follow-up", "cooling-off", "likely left")
-                ) else "important",
+                "priority": "urgent" if _is_reactivation_group(segment["name"]) else "important",
             }
             for segment in segments
         ],
@@ -399,7 +414,7 @@ def generate_llm_analysis(results: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         logger.warning("Groq SDK unavailable; using fallback narrative: %s", exc)
         return _fallback_business_narrative(results)
 
-    client = Groq(api_key=GROQ_API_KEY)
+    client = Groq(api_key=GROQ_API_KEY, timeout=GROQ_TIMEOUT_SECONDS)
     prompt = _build_user_prompt(prepare_groq_context(results))
 
     for attempt in range(max(1, GROQ_RETRY_ATTEMPTS)):

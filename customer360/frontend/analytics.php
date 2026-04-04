@@ -116,6 +116,16 @@ $kpis = [
 ];
 
 $segmentColors = [
+    'Your Star Customers' => 'yellow',
+    'Your Faithful Regulars' => 'blue',
+    'Almost Regulars' => 'green',
+    'Fresh Faces' => 'cyan',
+    'Showing Interest' => 'teal',
+    'Slipping Away Slowly' => 'orange',
+    'About to Forget You' => 'purple',
+    'Danger Zone' => 'red',
+    'Sleeping Customers' => 'gray',
+    'Gone Customers' => 'slate',
     'Best Repeat Buyers' => 'yellow',
     'Steady Regular Buyers' => 'blue',
     'Growing Repeat Buyers' => 'green',
@@ -142,6 +152,16 @@ $segmentColors = [
 ];
 
 $segmentDisplayMap = [
+    'Your Star Customers' => ['title' => 'Your Star Customers', 'emoji' => '⭐'],
+    'Your Faithful Regulars' => ['title' => 'Your Faithful Regulars', 'emoji' => '💙'],
+    'Almost Regulars' => ['title' => 'Almost Regulars', 'emoji' => '📈'],
+    'Fresh Faces' => ['title' => 'Fresh Faces', 'emoji' => '🌱'],
+    'Showing Interest' => ['title' => 'Showing Interest', 'emoji' => '✨'],
+    'Slipping Away Slowly' => ['title' => 'Slipping Away Slowly', 'emoji' => '📣'],
+    'About to Forget You' => ['title' => 'About to Forget You', 'emoji' => '🌙'],
+    'Danger Zone' => ['title' => 'Danger Zone', 'emoji' => '⚠️'],
+    'Sleeping Customers' => ['title' => 'Sleeping Customers', 'emoji' => '💤'],
+    'Gone Customers' => ['title' => 'Gone Customers', 'emoji' => '🧊'],
     'Champions' => ['title' => 'Star Customers', 'emoji' => '⭐'],
     'Loyal Customers' => ['title' => 'Faithful Regulars', 'emoji' => '💙'],
     'Potential Loyalists' => ['title' => 'Almost Regulars', 'emoji' => '📈'],
@@ -570,7 +590,10 @@ function getSegmentBarClass($color): string {
                                         >?</button>
                                     </div>
                                     <p class="text-xs text-slate-500">
-                                        Simple label: <?php echo htmlspecialchars($segment['technical_name']); ?> · <?php echo htmlspecialchars(formatNumberValue($segment['count'])); ?> customers
+                                        <?php if (!empty($segment['technical_name']) && $segment['technical_name'] !== $segment['friendly_name']): ?>
+                                            Simple label: <?php echo htmlspecialchars($segment['technical_name']); ?> ·
+                                        <?php endif; ?>
+                                        <?php echo htmlspecialchars(formatNumberValue($segment['count'])); ?> customers
                                     </p>
                                 </div>
                             </div>

@@ -13,133 +13,133 @@ logger = logging.getLogger(__name__)
 # Segment definitions based on RFM characteristics
 SEGMENT_DEFINITIONS = {
     'champions': {
-        'label': 'Best Repeat Buyers',
-        'short_name': 'Champions',
+        'label': 'Your Star Customers',
+        'short_name': 'Your Star Customers',
         'emoji': '⭐',
-        'description': 'These customers buy often, spend strongly, and bought recently. They are your strongest repeat buyers, so protect that relationship and reward them.',
+        'description': 'These are your best customers right now. They bought recently, they come back often, and they spend strongly, so your main job is to keep them happy and make them feel valued.',
         'criteria': {'R': 'high', 'F': 'high', 'M': 'high'},
         'actions': [
-            'Reward with exclusive loyalty programs and VIP treatment',
-            'Offer early access to new products or services',
-            'Request referrals and testimonials',
-            'Provide personalized premium experiences'
+            'Send a personal thank-you message and give them a small loyalty reward',
+            'Let them see new products or services first before the general public',
+            'Ask them for referrals, reviews, or recommendations to friends',
+            'Give them a more personal service experience so they stay loyal'
         ]
     },
     'loyal_customers': {
-        'label': 'Steady Regular Buyers',
-        'short_name': 'Loyal Customers',
+        'label': 'Your Faithful Regulars',
+        'short_name': 'Your Faithful Regulars',
         'emoji': '💙',
-        'description': 'These customers keep coming back and spend a healthy amount. They may not be your top spenders yet, but they are reliable and worth nurturing.',
+        'description': 'These customers keep returning and are already building a steady habit with your business. They may not be your biggest spenders yet, but they are reliable and worth growing.',
         'criteria': {'R': 'high', 'F': 'high', 'M': 'medium'},
         'actions': [
-            'Upsell and cross-sell higher value products',
-            'Implement loyalty reward programs',
-            'Send personalized recommendations',
-            'Offer bundle deals and exclusive discounts'
+            'Offer bundle deals or slightly higher-value items they are likely to buy',
+            'Give simple loyalty rewards that encourage them to keep coming back',
+            'Send product suggestions based on what they usually buy',
+            'Share a small customer-only discount to strengthen the relationship'
         ]
     },
     'potential_loyalists': {
-        'label': 'Growing Repeat Buyers',
-        'short_name': 'Potential Loyalists',
+        'label': 'Almost Regulars',
+        'short_name': 'Almost Regulars',
         'emoji': '📈',
-        'description': 'These customers bought recently and are starting to show repeat-buying behaviour. A good follow-up offer can help turn them into steady regulars.',
+        'description': 'These customers are showing signs that they could become regular buyers. They have bought fairly recently, but they still need a little push to return more often.',
         'criteria': {'R': 'high', 'F': 'medium', 'M': 'medium'},
         'actions': [
-            'Offer membership programs and loyalty incentives',
-            'Provide excellent customer service to build trust',
-            'Send targeted product recommendations',
-            'Create engagement through email campaigns'
+            'Send a follow-up offer soon so they have a reason to buy again',
+            'Give them very good service now so trust builds quickly',
+            'Recommend products that match what they already bought',
+            'Invite them into a simple loyalty or repeat-buyer offer'
         ]
     },
     'new_customers': {
-        'label': 'First-Time or New Buyers',
-        'short_name': 'New Customers',
+        'label': 'Fresh Faces',
+        'short_name': 'Fresh Faces',
         'emoji': '🌱',
-        'description': 'These customers are still new and have only a small buying history. The main goal is to give them a good first experience so they come back.',
+        'description': 'These are new customers who have only just started buying from you. The most important thing is to give them a good first impression so they come back for a second purchase.',
         'criteria': {'R': 'high', 'F': 'low', 'M': 'low'},
         'actions': [
-            'Welcome with onboarding campaigns and first-purchase offers',
-            'Provide excellent first experience to encourage repeat purchases',
-            'Send educational content about products/services',
-            'Offer incentives for second purchase'
+            'Send a warm welcome message and thank them for buying from you',
+            'Make the next purchase easy by sharing what to buy next or how to order again',
+            'Explain your products or services in simple terms if they are still new to your brand',
+            'Offer a small second-purchase incentive to encourage a return'
         ]
     },
     'promising': {
-        'label': 'New Buyers With Good Potential',
-        'short_name': 'Promising',
+        'label': 'Showing Interest',
+        'short_name': 'Showing Interest',
         'emoji': '✨',
-        'description': 'These customers purchased recently and show some spending potential, but they have not yet become regular buyers. Keep them engaged quickly.',
+        'description': 'These customers are interested in your business and have bought recently, but they have not yet become steady repeat buyers. Keep them engaged before they lose interest.',
         'criteria': {'R': 'high', 'F': 'low', 'M': 'medium'},
         'actions': [
-            'Engage with targeted promotions to increase frequency',
-            'Create awareness of full product range',
-            'Implement re-engagement campaigns',
-            'Offer time-limited discounts'
+            'Send a quick promo or product reminder while your business is still fresh in their mind',
+            'Show them more of your product range so they know what else they can buy',
+            'Use a short time-bound offer to encourage another purchase',
+            'Follow up through WhatsApp, SMS, or a personal call'
         ]
     },
     'need_attention': {
-        'label': 'Customers Who Need a Follow-Up',
-        'short_name': 'Need Attention',
+        'label': 'Slipping Away Slowly',
+        'short_name': 'Slipping Away Slowly',
         'emoji': '📣',
-        'description': 'These customers were active before, but their recent buying has slowed down. This is not automatically a bad group, but it is a warning sign that they may drift away if you do nothing.',
+        'description': 'These customers have started slowing down. They were buying before, but they are not returning as strongly now, so you should follow up before they fully disappear.',
         'criteria': {'R': 'medium', 'F': 'medium', 'M': 'medium'},
         'actions': [
-            'Send personalized win-back offers',
-            'Reach out with feedback surveys to understand needs',
-            'Offer limited-time incentives to re-engage',
-            'Highlight new products or improvements'
+            'Send a friendly check-in message and remind them what is new',
+            'Ask simple feedback questions to understand why they slowed down',
+            'Give a short comeback offer to encourage them to buy again',
+            'Highlight improvements, new arrivals, or fresh stock'
         ]
     },
     'about_to_sleep': {
-        'label': 'Cooling-Off Customers',
-        'short_name': 'About to Sleep',
+        'label': 'About to Forget You',
+        'short_name': 'About to Forget You',
         'emoji': '🌙',
-        'description': 'These customers have not bought in a while, although they had some history with the business. A timely reminder or comeback offer may reactivate them.',
+        'description': 'These customers have not bought in a while and may soon forget your business if you stay quiet. A timely reminder or comeback offer can help bring them back.',
         'criteria': {'R': 'medium', 'F': 'low', 'M': 'low'},
         'actions': [
-            'Send reactivation campaigns with urgency',
-            'Offer special "we miss you" discounts',
-            'Share new features or products since last visit',
-            'Create FOMO with limited-time offers'
+            'Send a “we miss you” WhatsApp message with a clear comeback offer',
+            'Remind them what has changed since their last purchase',
+            'Use a limited-time deal so they feel a reason to respond now',
+            'Keep the message short, warm, and easy to act on'
         ]
     },
     'at_risk': {
-        'label': 'Valuable Customers You May Be Losing',
-        'short_name': 'At Risk',
+        'label': 'Danger Zone',
+        'short_name': 'Danger Zone',
         'emoji': '⚠',
-        'description': 'These customers used to spend well or buy often, but they have stayed away for too long. They deserve urgent win-back attention because they can represent lost revenue.',
+        'description': 'These customers used to be valuable, but they have stayed away for too long. This is an urgent group because you may lose meaningful revenue if you do not act quickly.',
         'criteria': {'R': 'low', 'F': 'high', 'M': 'high'},
         'actions': [
-            'Launch urgent win-back campaigns with strong incentives',
-            'Personal outreach from customer service',
-            'Offer significant discounts or free shipping',
-            'Conduct churn analysis to understand reasons'
+            'Reach out personally and give a strong reason to return this week',
+            'Offer a serious win-back incentive if the numbers justify it',
+            'Ask why they stopped buying and remove any service issue quickly',
+            'Prioritize this group before spending too much effort on weaker inactive customers'
         ]
     },
     'hibernating': {
-        'label': 'Quiet Low-Activity Customers',
-        'short_name': 'Hibernating',
+        'label': 'Sleeping Customers',
+        'short_name': 'Sleeping Customers',
         'emoji': '💤',
-        'description': 'These customers have been inactive for a long time and do not show strong spend or visit frequency. Try low-cost reactivation before spending too much budget here.',
+        'description': 'These customers have been quiet for a long time and are not showing strong buying activity. Try low-cost reactivation, but do not spend too much money chasing them.',
         'criteria': {'R': 'low', 'F': 'low', 'M': 'low'},
         'actions': [
-            'Send re-engagement emails with major incentives',
-            'Consider removing from active marketing to save costs',
-            'Run reactivation campaigns periodically',
-            'Offer "comeback" special deals'
+            'Send a low-cost reactivation message or comeback promo',
+            'If they still do not respond, reduce how often you market to them',
+            'Check this group from time to time instead of spending too much weekly effort',
+            'Use simple broad offers instead of expensive one-on-one outreach'
         ]
     },
     'lost': {
-        'label': 'Customers Who Have Likely Left',
-        'short_name': 'Lost Customers',
+        'label': 'Gone Customers',
+        'short_name': 'Gone Customers',
         'emoji': '🧊',
-        'description': 'These customers have been absent for a very long time. Consider one final win-back attempt, then focus more effort on stronger active groups.',
+        'description': 'These customers have been gone for a very long time and are unlikely to return easily. Try one final win-back message, then put more effort into the stronger active groups.',
         'criteria': {'R': 'very_low', 'F': 'low', 'M': 'low'},
         'actions': [
-            'Attempt one final win-back campaign',
-            'Consider for retention cost analysis',
-            'Learn from their behavior for future prevention',
-            'Remove from regular marketing to reduce costs'
+            'Try one final comeback message or offer',
+            'If there is no response, stop spending regular campaign budget on this group',
+            'Look for patterns that explain why they left so you can reduce future losses',
+            'Shift most of your time and money toward active and growing customer groups'
         ]
     }
 }
