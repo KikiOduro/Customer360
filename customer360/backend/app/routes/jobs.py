@@ -3,6 +3,7 @@ Job management API routes.
 Handles file upload, job status, results, and report generation.
 """
 import os
+import csv
 import json
 import math
 import uuid
@@ -135,6 +136,33 @@ def apply_llm_segment_recommendations(results: dict) -> dict:
             row["recommended_action"] = ai_update["ai_action"]
 
     return results
+
+
+def sanitize_customer_export_csv(csv_path: Path) -> None:
+    """Remove presentation-only columns from customer CSV exports, including legacy emoji fields."""
+    removable_columns = {"segment_emoji", "segment_icon"}
+
+    try:
+        with open(csv_path, "r", newline="") as source_file:
+            reader = csv.DictReader(source_file)
+            fieldnames = reader.fieldnames or []
+            columns_to_keep = [name for name in fieldnames if name not in removable_columns]
+            if columns_to_keep == fieldnames:
+                return
+            rows = [{key: row.get(key, "") for key in columns_to_keep} for row in reader]
+
+        temp_path = csv_path.with_suffix(".tmp")
+        with open(temp_path, "w", newline="") as output_file:
+            writer = csv.DictWriter(output_file, fieldnames=columns_to_keep)
+            writer.writeheader()
+            writer.writerows(rows)
+        os.replace(temp_path, csv_path)
+    except Exception:
+        if csv_path.with_suffix(".tmp").exists():
+            try:
+                os.remove(csv_path.with_suffix(".tmp"))
+            except OSError:
+                pass
 
 
 def validate_file(file: UploadFile) -> None:
@@ -820,6 +848,8 @@ async def download_customers_csv(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Customers file not found"
         )
+
+    sanitize_customer_export_csv(csv_path)
     
     return FileResponse(
         path=str(csv_path),
