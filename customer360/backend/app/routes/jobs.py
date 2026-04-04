@@ -140,7 +140,12 @@ def apply_llm_segment_recommendations(results: dict) -> dict:
 
 def sanitize_customer_export_csv(csv_path: Path) -> None:
     """Remove presentation-only columns from customer CSV exports, including legacy emoji fields."""
-    removable_columns = {"segment_emoji", "segment_icon"}
+    removable_columns = {
+        "segment_emoji",
+        "segment_icon",
+        "segment_base_label",
+        "segment_short_name",
+    }
 
     try:
         with open(csv_path, "r", newline="") as source_file:
