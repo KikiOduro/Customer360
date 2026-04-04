@@ -18,6 +18,7 @@ The following updates were added in the most recent development session and shou
 - A Groq-powered “Business Coach Summary” layer has been added as an optional post-analysis narrative. The backend sends only aggregate, PII-free segment statistics to Groq, caches one response per completed job, applies app-side request throttling, uses a configurable 90-second Groq client timeout by default, and falls back safely to the deterministic story summary if Groq is unavailable or rate-limited.
 - The Groq layer now uses the exact final segment names produced by the pipeline, including disambiguating suffixes such as “ - Group 1”, and its segment-level insights and actions are merged back into the segment objects and customer rows before `analytics.php` and the PDF report are rendered. This prevents the dashboard, report, and AI narrative from using conflicting customer-group names.
 - The `analytics.php` customer-segment cards now expose aggregate-only segment statistics through `data-segment-index` attributes and browser-side globals (`window.__C360_SEGMENTS` and `window.__C360_META`) so `frontend/assets/js/ai_profiler.js` can inject a “Get AI Profile” button into each card. That script calls the authenticated PHP Groq proxy on demand and renders a plain-language segment profile inline without sending raw customer rows or personally identifying fields.
+- The exported MySQL schema dump at `/Users/akuaoduro/Downloads/customer360-2.sql` contains four tables: `users`, `jobs`, `job_artifacts`, and `job_events`. The ERD and Chapter 4 database notes in this guide now reflect those auxiliary artifact/event tables, but they also explicitly note that the current SQLAlchemy model layer in `backend/app/models.py` defines only `User` and `Job`, so `job_artifacts` and `job_events` should be described as existing database-side operational/audit tables that are not currently surfaced as ORM entities in the FastAPI code.
 - The KPI card layout on `analytics.php` was widened from a seven-column desktop row into a more readable four-column grid with taller cards and better spacing around the `?` help icons, reducing crowding in the metrics row.
 - Local validation was rerun using `Austin_Order_History-1.csv`; the smoke test completed successfully, generated a PDF report, and produced readable segment labels such as “About to Forget You” and “Your Star Customers”.
 
@@ -30,6 +31,7 @@ The current system behaves as follows:
 - PHP API scripts in `customer360/frontend/api/` act as a proxy layer between the browser-facing pages and FastAPI.
 - FastAPI runs privately on the same server as a `systemd` service on `127.0.0.1:8000`.
 - MySQL stores user accounts and job metadata.
+- The exported MySQL schema also includes `job_artifacts` and `job_events` tables linked to `jobs.id` for artifact-path tracking and event/audit logging, but the current SQLAlchemy ORM code actively models only `users` and `jobs`.
 - Uploaded CSV files are stored in `backend/data/uploads/<job_id>/`.
 - Output files are stored in `backend/data/outputs/<job_id>/`, including result JSON, segmented customer CSV, chart PNGs, and ReportLab PDF reports.
 - The current mapped web workflow is `Landing Page -> Sign In/Register -> Upload CSV -> Column Mapping + Validation -> Processing -> Analytics -> Download CSV/PDF`.
@@ -560,7 +562,7 @@ The paper describes a `users` table and a `jobs` table, and lists the jobs field
 
 ### What is now outdated or inaccurate
 
-The current `jobs` model also includes `progress_percent`, `progress_stage`, `progress_message`, `local_upload_path`, `storage_provider`, `storage_bucket`, `storage_object_path`, `storage_public_url`, and `result_json`. The paper should also mention that a schema-migration helper in `database.py` adds missing columns for existing deployed `jobs` tables at startup.
+The current exported database dump is broader than the two-table schema described in the manuscript. In `/Users/akuaoduro/Downloads/customer360-2.sql`, the database contains `users`, `jobs`, `job_artifacts`, and `job_events`. The `jobs` table also includes `progress_percent`, `progress_stage`, `progress_message`, `local_upload_path`, `storage_provider`, `storage_bucket`, `storage_object_path`, `storage_public_url`, `result_json`, `llm_analysis_json`, `llm_generated_at`, and `llm_status`. The dump also defines indexes on frequently queried fields such as `jobs.job_id`, `jobs.user_id`, `jobs.status`, `jobs.created_at`, and composite user/status/date keys, plus foreign keys from `jobs.user_id` to `users.id` and from `job_artifacts.job_id` and `job_events.job_id` to `jobs.id`, all with `ON DELETE CASCADE`. However, the current SQLAlchemy model layer in `backend/app/models.py` defines only `User` and `Job`; it does not currently define ORM classes for `job_artifacts` or `job_events`. The paper should therefore distinguish between the deployed SQL schema and the subset of tables that are actively represented in the current FastAPI ORM layer. The paper should also mention that a schema-migration helper in `database.py` adds missing `jobs` columns for existing deployed tables at startup.
 
 ### Recommended change
 
@@ -568,7 +570,7 @@ Revise Table 4.15 and the jobs-table explanation.
 
 ### Replacement paragraph / insertion text
 
-The `jobs` table now functions not only as a record of completed analyses but also as the state store for live processing feedback. In addition to the original job metadata and result summary fields, each row stores the current progress percentage, pipeline stage, and user-facing progress message so that the processing page can poll and display live backend updates. The table also records both the local upload path and the output directory used by the backend, optional storage metadata fields, and a cached JSON result payload. During application startup, the backend checks for missing job columns and adds them where needed so that older deployed schemas can be brought in line with the current model without manually recreating the database.
+The current MySQL schema is centered on the `users` and `jobs` tables, but the exported database dump also includes two job-linked support tables: `job_artifacts` and `job_events`. The `jobs` table now functions not only as a record of completed analyses but also as the state store for live processing feedback. In addition to the original job metadata and result summary fields, each row stores the current progress percentage, pipeline stage, user-facing progress message, cached result JSON, cached Groq narrative JSON, Groq generation timestamp, and Groq status so that the processing and analytics pages can poll and display live backend updates and reuse one AI narrative per completed job. The table also records the server-local upload path, the output directory, and optional storage metadata fields. The `job_artifacts` table stores file-oriented metadata for job outputs and source uploads, including artifact type, storage location, local path, MIME type, file size, and creation time, while `job_events` stores timestamped lifecycle/audit events with a JSON payload. All three job-related tables are configured to cascade-delete dependent rows when the parent user or job is removed. During application startup, the backend checks for missing `jobs` columns and adds them where needed so that older deployed schemas can be brought in line with the current model without manually recreating the database. Because `backend/app/models.py` currently defines only the `User` and `Job` ORM classes, the dissertation should avoid claiming that `job_artifacts` and `job_events` are exposed as first-class SQLAlchemy entities unless those models are added later.
 
 ### Updated diagram: current ERD
 
@@ -577,6 +579,8 @@ Paste this into Mermaid to generate the updated database ER diagram.
 ```mermaid
 erDiagram
     USERS ||--o{ JOBS : owns
+    JOBS ||--o{ JOB_ARTIFACTS : has
+    JOBS ||--o{ JOB_EVENTS : logs
 
     USERS {
         int id PK
@@ -613,13 +617,40 @@ erDiagram
         int num_clusters
         float silhouette_score
         text result_json
+        text llm_analysis_json
+        timestamp llm_generated_at
+        string llm_status
         timestamp created_at
         timestamp completed_at
         boolean is_saved
     }
+
+    JOB_ARTIFACTS {
+        bigint id PK
+        int job_id FK
+        string artifact_type
+        string storage_provider
+        string storage_bucket
+        string object_path
+        string public_url
+        string local_path
+        string mime_type
+        bigint file_size_bytes
+        timestamp created_at
+    }
+
+    JOB_EVENTS {
+        bigint id PK
+        int job_id FK
+        string event_type
+        json event_payload
+        timestamp created_at
+    }
 ```
 
-### Updated table: jobs table fields that must be added to the manuscript
+### Updated table: database fields and tables that must be added to the manuscript
+
+#### `jobs` fields that are missing from the older manuscript
 
 | Column | Purpose |
 |---|---|
@@ -629,6 +660,38 @@ erDiagram
 | `local_upload_path` | Stores the server-local source file path used by the background worker |
 | `storage_provider`, `storage_bucket`, `storage_object_path`, `storage_public_url` | Optional storage metadata fields that usually remain null in the current local-storage deployment |
 | `result_json` | Optional cached result payload used by the backend |
+| `llm_analysis_json` | Cached Groq or fallback narrative JSON reused by analytics and report generation |
+| `llm_generated_at` | Timestamp showing when the one-per-job AI narrative was generated |
+| `llm_status` | Records whether the narrative came from Groq, fallback logic, was skipped, or was rate-limited |
+
+#### `job_artifacts` table from the SQL dump
+
+| Column | Purpose |
+|---|---|
+| `id` | Auto-increment artifact row ID |
+| `job_id` | Foreign key to `jobs.id`; deleted automatically when the parent job is deleted |
+| `artifact_type` | Labels the kind of stored artifact, for example `source_upload` or `output_directory` |
+| `storage_provider`, `storage_bucket`, `object_path`, `public_url` | Optional object-storage metadata |
+| `local_path` | Server-local path for the stored source file or generated output directory |
+| `mime_type` | Optional content type metadata for file artifacts |
+| `file_size_bytes` | Optional file-size metadata |
+| `created_at` | Artifact registration timestamp |
+
+#### `job_events` table from the SQL dump
+
+| Column | Purpose |
+|---|---|
+| `id` | Auto-increment event row ID |
+| `job_id` | Foreign key to `jobs.id`; deleted automatically when the parent job is deleted |
+| `event_type` | Job lifecycle or audit event label, for example `created` or `queued` |
+| `event_payload` | JSON payload containing event details |
+| `created_at` | Event timestamp |
+
+### Notes for the author
+
+- If the dissertation includes an implementation-level ORM discussion, state clearly that `backend/app/models.py` currently exposes only `users` and `jobs` as SQLAlchemy models, even though the SQL dump contains `job_artifacts` and `job_events`.
+- If you want the codebase and the schema dump to be fully aligned at the ORM layer, add `JobArtifact` and `JobEvent` SQLAlchemy models later and then update this section again.
+- The SQL dump currently includes index definitions for `job_id`, `user_id`, `status`, `created_at`, `storage_object_path`, artifact type/provider/object path, and event type/date fields. Those indexes are worth mentioning briefly if Chapter 4 discusses query performance or job-history filtering.
 
 ## Section 4.6 Backend API Implementation
 
@@ -980,6 +1043,8 @@ Paste this into Mermaid to generate the updated ER diagram.
 ```mermaid
 erDiagram
     USERS ||--o{ JOBS : owns
+    JOBS ||--o{ JOB_ARTIFACTS : has
+    JOBS ||--o{ JOB_EVENTS : logs
 
     USERS {
         int id PK
@@ -1023,6 +1088,28 @@ erDiagram
         timestamp completed_at
         boolean is_saved
     }
+
+    JOB_ARTIFACTS {
+        bigint id PK
+        int job_id FK
+        string artifact_type
+        string storage_provider
+        string storage_bucket
+        string object_path
+        string public_url
+        string local_path
+        string mime_type
+        bigint file_size_bytes
+        timestamp created_at
+    }
+
+    JOB_EVENTS {
+        bigint id PK
+        int job_id FK
+        string event_type
+        json event_payload
+        timestamp created_at
+    }
 ```
 
 ---
@@ -1044,5 +1131,6 @@ The biggest paper-system consistency risks right now are these:
 - The manuscript understates deployment completion if it still says the backend is not live.
 - The manuscript overstates automatic post-analysis data deletion if it says unsaved uploads are always removed, because no scheduled cleanup worker is currently evident in the code.
 - The manuscript may now understate the optional AI narrative layer if it does not explain that Groq is called once after job completion, receives only aggregate non-identifying segment summaries, stores the response in `llm_analysis_json` and `results.json`, and is never allowed to block the main analytics pipeline when rate limits or API errors occur.
+- The manuscript may now understate the deployed MySQL schema if it still presents only `users` and `jobs`. The exported dump also contains `job_artifacts` and `job_events`, so Chapter 4 and the ERD should either include those tables or explicitly explain why the write-up focuses on the two ORM-backed tables only.
 
 If you want, the next step should be to start with Chapter 3 and turn each section above into final dissertation-ready replacement paragraphs and final updated captions one by one.
