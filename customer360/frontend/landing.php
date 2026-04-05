@@ -111,112 +111,21 @@ $contactPhone = "+233 20 000 0000";
                                 <span>Built for <?php echo $trustedBusinesses; ?> who want clearer customer insights</span>
                             </div>
                         </div>
-                        <!-- Product Visual -->
+                        <!-- Hero Visual -->
                         <div class="w-full @[864px]:w-1/2">
-                            <div class="rounded-[28px] shadow-2xl border border-[#d1dae5] overflow-hidden bg-gradient-to-br from-[#f4f8fc] via-white to-[#eef5f1] aspect-[4/3] relative p-6 lg:p-8">
-                                <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_right,_rgba(212,175,55,0.16),_transparent_34%),radial-gradient(circle_at_bottom_left,_rgba(16,185,129,0.12),_transparent_30%)] pointer-events-none"></div>
-                                <div class="relative h-full rounded-[22px] border border-[#dbe5ef] bg-white/90 backdrop-blur-sm shadow-lg overflow-hidden">
-                                    <div class="flex items-center justify-between px-5 py-4 border-b border-[#edf2f7] bg-[#f8fafb]">
-                                        <div class="flex items-center gap-2">
-                                            <span class="size-2.5 rounded-full bg-[#f97316]"></span>
-                                            <span class="size-2.5 rounded-full bg-[#facc15]"></span>
-                                            <span class="size-2.5 rounded-full bg-[#22c55e]"></span>
-                                        </div>
-                                        <div class="text-[11px] font-semibold tracking-[0.18em] uppercase text-[#6b7f98]">Customer 360 Overview</div>
-                                        <div class="w-12"></div>
-                                    </div>
-                                    <div class="grid h-[calc(100%-57px)] grid-cols-5 gap-4 p-5">
-                                        <div class="col-span-3 flex flex-col gap-4">
-                                            <div class="grid grid-cols-3 gap-3">
-                                                <div class="rounded-2xl border border-[#e6edf5] bg-[#f8fafb] p-3">
-                                                    <p class="text-[11px] uppercase tracking-[0.12em] text-[#7b8da5]">Revenue</p>
-                                                    <p class="mt-2 text-xl font-black text-primary">GHS 373k</p>
-                                                    <p class="mt-1 text-xs text-[#5d728d]">Grouped from uploaded sales records</p>
-                                                </div>
-                                                <div class="rounded-2xl border border-[#e6edf5] bg-[#f8fafb] p-3">
-                                                    <p class="text-[11px] uppercase tracking-[0.12em] text-[#7b8da5]">Customers</p>
-                                                    <p class="mt-2 text-xl font-black text-primary">876</p>
-                                                    <p class="mt-1 text-xs text-[#5d728d]">Mapped and analysed</p>
-                                                </div>
-                                                <div class="rounded-2xl border border-[#e6edf5] bg-[#f8fafb] p-3">
-                                                    <p class="text-[11px] uppercase tracking-[0.12em] text-[#7b8da5]">Reports</p>
-                                                    <p class="mt-2 text-xl font-black text-primary">PDF + CSV</p>
-                                                    <p class="mt-1 text-xs text-[#5d728d]">Ready for download</p>
-                                                </div>
-                                            </div>
-                                            <div class="rounded-2xl border border-[#e6edf5] bg-white p-4 shadow-sm">
-                                                <div class="flex items-center justify-between mb-4">
-                                                    <div>
-                                                        <p class="text-sm font-bold text-primary">Customer Groups</p>
-                                                        <p class="text-xs text-[#5d728d]">Simple labels with actions you can use</p>
-                                                    </div>
-                                                    <span class="rounded-full bg-emerald-50 px-3 py-1 text-[11px] font-bold text-accent-emerald">Live insights</span>
-                                                </div>
-                                                <div class="space-y-3">
-                                                    <div>
-                                                        <div class="flex items-center justify-between text-xs mb-1">
-                                                            <span class="font-semibold text-primary">Your Star Customers</span>
-                                                            <span class="text-[#5d728d]">24%</span>
-                                                        </div>
-                                                        <div class="h-2 rounded-full bg-[#edf2f7] overflow-hidden">
-                                                            <div class="h-full w-[24%] rounded-full bg-[#10b981]"></div>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <div class="flex items-center justify-between text-xs mb-1">
-                                                            <span class="font-semibold text-primary">Almost Regulars</span>
-                                                            <span class="text-[#5d728d]">31%</span>
-                                                        </div>
-                                                        <div class="h-2 rounded-full bg-[#edf2f7] overflow-hidden">
-                                                            <div class="h-full w-[31%] rounded-full bg-[#3b82f6]"></div>
-                                                        </div>
-                                                    </div>
-                                                    <div>
-                                                        <div class="flex items-center justify-between text-xs mb-1">
-                                                            <span class="font-semibold text-primary">Danger Zone</span>
-                                                            <span class="text-[#5d728d]">18%</span>
-                                                        </div>
-                                                        <div class="h-2 rounded-full bg-[#edf2f7] overflow-hidden">
-                                                            <div class="h-full w-[18%] rounded-full bg-[#f59e0b]"></div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-span-2 flex flex-col gap-4">
-                                            <div class="rounded-2xl border border-[#e6edf5] bg-[#0b203c] p-4 text-white shadow-sm">
-                                                <p class="text-[11px] uppercase tracking-[0.14em] text-white/60">Business Coach Summary</p>
-                                                <p class="mt-3 text-sm font-semibold leading-6">Your strongest buyers are active, but a smaller group is drifting away and needs a follow-up this week.</p>
-                                            </div>
-                                            <div class="rounded-2xl border border-[#e6edf5] bg-[#f8fafb] p-4">
-                                                <p class="text-sm font-bold text-primary">How it works</p>
-                                                <div class="mt-3 space-y-3">
-                                                    <div class="flex items-center gap-3">
-                                                        <span class="flex size-7 items-center justify-center rounded-full bg-[#e8f3ed] text-xs font-bold text-accent-emerald">1</span>
-                                                        <span class="text-xs text-[#5d728d]">Upload your customer CSV</span>
-                                                    </div>
-                                                    <div class="flex items-center gap-3">
-                                                        <span class="flex size-7 items-center justify-center rounded-full bg-[#eef4ff] text-xs font-bold text-[#2563eb]">2</span>
-                                                        <span class="text-xs text-[#5d728d]">Map the right columns</span>
-                                                    </div>
-                                                    <div class="flex items-center gap-3">
-                                                        <span class="flex size-7 items-center justify-center rounded-full bg-[#fff4df] text-xs font-bold text-[#d4af37]">3</span>
-                                                        <span class="text-xs text-[#5d728d]">See insights and export reports</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="rounded-2xl border border-[#e6edf5] bg-white p-4">
-                                                <div class="flex items-center justify-between">
-                                                    <div>
-                                                        <p class="text-sm font-bold text-primary">Progress</p>
-                                                        <p class="text-xs text-[#5d728d]">Backend-driven analysis tracking</p>
-                                                    </div>
-                                                    <span class="text-sm font-black text-primary">100%</span>
-                                                </div>
-                                                <div class="mt-3 h-2 rounded-full bg-[#edf2f7] overflow-hidden">
-                                                    <div class="h-full w-full rounded-full bg-gradient-to-r from-[#d4af37] to-[#2563eb]"></div>
-                                                </div>
-                                            </div>
+                            <div class="rounded-[28px] shadow-2xl border border-[#d1dae5] overflow-hidden bg-white aspect-[4/3] relative">
+                                <img
+                                    src="assets/images/landing-hero-analytics.png"
+                                    alt="Digital analytics illustration representing customer data analysis and business intelligence"
+                                    class="h-full w-full object-cover"
+                                />
+                                <div class="absolute inset-0 bg-gradient-to-tr from-primary/20 via-primary/5 to-transparent pointer-events-none"></div>
+                                <div class="absolute bottom-5 left-5 right-5">
+                                    <div class="inline-flex max-w-[320px] items-center gap-3 rounded-2xl border border-white/20 bg-[#0b203c]/78 px-4 py-3 text-white shadow-lg backdrop-blur-md">
+                                        <span class="material-symbols-outlined text-accent-gold">insights</span>
+                                        <div>
+                                            <p class="text-xs font-bold uppercase tracking-[0.14em] text-white/60">Customer 360</p>
+                                            <p class="text-sm font-medium leading-5">Turn customer records into clearer groups, business summaries, and downloadable reports.</p>
                                         </div>
                                     </div>
                                 </div>
