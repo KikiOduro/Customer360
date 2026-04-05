@@ -6,7 +6,7 @@
 
 // You can add PHP logic here (e.g., session handling, dynamic content)
 $currentYear = date('Y');
-$trustedBusinesses = "500+";
+$trustedBusinesses = "Ghanaian SMEs";
 $contactEmail = "support@customer360.gh";
 $contactPhone = "+233 20 000 0000";
 ?>
@@ -108,7 +108,7 @@ $contactPhone = "+233 20 000 0000";
                             </div>
                             <div class="flex items-center gap-2 text-sm text-[#536e93] mt-2">
                                 <span class="material-symbols-outlined text-accent-emerald text-lg">check_circle</span>
-                                <span>Trusted by <?php echo $trustedBusinesses; ?> businesses in Accra &amp; Kumasi</span>
+                                <span>Built for <?php echo $trustedBusinesses; ?> who want clearer customer insights</span>
                             </div>
                         </div>
                         <!-- Image/Visual -->
@@ -192,41 +192,41 @@ $contactPhone = "+233 20 000 0000";
                 <!-- Feature 2 -->
                 <div class="group flex gap-4 rounded-xl border border-[#d1dae5] bg-white p-6 hover:border-accent-emerald transition-colors shadow-sm">
                     <div class="text-accent-emerald shrink-0 bg-emerald-50 p-3 rounded-lg h-fit group-hover:bg-emerald-100 transition-colors">
-                        <span class="material-symbols-outlined">trending_up</span>
+                        <span class="material-symbols-outlined">rule_settings</span>
                     </div>
                     <div class="flex flex-col gap-2">
-                        <h3 class="text-primary text-lg font-bold leading-tight">Sales Forecasting</h3>
-                        <p class="text-[#536e93] text-sm leading-normal">Predict next month's revenue based on historical data trends.</p>
+                        <h3 class="text-primary text-lg font-bold leading-tight">Column Mapping &amp; Validation</h3>
+                        <p class="text-[#536e93] text-sm leading-normal">Preview your CSV, match the right columns, and validate the data before analysis starts.</p>
                     </div>
                 </div>
                 <!-- Feature 3 -->
                 <div class="group flex gap-4 rounded-xl border border-[#d1dae5] bg-white p-6 hover:border-accent-emerald transition-colors shadow-sm">
                     <div class="text-accent-emerald shrink-0 bg-emerald-50 p-3 rounded-lg h-fit group-hover:bg-emerald-100 transition-colors">
-                        <span class="material-symbols-outlined">inventory_2</span>
+                        <span class="material-symbols-outlined">monitoring</span>
                     </div>
                     <div class="flex flex-col gap-2">
-                        <h3 class="text-primary text-lg font-bold leading-tight">Inventory Optimization</h3>
-                        <p class="text-[#536e93] text-sm leading-normal">Know exactly what to restock and when, reducing dead stock.</p>
+                        <h3 class="text-primary text-lg font-bold leading-tight">Live Job Tracking</h3>
+                        <p class="text-[#536e93] text-sm leading-normal">Follow each analysis step with real progress updates while your customer groups are being prepared.</p>
                     </div>
                 </div>
                 <!-- Feature 4 -->
                 <div class="group flex gap-4 rounded-xl border border-[#d1dae5] bg-white p-6 hover:border-accent-emerald transition-colors shadow-sm">
                     <div class="text-accent-emerald shrink-0 bg-emerald-50 p-3 rounded-lg h-fit group-hover:bg-emerald-100 transition-colors">
-                        <span class="material-symbols-outlined">loyalty</span>
+                        <span class="material-symbols-outlined">dashboard</span>
                     </div>
                     <div class="flex flex-col gap-2">
-                        <h3 class="text-primary text-lg font-bold leading-tight">Loyalty Tracking</h3>
-                        <p class="text-[#536e93] text-sm leading-normal">Identify your VIP spenders and reward them to keep them coming back.</p>
+                        <h3 class="text-primary text-lg font-bold leading-tight">Analytics Dashboard</h3>
+                        <p class="text-[#536e93] text-sm leading-normal">See customer groups, business summaries, charts, and recommended actions in one place.</p>
                     </div>
                 </div>
                 <!-- Feature 5 -->
                 <div class="group flex gap-4 rounded-xl border border-[#d1dae5] bg-white p-6 hover:border-accent-emerald transition-colors shadow-sm">
                     <div class="text-accent-emerald shrink-0 bg-emerald-50 p-3 rounded-lg h-fit group-hover:bg-emerald-100 transition-colors">
-                        <span class="material-symbols-outlined">sms</span>
+                        <span class="material-symbols-outlined">lightbulb</span>
                     </div>
                     <div class="flex flex-col gap-2">
-                        <h3 class="text-primary text-lg font-bold leading-tight">SMS Integration</h3>
-                        <p class="text-[#536e93] text-sm leading-normal">Send targeted offers directly to customer phones from the dashboard.</p>
+                        <h3 class="text-primary text-lg font-bold leading-tight">Plain-Language Insights</h3>
+                        <p class="text-[#536e93] text-sm leading-normal">Get simpler business explanations and practical next steps based on your customer groups.</p>
                     </div>
                 </div>
                 <!-- Feature 6 -->
@@ -235,8 +235,8 @@ $contactPhone = "+233 20 000 0000";
                         <span class="material-symbols-outlined">file_download</span>
                     </div>
                     <div class="flex flex-col gap-2">
-                        <h3 class="text-primary text-lg font-bold leading-tight">Exportable Reports</h3>
-                        <p class="text-[#536e93] text-sm leading-normal">Download professional PDF or CSV reports for your partners or bank.</p>
+                        <h3 class="text-primary text-lg font-bold leading-tight">Reports &amp; CSV Exports</h3>
+                        <p class="text-[#536e93] text-sm leading-normal">Download PDF reports, export segmented customer CSV files, and reopen previous analysis runs.</p>
                     </div>
                 </div>
             </div>
