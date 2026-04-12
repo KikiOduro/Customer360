@@ -1,3 +1,34 @@
 .vscode/
 customer360/backend/.venv/
 customer360/WALKTHROUGH.md
+.DS_Store
+final_paper_current.txt
+FinalAppliedProject_AkuaBiragoOduro_extracted.txt
+FinalAppliedProject_AkuaBiragoOduro_review_comments.docx
+__pycache__/test_new_pipeline.cpython-311-pytest-7.4.4.pyc
+customer360/FullCapstoneDraft_AkuaBiragoOduro (1).docx
+customer360/Screenshot 2026-04-05 at 11.51.36 PM.png
+customer360/docs/APPENDIX_REQUIREMENTS_GATHERING_EVIDENCE.md
+customer360/docs/CAPSTONE_CURRENT_SYSTEM_ALIGNMENT_BY_CHAPTER.md
+customer360/docs/CAPSTONE_PAPER_REVISION_BLUEPRINT.md
+customer360/docs/CHAPTER_2_REQUIREMENTS_FINAL_DRAFT.md
+customer360/docs/CHAPTER_2_REQUIREMENTS_REWRITE.md
+customer360/docs/CHAPTER_3_ARCHITECTURE_AND_DESIGN_REWRITE.md
+customer360/docs/CHAPTER_3_ARCHITECTURE_AND_DESIGN_REWRITE.pdf
+customer360/docs/CHAPTER_4_IMPLEMENTATION_REWRITE.md
+customer360/docs/CHAPTER_5_TESTING_AND_RESULTS_FINAL_DRAFT.md
+customer360/docs/CHAPTER_5_TESTING_AND_RESULTS_REWRITE.md
+customer360/docs/CHAPTER_5_TESTING_AND_RESULTS_SUBMISSION_DRAFT.md
+customer360/docs/CHAPTER_6_CONCLUSIONS_AND_RECOMMENDATIONS_FINAL_DRAFT.md
+customer360/docs/CHAPTER_BY_CHAPTER_PAPER_REVIEW.md
+customer360/docs/full_capstone_draft_extracted.txt
+customer360/docs/PROJECT_MANAGEMENT_GANTT_FINAL.md
+scripts/add_docx_review_comments.py
+tools/add_docx_comments.py
+.DS_Store
+.gitignore
+customer360/docs/CAPSTONE_CURRENT_SYSTEM_ALIGNMENT_BY_CHAPTER.md
+customer360/docs/CAPSTONE_CURRENT_SYSTEM_ALIGNMENT_BY_CHAPTER.md
+.gitignore
+.DS_Store
+customer360/docs/CAPSTONE_CURRENT_SYSTEM_ALIGNMENT_BY_CHAPTER.md

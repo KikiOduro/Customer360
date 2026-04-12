@@ -1153,3 +1153,11 @@ The biggest paper-system consistency risks right now are these:
 - The deployed landing page now uses a local hero image asset in `frontend/assets/images/landing-hero-analytics.png` instead of a remote stock-dashboard image or an abstract mock card. This should be described, where relevant, as a presentation-layer refinement rather than a functional system feature.
 
 If you want, the next step should be to start with Chapter 3 and turn each section above into final dissertation-ready replacement paragraphs and final updated captions one by one.
+
+---
+
+## Latest Drafted Chapter
+
+A new dissertation-ready Chapter 6 draft has been added at [CHAPTER_6_CONCLUSIONS_AND_RECOMMENDATIONS_FINAL_DRAFT.md](/Users/akuaoduro/Desktop/Capstone/customer360/docs/CHAPTER_6_CONCLUSIONS_AND_RECOMMENDATIONS_FINAL_DRAFT.md). It closes the project against the original Chapter 1 objectives, summarises the extent to which the functional goals were achieved, acknowledges current system limitations honestly, provides implementation-aware recommendations, and outlines future work directions that remain consistent with the deployed PHP + FastAPI + MySQL + server-local-files architecture and the optional Groq narrative layer.
+
+A finalized project-management Gantt chart has also been added at [PROJECT_MANAGEMENT_GANTT_FINAL.md](/Users/akuaoduro/Desktop/Capstone/customer360/docs/PROJECT_MANAGEMENT_GANTT_FINAL.md). It presents the completed timeline through the 7 April 2026 submission date and is suitable for direct insertion into the report after Mermaid rendering.
