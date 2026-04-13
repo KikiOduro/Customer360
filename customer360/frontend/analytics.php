@@ -1,4 +1,10 @@
 <?php
+/**
+ * Analytics results page for completed Customer360 jobs.
+ *
+ * The page loads a completed job from the FastAPI backend through the PHP proxy,
+ * renders KPIs, segment cards, charts, customer rows, CSV export, and PDF download.
+ */
 require_once __DIR__ . '/api/config.php';
 session_start();
 
@@ -20,6 +26,7 @@ $jobId = $_GET['job_id'] ?? ($_SESSION['current_job']['job_id'] ?? null);
 $analysisResults = null;
 $loadError = null;
 
+// Results are loaded by job_id so report-history links can reopen a previous analysis.
 if ($jobId && $authToken) {
     $result = apiRequest("/jobs/results/$jobId", 'GET', null, $authToken);
     if ($result['success'] && is_array($result['data'])) {
@@ -32,6 +39,8 @@ if ($jobId && $authToken) {
     $loadError = 'A live backend session is required to load analytics.';
 }
 
+// Normalize backend result sections into view-friendly variables. The backend remains
+// the source of truth; these arrays only control how the finished analysis is displayed.
 $meta = $analysisResults['meta'] ?? [];
 $summary = $analysisResults['segment_summary'] ?? [];
 $prepSummary = $analysisResults['preprocessing']['summary'] ?? [];
@@ -225,6 +234,7 @@ foreach ($chartDisplay as $chartKey => $chartInfo) {
 }
 
 function formatCurrency($value): string {
+    // Keep currency text PDF/CSV-friendly by using plain GHS instead of special glyphs.
     return $value === null ? 'Not available' : 'GHS ' . number_format((float) $value, 2);
 }
 
@@ -859,6 +869,8 @@ function getSegmentBarClass($color): string {
     }
 
     function getFilteredRows() {
+        // Filtering happens in the browser because the backend already returned the
+        // completed customer table for this job.
         const searchValue = (document.getElementById('customerSearch')?.value || '').trim().toLowerCase();
         const segmentValue = document.getElementById('segmentFilter')?.value || '';
         const statusValue = document.getElementById('statusFilter')?.value || '';

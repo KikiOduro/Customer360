@@ -75,6 +75,9 @@ function validateMappingPayload(array $data): array {
 }
 
 function buildBackendMappingFormData(array $mapping, array $data): array {
+    // Translate the UI's friendly field names into the FastAPI parameter names.
+    // Keep include_comparison true unless the frontend explicitly overrides it so
+    // every normal run compares the available clustering methods by default.
     $formData = [
         'customer_id_col' => $mapping['customer_id'] ?? '',
         'invoice_date_col' => $mapping['date'] ?? '',
@@ -103,6 +106,8 @@ function buildBackendMappingFormData(array $mapping, array $data): array {
 }
 
 function handleValidateMapping() {
+    // Validation reuses the uploaded preview file instead of trusting only the form.
+    // This catches real parsing problems before the user starts the longer job.
     $data = parseMappingRequest();
     $mapping = validateMappingPayload($data);
 
@@ -175,7 +180,8 @@ function handleSaveMapping() {
         'allow_synthetic_invoice_date' => !empty($data['allow_synthetic_invoice_date'])
     ];
     
-    // Try to start job via Python backend
+    // Try to start job via Python backend. PHP owns the session and page redirects;
+    // FastAPI owns the actual analytics work.
     $token = $_SESSION['auth_token'] ?? null;
     
     if ($token && file_exists($upload['filepath'])) {

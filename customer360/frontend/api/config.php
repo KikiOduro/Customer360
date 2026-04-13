@@ -5,6 +5,7 @@
  */
 
 function envValue(string $key, ?string $default = null): ?string {
+    // Read from Apache/PHP environment variables and fall back cleanly when unset.
     $value = getenv($key);
     if ($value === false || $value === '') {
         return $default;
@@ -13,6 +14,7 @@ function envValue(string $key, ?string $default = null): ?string {
 }
 
 function isHttpsRequest(): bool {
+    // Support both direct HTTPS and reverse-proxy HTTPS headers.
     if (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') {
         return true;
     }
@@ -21,6 +23,7 @@ function isHttpsRequest(): bool {
 }
 
 function backendBaseUrl(): string {
+    // Allow deployments to override the backend URL, otherwise use localhost FastAPI.
     $explicitUrl = envValue('BACKEND_API_URL');
     if ($explicitUrl !== null) {
         return rtrim($explicitUrl, '/');
@@ -36,6 +39,7 @@ function backendBaseUrl(): string {
 // Python FastAPI backend URL
 $backendApiUrl = backendBaseUrl();
 if (!str_ends_with($backendApiUrl, '/api')) {
+    // All route calls in the PHP files are written relative to the FastAPI /api prefix.
     $backendApiUrl .= '/api';
 }
 define('BACKEND_API_URL', $backendApiUrl);
@@ -68,6 +72,7 @@ if (!file_exists(UPLOAD_DIR)) {
  * @return array Response data
  */
 function apiRequest($endpoint, $method = 'GET', $data = null, $token = null, $files = null) {
+    // Central PHP-to-FastAPI proxy helper used across auth, upload, jobs, and reports.
     $url = BACKEND_API_URL . $endpoint;
     
     $ch = curl_init();
@@ -75,6 +80,7 @@ function apiRequest($endpoint, $method = 'GET', $data = null, $token = null, $fi
     $headers = ['Accept: application/json'];
     
     if ($token) {
+        // Protected FastAPI routes expect the JWT issued at login.
         $headers[] = 'Authorization: Bearer ' . $token;
     }
     
@@ -89,13 +95,14 @@ function apiRequest($endpoint, $method = 'GET', $data = null, $token = null, $fi
         curl_setopt($ch, CURLOPT_POST, true);
         
         if ($files) {
-            // Multipart form data with files
+            // Multipart form data is required for the upload and mapping-validation endpoints.
             $postData = $data ?: [];
             foreach ($files as $key => $filePath) {
                 $postData[$key] = new CURLFile($filePath);
             }
             curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
         } elseif ($data) {
+            // Non-file API calls use JSON payloads.
             $headers[] = 'Content-Type: application/json';
             curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
         }
@@ -121,6 +128,7 @@ function apiRequest($endpoint, $method = 'GET', $data = null, $token = null, $fi
     
     $decoded = json_decode($response, true);
     
+    // Return both decoded JSON and raw text so callers can surface useful backend errors.
     return [
         'success' => $httpCode >= 200 && $httpCode < 300,
         'data' => $decoded,

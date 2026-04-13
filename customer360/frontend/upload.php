@@ -1,4 +1,11 @@
 <?php
+/**
+ * Guided upload page for the production Customer360 workflow.
+ *
+ * The page accepts a CSV file from the browser, sends it to frontend/api/upload.php
+ * for backend previewing, then moves the user to column-mapping.php once the server
+ * has confirmed the file can be read.
+ */
 session_start();
 
 // Check if user is logged in
@@ -16,6 +23,7 @@ $companyLabel = $rawCompanyName !== '' ? $rawCompanyName : 'Signed in account';
 $userInitials = strtoupper(substr($profileLabel, 0, 1));
 $currentYear = date('Y');
 $currentPage = 'upload';
+// This flag is shown when someone opens the mapping page without a valid upload preview.
 $missingPreview = isset($_GET['missing_preview']) && $_GET['missing_preview'] === '1';
 ?>
 <!DOCTYPE html>
@@ -298,6 +306,8 @@ $missingPreview = isset($_GET['missing_preview']) && $_GET['missing_preview'] ==
         let filesToUpload = [];
         let uploadStageTimer = null;
         let uploadStageIndex = 0;
+        // These messages keep the user informed while the browser uploads the file
+        // and waits for the FastAPI preview endpoint to return column metadata.
         const uploadStages = [
             'Checking the file before upload...',
             'Building a preview so you can confirm your column mapping...',
@@ -490,6 +500,8 @@ $missingPreview = isset($_GET['missing_preview']) && $_GET['missing_preview'] ==
         }
         
         function uploadFiles() {
+            // The upload endpoint stores preview metadata in the PHP session so the
+            // mapping page can render suggested fields without exposing server paths.
             if (filesToUpload.length === 0) {
                 showInlineError('Please select a file before starting the upload.');
                 return;

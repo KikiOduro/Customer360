@@ -2,6 +2,9 @@
 Main analytics pipeline for Customer360.
 Orchestrates the full preprocessing -> RFM -> clustering -> segmentation flow.
 Includes outlier treatment, PCA, optimal-K selection, SHAP, and chart generation.
+
+The route layer calls this class in a background task for each uploaded dataset. It
+produces the JSON, CSV, chart images, and PDF-ready data used by the rest of the app.
 """
 import json
 import os
@@ -64,6 +67,8 @@ class SegmentationPipeline:
 
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
+        # These attributes are filled step-by-step during run() so later stages can
+        # reuse cleaned data, RFM metrics, labels, and segment summaries.
         self.results  = {}
         self.df       = None
         self.rfm      = None

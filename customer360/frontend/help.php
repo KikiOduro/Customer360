@@ -19,12 +19,14 @@ $currentPage = 'help';
 $currentYear = date('Y');
 
 $templateRows = [
+    // These sample rows teach users the shape of a clean CSV without using real data.
     ['name' => 'Kwame Mensah', 'phone' => '+233 24 123 4567', 'email' => 'kwame@example.com', 'region' => 'Accra', 'region_color' => 'blue'],
     ['name' => 'Ama Osei', 'phone' => '050 987 6543', 'email' => 'ama.o@store.gh', 'region' => 'Ashanti', 'region_color' => 'amber'],
     ['name' => 'Kofi Boateng', 'phone' => '+233 20 555 1234', 'email' => 'kofi.b@biz.com', 'region' => 'Western', 'region_color' => 'green'],
 ];
 
 $faqs = [
+    // Keep these answers aligned with the actual upload, mapping, analytics, and export flow.
     ['question' => 'Why is my upload failing near the end?', 'answer' => 'This usually means a required column was not mapped correctly, a date or money format could not be read, or many rows are missing customer IDs. Use the mapping page to confirm your Customer ID, Date, Invoice ID, and Amount or Quantity + Unit Price fields before continuing.'],
     ['question' => 'What do I need in my file for customer grouping to work?', 'answer' => 'The platform needs a stable customer ID, a purchase date, an invoice or order number, and either a total amount column or quantity and unit price columns. This is what allows the system to tell who bought recently, who buys often, and who spends the most.'],
     ['question' => 'Can I export my analytics reports?', 'answer' => 'Yes. Open the Analytics page for a completed job and use Export CSV or Download PDF. The CSV gives the customer-by-customer table, while the PDF gives a readable management report with charts and recommended actions.'],

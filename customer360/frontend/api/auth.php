@@ -2,6 +2,9 @@
 /**
  * Authentication API Endpoint
  * Handles login, register, logout by proxying to Python backend
+ *
+ * Browser pages submit to this file because PHP owns the session cookie, while
+ * FastAPI owns password validation and token creation.
  */
 require_once __DIR__ . '/config.php';
 session_start();
@@ -17,7 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-// Get JSON body if content-type is application/json
+// Get JSON body if content-type is application/json. This allows the same endpoint
+// to work for regular forms and JavaScript/AJAX calls.
 $inputData = [];
 $contentType = $_SERVER['CONTENT_TYPE'] ?? '';
 if (strpos($contentType, 'application/json') !== false) {
@@ -53,6 +57,7 @@ function isApiRequest() {
 
 // Helper to respond with redirect or JSON
 function respondOrRedirect($data, $successUrl = null, $errorUrl = null) {
+    // Forms expect a browser redirect; fetch() requests expect JSON.
     $isSuccess = isset($data['success']) && $data['success'];
     
     // For API/AJAX requests, always return JSON
@@ -100,6 +105,7 @@ switch ($action) {
 function handleRegister() {
     global $requestData;
     
+    // Register accepts both older field names and the finalized page field names.
     $email = $requestData['email'] ?? '';
     $password = $requestData['password'] ?? '';
     $company_name = $requestData['company_name'] ?? '';
@@ -117,7 +123,7 @@ function handleRegister() {
     error_log("Backend URL: " . BACKEND_API_URL);
     error_log("Attempting to register user: " . $email);
     
-    // Try Python backend first
+    // FastAPI creates the user and returns canonical account data.
     $result = apiRequest('/auth/register', 'POST', [
         'email' => $email,
         'password' => $password,
@@ -129,7 +135,8 @@ function handleRegister() {
     error_log("Register result: " . json_encode($result));
     
     if ($result['success']) {
-        // Auto-login after registration using JSON endpoint
+        // Auto-login after registration using JSON endpoint so the user lands on
+        // the dashboard without manually signing in again.
         $loginResult = apiRequest('/auth/login/json', 'POST', [
             'email' => $email,
             'password' => $password
@@ -138,6 +145,7 @@ function handleRegister() {
         error_log("Login after register result: " . json_encode($loginResult));
         
         if ($loginResult['success']) {
+            // Store only session-safe account metadata and the backend JWT.
             $_SESSION['auth_token'] = $loginResult['data']['access_token'];
             $_SESSION['user_id'] = $loginResult['data']['user_id'] ?? 1;
             $_SESSION['user_email'] = $email;
@@ -173,6 +181,7 @@ function handleRegister() {
 function handleLogin() {
     global $requestData;
     
+    // The sign-in page posts email/password; this proxy sends those to FastAPI.
     $email = $requestData['email'] ?? '';
     $password = $requestData['password'] ?? '';
     
@@ -194,6 +203,7 @@ function handleLogin() {
     error_log("Login result: " . json_encode($result));
     
     if ($result['success']) {
+        // Store only session-safe account metadata and the backend JWT.
         $_SESSION['auth_token'] = $result['data']['access_token'];
         $_SESSION['user_id'] = $result['data']['user_id'] ?? 1;
         $_SESSION['user_email'] = $email;
@@ -226,6 +236,7 @@ function handleLogin() {
 }
 
 function handleLogout() {
+    // Clear the PHP session; JWT state lives in the session and is dropped here.
     session_destroy();
     
     // If called via API/AJAX
@@ -239,6 +250,8 @@ function handleLogout() {
 }
 
 function checkAuth() {
+    // Small helper endpoint for pages/scripts that only need to know if the PHP
+    // session still has an authenticated user.
     if (isset($_SESSION['user_id'])) {
         jsonResponse([
             'authenticated' => true,

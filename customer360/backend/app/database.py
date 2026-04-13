@@ -1,6 +1,9 @@
 """
 Database connection and session management for Customer360.
 Supports both MySQL and SQLite with automatic fallback.
+
+The DigitalOcean deployment is expected to use MySQL. SQLite fallback is only kept
+for development/testing so local backend checks can run without a server database.
 """
 import os
 import logging
@@ -13,7 +16,7 @@ from .config import DATABASE_URL, DEBUG, ENVIRONMENT
 
 logger = logging.getLogger(__name__)
 
-# Attempt to use DATABASE_URL; fall back to SQLite if MySQL fails
+# Attempt to use DATABASE_URL; fall back to SQLite only outside strict production.
 database_url = DATABASE_URL
 is_sqlite = False
 
@@ -64,7 +67,7 @@ else:
 # Log which database is being used
 logger.info(f"Using database: {'SQLite (development mode)' if is_sqlite else 'MySQL (production)'}")
 
-# Session factory
+# Session factory used by FastAPI dependency injection in the route modules.
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # Base class for models

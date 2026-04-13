@@ -1,6 +1,9 @@
 """
 Authentication utilities for Customer360.
 Handles password hashing, JWT tokens, and user authentication.
+
+The PHP frontend stores the returned JWT in the user session, then sends it back
+through API proxy calls whenever it needs protected FastAPI data.
 """
 from datetime import datetime, timedelta
 from typing import Optional
@@ -16,7 +19,8 @@ from .database import get_db
 from .models import User
 from .schemas import TokenData
 
-# OAuth2 scheme for token authentication
+# OAuth2 scheme used by protected FastAPI routes. The PHP layer passes this token
+# as an Authorization header when proxying requests for a signed-in user.
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 

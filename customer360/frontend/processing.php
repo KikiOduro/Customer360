@@ -1,4 +1,10 @@
 <?php
+/**
+ * Live processing page for an analysis job.
+ *
+ * This page does not run analytics itself. It polls frontend/api/process.php for the
+ * current FastAPI job status and unlocks the results button once the job completes.
+ */
 session_start();
 
 if (!isset($_SESSION['user_id'])) {
@@ -6,6 +12,7 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+// Prefer the job passed in the URL, but fall back to the most recent job stored in session.
 $currentJob = $_SESSION['current_job'] ?? null;
 $jobId = $_GET['job_id'] ?? ($currentJob['job_id'] ?? null);
 if (!$jobId) {
@@ -344,6 +351,8 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
         }
 
         function estimateProgress(status, createdAt) {
+            // If the backend has not emitted a fresh numeric percent yet, this keeps
+            // the page feeling alive without pretending that analysis is finished.
             const elapsedSeconds = getElapsedSeconds(createdAt);
             const profiles = {
                 pending: { floor: 12, ceiling: 34, duration: 25, activeStep: 0, message: 'Queued and waiting for the backend worker to start.' },
@@ -424,6 +433,8 @@ $profileLabel = $userName !== '' ? $userName : $userEmail;
         const jobId = <?php echo json_encode($jobId); ?>;
 
         async function pollJobStatus() {
+            // All progress data comes through the PHP proxy so the browser never has
+            // to call the private FastAPI service directly.
             try {
                 const response = await fetch(`api/process.php?action=status&job_id=${encodeURIComponent(jobId)}`);
                 const data = await response.json();

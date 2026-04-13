@@ -25,6 +25,7 @@ $authToken = $_SESSION['auth_token'] ?? null;
 $currentYear = date('Y');
 
 function dashboardApiGet(string $endpoint, ?string $token): ?array {
+    // Small wrapper for dashboard-only reads from the FastAPI backend.
     if (!$token) {
         return null;
     }
@@ -162,12 +163,15 @@ $recentRuns = [];
 $jobsLoadError = null;
 
 if ($authToken) {
+    // Pull the latest jobs for the signed-in user so the dashboard reflects server state,
+    // not only what was stored in the browser session.
     $jobList = dashboardApiGet('/jobs/', $authToken);
 
     if ($jobList === null) {
         $jobsLoadError = 'We could not load your recent analysis runs right now.';
     } else {
         foreach (array_slice($jobList, 0, 5) as $job) {
+            // Store only display-safe fields for the recent-runs list.
             $run = [
                 'job_id' => $job['job_id'] ?? '',
                 'original_filename' => $job['original_filename'] ?? 'Untitled upload',
@@ -191,6 +195,7 @@ if ($authToken) {
             }
 
             if ($run['status'] === 'completed') {
+                // Completed jobs can show analytics totals without forcing a rerun.
                 $resultsData = dashboardApiGet('/jobs/results/' . rawurlencode($run['job_id']), $authToken);
                 if ($resultsData) {
                     $meta = is_array($resultsData['meta'] ?? null) ? $resultsData['meta'] : $resultsData;

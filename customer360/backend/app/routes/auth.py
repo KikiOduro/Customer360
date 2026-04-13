@@ -1,6 +1,9 @@
 """
 Authentication API routes.
 Handles user registration, login, and token management.
+
+These endpoints are called mostly by the PHP auth proxy so the browser can keep a
+simple PHP session while FastAPI remains responsible for password and JWT handling.
 """
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status

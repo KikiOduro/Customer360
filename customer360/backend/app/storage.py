@@ -1,5 +1,9 @@
 """
-Supabase Storage helpers for uploaded source files.
+Optional Supabase Storage helpers for uploaded source files.
+
+The finalized deployment primarily keeps uploads and outputs on the Ubuntu server.
+These helpers stay isolated so storage mirroring can be re-enabled later without
+changing the main upload or analytics pipeline.
 """
 import re
 from pathlib import Path
@@ -33,6 +37,7 @@ def build_storage_object_path(user_id: int, job_id: str, filename: str) -> str:
 
 
 def upload_file_to_supabase(local_path: Path, object_path: str, content_type: str = "text/csv") -> Dict[str, str]:
+    """Upload one local file to Supabase when all required storage settings exist."""
     if not supabase_storage_enabled():
         raise RuntimeError("Supabase storage is not configured")
 
@@ -73,6 +78,7 @@ def upload_file_to_supabase(local_path: Path, object_path: str, content_type: st
 
 
 def delete_supabase_object(object_path: str) -> None:
+    """Best-effort cleanup for optional Supabase objects tied to a deleted job."""
     if not supabase_storage_enabled() or not object_path:
         return
 

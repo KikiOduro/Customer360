@@ -1,6 +1,9 @@
 """
 PDF Report generation module for Customer360.
 Uses reportlab to generate professional segmentation reports.
+
+The generator consumes the same results dictionary shown on analytics.php, including
+charts and Groq/fallback narratives, so the downloaded PDF matches the web results.
 """
 from datetime import datetime
 from pathlib import Path
@@ -25,6 +28,9 @@ logger = logging.getLogger(__name__)
 class ReportGenerator:
     """
     Generates PDF reports for customer segmentation analysis.
+
+    Each section is built from aggregated analytics output only; raw uploaded file
+    paths are not exposed in the report.
     """
     
     def __init__(self, results: Dict[str, Any], company_name: str = ""):

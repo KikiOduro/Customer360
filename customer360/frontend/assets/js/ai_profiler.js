@@ -1,4 +1,6 @@
 (function () {
+    // analytics.php injects aggregate-only segment data into these globals. This
+    // script then adds an optional "Get AI Profile" button to each rendered card.
     const segmentCards = document.querySelectorAll('[data-segment-card]');
     const segments = Array.isArray(window.__C360_SEGMENTS) ? window.__C360_SEGMENTS : [];
     const meta = window.__C360_META || {};
@@ -44,6 +46,8 @@
         button.classList.add('opacity-70', 'cursor-wait');
 
         try {
+            // Send only aggregate segment statistics through the PHP proxy. Raw
+            // customer identifiers remain on the server and are not sent to Groq.
             const response = await fetch('api/groq-insight.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -122,6 +126,8 @@
             return;
         }
 
+        // The injected controls are appended after the original card content so the
+        // existing Tailwind layout stays unchanged.
         const controls = document.createElement('div');
         controls.className = 'mt-4 space-y-3';
         controls.innerHTML = `

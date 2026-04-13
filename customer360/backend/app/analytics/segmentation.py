@@ -1,6 +1,9 @@
 """
 Segmentation module for Customer360.
 Assigns segment labels and marketing recommendations based on cluster characteristics.
+
+This layer translates numeric RFM cluster behavior into plain customer-group names and
+recommended actions that Ghanaian SME owners can understand.
 """
 import pandas as pd
 import numpy as np
@@ -10,7 +13,8 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-# Segment definitions based on RFM characteristics
+# Segment definitions based on RFM characteristics. Labels are deliberately written
+# for business users, not data scientists, and are reused by the UI, CSV, and PDF.
 SEGMENT_DEFINITIONS = {
     'champions': {
         'label': 'Your Star Customers',

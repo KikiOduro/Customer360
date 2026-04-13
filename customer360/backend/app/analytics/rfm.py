@@ -1,6 +1,9 @@
 """
 RFM (Recency, Frequency, Monetary) computation module.
 Calculates customer-level RFM metrics from transaction data.
+
+The output answers three simple business questions: who bought recently, who comes
+back often, and who spends the most. Those values become the features for clustering.
 """
 import pandas as pd
 import numpy as np

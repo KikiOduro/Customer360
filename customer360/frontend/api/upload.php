@@ -2,6 +2,9 @@
 /**
  * Upload API Endpoint
  * Proxies file upload from PHP frontend to FastAPI backend
+ *
+ * The preview action supports the finalized upload -> mapping -> processing flow.
+ * The older direct upload path remains for compatibility but the UI uses preview.
  */
 require_once __DIR__ . '/config.php';
 session_start();
@@ -56,6 +59,8 @@ if ($file['error'] !== UPLOAD_ERR_OK) {
 }
 
 if ($action === 'preview') {
+    // Preview mode stores a temporary uploaded CSV and asks FastAPI to profile it
+    // before the user commits to running the full analysis.
     if ($ext !== '.csv') {
         jsonResponse([
             'success' => false,
@@ -87,9 +92,13 @@ if ($action === 'preview') {
         'file' => $tempPath
     ]);
     if ($backendPreview['success'] && is_array($backendPreview['data'])) {
+        // Prefer backend-generated suggestions/profiles because they use the same
+        // preprocessing code that will run during the real analysis.
         $preview = array_merge($preview, $backendPreview['data']);
     }
 
+    // Session storage lets column-mapping.php access the temporary file securely
+    // without sending server paths back into the page URL.
     $_SESSION['current_upload'] = [
         'job_name' => $jobName,
         'filename' => $file['name'],
@@ -129,6 +138,7 @@ $include_comparison = $_POST['include_comparison']  ?? 'true';
 
 // Build multipart body manually (curl is cleaner than file_get_contents for files)
 if (function_exists('curl_init')) {
+    // Direct analysis upload path kept for compatibility with older form flows.
     $ch = curl_init(BACKEND_API_URL . '/jobs/upload');
 
     $postFields = [
@@ -260,6 +270,7 @@ if ($httpCode === 200 || $httpCode === 201) {
  * Get a basic preview of the uploaded file for column mapping
  */
 function getFilePreview(string $filePath, string $ext): array {
+    // Lightweight local preview fallback used if backend preview data is unavailable.
     if ($ext === '.csv') {
         $handle = fopen($filePath, 'r');
         if (!$handle) return ['columns' => [], 'sample_rows' => []];
@@ -288,6 +299,7 @@ function getFilePreview(string $filePath, string $ext): array {
  * Quick client-side column mapping suggestion (mirrors preprocessing.py logic)
  */
 function suggestMapping(array $columns): array {
+    // Simple name-based fallback; the FastAPI preview provides richer profiling.
     $colsLower = array_map('strtolower', $columns);
     $mapping   = [];
 
@@ -317,6 +329,7 @@ function suggestMapping(array $columns): array {
 }
 
 function extractUploadPayload($decoded): array {
+    // Normalize different backend response shapes into one structure for the PHP page.
     if (!is_array($decoded)) {
         return [];
     }
@@ -354,6 +367,7 @@ function summarizeBackendResponse($response): ?string {
 }
 
 function parseIniSize($value): int {
+    // Convert PHP shorthand sizes like 25M or 1G into bytes for upload-limit checks.
     if ($value === false || $value === null) {
         return 0;
     }

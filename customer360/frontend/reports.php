@@ -30,11 +30,14 @@ $totalPages = 1;
 $loadError = null;
 
 if ($authToken) {
+    // Report history is backed by the jobs API so each row links to a real completed
+    // or failed analysis record owned by the signed-in user.
     $result = apiRequest('/jobs/', 'GET', null, $authToken);
     if ($result['success'] && is_array($result['data'])) {
         $allReports = array_map(function ($job) {
             return [
                 'id' => $job['job_id'],
+                // Show only the original filename, never the server-side upload path.
                 'filename' => basename((string) ($job['original_filename'] ?? 'Uploaded file')),
                 'date_generated' => $job['created_at'] ?? null,
                 'customer_count' => $job['num_customers'] ?? null,
@@ -43,6 +46,7 @@ if ($authToken) {
         }, $result['data']);
 
         if ($statusFilter !== '') {
+            // Filtering is done in PHP because the page already has the user's job list.
             $allReports = array_values(array_filter($allReports, fn($report) => $report['status'] === $statusFilter));
         }
 

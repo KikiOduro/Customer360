@@ -1,5 +1,8 @@
 """
 Pydantic schemas for request/response validation.
+
+These models define the JSON contract between the PHP proxy layer and the FastAPI
+backend so uploads, jobs, statuses, and results are shaped consistently.
 """
 from datetime import datetime
 from typing import Optional, List, Dict, Any
@@ -50,7 +53,7 @@ class TokenData(BaseModel):
 # ============== Job Schemas ==============
 
 class ColumnMapping(BaseModel):
-    """Schema for mapping CSV columns to required fields."""
+    """Schema for mapping user CSV columns to the canonical analysis fields."""
     customer_id: Optional[str] = None
     invoice_date: Optional[str] = None
     invoice_id: Optional[str] = None
@@ -62,7 +65,7 @@ class ColumnMapping(BaseModel):
 
 
 class JobCreate(BaseModel):
-    """Schema for creating a new job."""
+    """Schema for creating a new analysis job from an uploaded dataset."""
     clustering_method: str = "kmeans"  # kmeans, gmm, hierarchical
     include_comparison: bool = False
     column_mapping: Optional[ColumnMapping] = None

@@ -1,5 +1,8 @@
 """
 Configuration settings for Customer360 application.
+
+All backend services read environment-driven settings from this file so deployment
+changes, such as MySQL credentials or Groq limits, do not require code changes.
 """
 import os
 from pathlib import Path
@@ -53,7 +56,8 @@ ENVIRONMENT = os.getenv("ENVIRONMENT", "development").strip().lower() or "develo
 ALLOWED_ORIGINS = _parse_csv(os.getenv("ALLOWED_ORIGINS"))
 ALLOW_CREDENTIALS = _parse_bool(os.getenv("ALLOW_CREDENTIALS"), default=True)
 
-# File upload settings
+# File upload settings. The production UI currently accepts CSV files in the guided
+# flow, and this backend limit protects the server from oversized uploads.
 MAX_FILE_SIZE_MB = 50
 ALLOWED_EXTENSIONS = {".csv"}
 
@@ -67,7 +71,8 @@ SUPABASE_STORAGE_PUBLIC_BASE = os.getenv(
 ).rstrip("/")
 SUPABASE_STORAGE_OBJECT_BASE = f"{SUPABASE_URL}/storage/v1/object/{SUPABASE_STORAGE_BUCKET}"
 
-# AI integration
+# AI integration. Groq is optional and non-fatal: if these settings are missing or
+# rate-limited, the deterministic analysis pipeline still completes.
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
 GROQ_ENABLED = _parse_bool(os.getenv("GROQ_ENABLED"), default=bool(GROQ_API_KEY))

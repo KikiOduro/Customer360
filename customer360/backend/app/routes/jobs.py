@@ -61,7 +61,11 @@ def persist_results_json(output_dir: str, job_id: str, results: dict) -> None:
 
 
 def enrich_results_with_cached_llm(job: Job, results: dict) -> dict:
-    """Attach cached LLM narrative from the jobs table when the file payload lacks it."""
+    """Attach cached LLM narrative from the jobs table when the file payload lacks it.
+
+    This keeps report downloads and old analytics links consistent without calling
+    Groq again for a job that already has AI copy stored in MySQL.
+    """
     if results.get("llm_analysis"):
         return apply_llm_segment_recommendations(results)
 
@@ -75,7 +79,11 @@ def enrich_results_with_cached_llm(job: Job, results: dict) -> dict:
 
 
 def apply_llm_segment_recommendations(results: dict) -> dict:
-    """Merge exact-name Groq segment insights/actions into segment and customer rows."""
+    """Merge exact-name Groq segment insights/actions into segment and customer rows.
+
+    The exact-name match matters because duplicate-looking segment families may be
+    split into "Group 1", "Group 2", etc. and must keep distinct recommendations.
+    """
     llm_analysis = results.get("llm_analysis") if isinstance(results, dict) else None
     segment_insights = (llm_analysis or {}).get("segment_insights") if isinstance(llm_analysis, dict) else None
     if not isinstance(segment_insights, list) or not segment_insights:
@@ -272,6 +280,8 @@ def run_segmentation_job(
         allowed, reason = limiter.check_all(job.user_id, db)
         if allowed:
             try:
+                # Groq enriches the already-computed segment statistics. It is
+                # optional: if it fails, the deterministic analytics still complete.
                 llm_narrative = generate_llm_analysis(results)
                 results["llm_analysis"] = llm_narrative
                 results = apply_llm_segment_recommendations(results)

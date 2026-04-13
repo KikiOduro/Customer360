@@ -1,6 +1,10 @@
 <?php
 /**
  * Groq insight proxy for advertiser-style segment profiling.
+ *
+ * This endpoint receives aggregate segment stats from analytics.php, never raw
+ * customer rows. If Groq is unavailable, it returns a deterministic local fallback
+ * so the UI still explains the customer group instead of failing blank.
  */
 session_start();
 header('Content-Type: application/json');
@@ -25,6 +29,7 @@ if (!$segment || !is_array($segment)) {
     exit;
 }
 
+// Per-session cooldown protects the free Groq tier from repeated button clicks.
 $cooldownSeconds = 20;
 $lastInsightAt = $_SESSION['groq_last_insight_at'] ?? 0;
 if (time() - (int) $lastInsightAt < $cooldownSeconds) {
@@ -104,6 +109,8 @@ echo json_encode([
 exit;
 
 function loadEnvValue(string $key): string {
+    // Local development and some Apache setups do not automatically expose .env
+    // values to PHP, so this lightweight reader keeps the proxy configurable.
     static $env = null;
     if ($env === null) {
         $env = [];
@@ -144,6 +151,8 @@ PROMPT;
 }
 
 function heuristicProfile(array $segment): array {
+    // Fallback copy is intentionally plain and generic: it explains the segment
+    // from available aggregates without pretending that Groq generated the text.
     $name = $segment['name'] ?? 'Customer Segment';
     $pct = $segment['customer_pct'] ?? 0;
     $avgFrequency = $segment['avg_frequency'] ?? 0;

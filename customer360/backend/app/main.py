@@ -2,6 +2,9 @@
 Customer360 - FastAPI Application Entry Point
 A web system for Ghanaian SMEs to analyze customer transaction data
 and receive customer segments with actionable insights.
+
+This file wires the backend together: database startup, optional model artifacts,
+API routers, CORS settings, and static access to generated outputs.
 """
 import logging
 from contextlib import asynccontextmanager
@@ -28,7 +31,9 @@ logger = logging.getLogger(__name__)
 async def lifespan(app: FastAPI):
     """
     Application lifespan handler.
-    Initializes database on startup.
+
+    Initializes database tables and loads optional model artifacts once at startup
+    so each analysis job does not have to rediscover them from disk.
     """
     logger.info("Starting Customer360 application...")
     init_db()

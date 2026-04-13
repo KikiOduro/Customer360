@@ -85,7 +85,11 @@ Rules:
 
 
 class GroqRateLimiter:
-    """Application-side rate limiting based on completed LLM calls in the jobs table."""
+    """Application-side rate limiting based on completed LLM calls in the jobs table.
+
+    This keeps Groq usage within the free-tier budget before the code ever reaches
+    the external API.
+    """
 
     def check_user_cooldown(self, user_id: int, db: Session) -> Tuple[bool, str]:
         latest_llm_job = (
@@ -189,7 +193,7 @@ def _is_reactivation_group(segment_name: str) -> bool:
 
 
 def prepare_groq_context(results: Dict[str, Any]) -> Dict[str, Any]:
-    """Extract a compact PII-free summary from pipeline results."""
+    """Extract compact, aggregate-only analysis facts for Groq narrative generation."""
     meta = results.get("meta", {}) or {}
     segments = results.get("segments", []) or []
     shap = results.get("shap", {}) or {}

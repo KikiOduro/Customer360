@@ -5,7 +5,8 @@
  */
 session_start();
 
-// Redirect if already logged in
+// Redirect if already logged in so an authenticated user cannot accidentally
+// create duplicate accounts from the register screen.
 if (isset($_SESSION['user_id'])) {
     header('Location: dashboard.php');
     exit;
@@ -13,6 +14,7 @@ if (isset($_SESSION['user_id'])) {
 
 $error = '';
 if (isset($_GET['error'])) {
+    // Auth proxy redirects validation/backend errors back through this query string.
     $error = htmlspecialchars($_GET['error']);
 }
 
@@ -373,7 +375,8 @@ $currentYear = date('Y');
             }
         }
 
-        // Form validation and submission
+        // Form validation and submission. The backend still validates credentials,
+        // but this prevents common mistakes before the request leaves the page.
         document.getElementById('registerForm').addEventListener('submit', function(e) {
             const password = document.getElementById('password').value;
             const confirmPassword = document.getElementById('confirm_password').value;

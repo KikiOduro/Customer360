@@ -2,6 +2,9 @@
 SQLAlchemy models for Customer360.
 Defines User and Job tables.
 MySQL-compatible schema.
+
+The Job table is the bridge between the PHP pages and Python worker: it stores the
+upload, progress, generated files, analytics summary, and cached Groq narrative.
 """
 from datetime import datetime
 from sqlalchemy import Column, Integer, String, ForeignKey, Boolean, Text, Float, TIMESTAMP
@@ -72,7 +75,8 @@ class Job(Base):
     num_clusters = Column(Integer, nullable=True)
     silhouette_score = Column(Float, nullable=True)
     
-    # Cached analysis results (JSON) — populated by background tasks
+    # Cached analysis results (JSON) — populated by background tasks so reports and
+    # reopened analytics pages do not need to rerun the pipeline.
     result_json = Column(Text, nullable=True)
     llm_analysis_json = Column(Text, nullable=True)
     llm_generated_at = Column(TIMESTAMP, nullable=True)

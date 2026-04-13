@@ -5,7 +5,7 @@
  */
 session_start();
 
-// Redirect if already logged in
+// Redirect if already logged in so returning users go straight to their dashboard.
 if (isset($_SESSION['user_id'])) {
     header('Location: dashboard.php');
     exit;
@@ -14,9 +14,11 @@ if (isset($_SESSION['user_id'])) {
 $error = '';
 $success = '';
 if (isset($_GET['error'])) {
+    // Errors are passed back from api/auth.php after backend login validation fails.
     $error = htmlspecialchars($_GET['error']);
 }
 if (isset($_GET['registered'])) {
+    // Registration success uses this flag to show a friendly login prompt.
     $success = 'Account created successfully! Please sign in.';
 }
 if (isset($_GET['logout'])) {

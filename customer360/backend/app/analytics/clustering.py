@@ -1,6 +1,9 @@
 """
 Clustering module for Customer360.
 Implements K-Means, GMM, and Hierarchical clustering with evaluation metrics.
+
+The pipeline can compare the available methods and keep the best scoring result, while
+still returning readable metrics for the analytics page and PDF report.
 """
 import numpy as np
 import pandas as pd

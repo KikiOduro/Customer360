@@ -1,4 +1,10 @@
 <?php
+/**
+ * Column mapping page for the finalized CSV analysis flow.
+ *
+ * Users map their source CSV columns to Customer360's required fields here. The page
+ * validates the mapping through the PHP proxy before starting the FastAPI analysis job.
+ */
 session_start();
 header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
 header('Pragma: no-cache');
@@ -8,6 +14,8 @@ if (!isset($_SESSION['user_id'])) {
     exit;
 }
 
+// The upload preview is produced by frontend/api/upload.php and kept in session only
+// long enough for the user to confirm column mappings.
 $upload = $_SESSION['current_upload'] ?? null;
 $uploadedFile = $upload['filename'] ?? $_SESSION['uploaded_file'] ?? '';
 $availableColumns = $upload['columns'] ?? [];
@@ -24,6 +32,8 @@ if (!$hasUploadPreview) {
     exit;
 }
 
+// Required fields drive the red asterisks, help icons, and validation rules shown in
+// the UI. Amount can come directly from one column or be calculated from quantity x unit price.
 $requiredFields = [
     [
         'id' => 'customer_id',
@@ -498,6 +508,8 @@ $optionalFields = [
         }
 
         function collectMappingPayload() {
+            // Keep this payload aligned with frontend/api/mapping.php so validation
+            // and final job creation send the same interpretation rules to FastAPI.
             const mappings = {};
             document.querySelectorAll('.mapping-select, .optional-mapping-select').forEach(select => {
                 const fieldName = select.name.match(/\[(.+)\]/)[1];
@@ -541,6 +553,8 @@ $optionalFields = [
         }
 
         function updateMappingStatus() {
+            // Client-side checks provide immediate guidance, while the backend
+            // validation still remains the source of truth for real CSV parsing.
             const selects = document.querySelectorAll('.mapping-select');
             const allSelects = document.querySelectorAll('.mapping-select, .optional-mapping-select');
             let mappedCount = 0;
@@ -658,6 +672,8 @@ $optionalFields = [
         }
 
         function submitMapping() {
+            // Saving the mapping starts the backend job and then sends the user to
+            // processing.php, where progress is polled from the persisted job record.
             if (!validationReady) {
                 setMappingStatus('error', 'Run validation first', 'Validate your mapping and parser settings before starting the analysis job.');
                 return;
@@ -731,6 +747,8 @@ $optionalFields = [
         }
 
         async function runValidation() {
+            // This calls the backend validator with the actual uploaded file, so it
+            // can catch date, money, and missing-row issues before a full analysis run.
             const validateBtn = document.getElementById('validateBtn');
             validateBtn.disabled = true;
             validateBtn.innerHTML = '<span class="material-symbols-outlined animate-spin text-sm mr-2">progress_activity</span> Validating...';

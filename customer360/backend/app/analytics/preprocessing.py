@@ -1,6 +1,10 @@
 """
 Data preprocessing module for Customer360.
 Handles CSV loading, validation, date parsing, and data cleaning.
+
+This is the first pipeline stage after upload. It turns SME CSV files with different
+column names, date formats, money formats, and blank rows into a canonical table the
+RFM and clustering stages can safely use.
 """
 import pandas as pd
 import numpy as np
@@ -11,7 +15,7 @@ from ..config import MAX_ROWS
 
 logger = logging.getLogger(__name__)
 
-# Common date formats to try when parsing dates
+# Common date formats to try when parsing dates from SME exports and manual sheets.
 DATE_FORMATS = [
     "%Y-%m-%d",
     "%d-%m-%Y",
